@@ -28,8 +28,14 @@ type ExternalDNSSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	// Foo is an example field of ExternalDNS. Edit externaldns_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+	Source     string `json:"source"`
+	Domain     string `json:"domain"`
+	Provider   string `json:"provider"`
+	Policy     string `json:"policy"`
+	AWSZone    string `json:"aws_zone"`
+	Registry   string `json:"registry"`
+	TxtOwnerID string `json:"txt_owner_id"`
+	TxtPrefix  string `json:"txt_prefix"`
 }
 
 // ExternalDNSStatus defines the observed state of ExternalDNS

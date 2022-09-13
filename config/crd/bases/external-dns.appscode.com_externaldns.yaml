@@ -35,10 +35,31 @@ spec:
           spec:
             description: ExternalDNSSpec defines the desired state of ExternalDNS
             properties:
-              foo:
-                description: Foo is an example field of ExternalDNS. Edit externaldns_types.go
-                  to remove/update
+              aws_zone:
                 type: string
+              domain:
+                type: string
+              policy:
+                type: string
+              provider:
+                type: string
+              registry:
+                type: string
+              source:
+                type: string
+              txt_owner_id:
+                type: string
+              txt_prefix:
+                type: string
+            required:
+            - aws_zone
+            - domain
+            - policy
+            - provider
+            - registry
+            - source
+            - txt_owner_id
+            - txt_prefix
             type: object
           status:
             description: ExternalDNSStatus defines the observed state of ExternalDNS

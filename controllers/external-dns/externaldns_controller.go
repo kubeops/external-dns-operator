@@ -18,13 +18,12 @@ package externaldns
 
 import (
 	"context"
-
+	"fmt"
 	"k8s.io/apimachinery/pkg/runtime"
+	externaldnsv1alpha1 "kubeops.dev/external-dns-operator/apis/external-dns/v1alpha1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
-
-	externaldnsv1alpha1 "kubeops.dev/external-dns-operator/apis/external-dns/v1alpha1"
 )
 
 // ExternalDNSReconciler reconciles a ExternalDNS object
@@ -46,10 +45,28 @@ type ExternalDNSReconciler struct {
 //
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.12.2/pkg/reconcile
+
 func (r *ExternalDNSReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	_ = log.FromContext(ctx)
 
 	// TODO(user): your logic here
+	// get external dns
+
+	key := req.NamespacedName
+	edns := externaldnsv1alpha1.ExternalDNS{}
+
+	if err := r.Get(ctx, key, &edns); err != nil {
+		fmt.Println("failed to get external-dns")
+		return ctrl.Result{}, err
+	}
+	fmt.Println("found external-dns")
+	fmt.Println("Zone : ", edns.Spec.AWSZone)
+
+	// pkg/provider/aws.go
+	// dynamic watcher (source service) (later)
+	// spec/config function config --> plan.
+
+	// Pending, Current, InProgress
 
 	return ctrl.Result{}, nil
 }
@@ -58,5 +75,6 @@ func (r *ExternalDNSReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 func (r *ExternalDNSReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&externaldnsv1alpha1.ExternalDNS{}).
+		//Watches() // service, handler
 		Complete(r)
 }
