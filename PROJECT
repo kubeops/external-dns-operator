@@ -1,0 +1,17 @@
+domain: appscode.com
+layout:
+- go.kubebuilder.io/v3
+multigroup: true
+projectName: external-dns-operator
+repo: kubeops.dev/external-dns-operator
+resources:
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: appscode.com
+  group: external-dns
+  kind: ExternalDNS
+  path: kubeops.dev/external-dns-operator/apis/external-dns/v1alpha1
+  version: v1alpha1
+version: "3"
