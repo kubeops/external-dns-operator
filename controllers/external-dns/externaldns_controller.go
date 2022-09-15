@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"k8s.io/apimachinery/pkg/runtime"
 	externaldnsv1alpha1 "kubeops.dev/external-dns-operator/apis/external-dns/v1alpha1"
+	"kubeops.dev/external-dns-operator/pkg"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -45,6 +46,51 @@ type ExternalDNSReconciler struct {
 //
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.12.2/pkg/reconcile
+
+func createPlans(edns externaldnsv1alpha1.ExternalDNS, ctx *context.Context) {
+	cfg, err := pkg.ConvertCRDtoCfg(edns)
+	if err != nil {
+		fmt.Println("failed to convert crd into cfg")
+		return
+	}
+
+	endpointsSource, err := pkg.CreateEndpointsSource(cfg, ctx)
+	if err != nil {
+		fmt.Println("failed to create endpoints source")
+		return
+	}
+
+	provider, err := pkg.CreateProviderFromCfg(cfg, *ctx, endpointsSource)
+	if err != nil {
+		fmt.Println("failed to create provider")
+	}
+
+	reg, err := pkg.CreateRegistry(cfg, *provider)
+	if err != nil {
+		fmt.Println("failed to create registry")
+		return
+	}
+
+	plan, err := pkg.CreateSinglePlanForCRD(cfg, reg, *ctx, *endpointsSource)
+	if err != nil {
+		fmt.Println("failed to create plan")
+		return
+	}
+
+	plan = plan.Calculate()
+
+	if plan.Changes.HasChanges() {
+		err = reg.ApplyChanges(*ctx, plan.Changes)
+		if err != nil {
+			fmt.Println("failed to apply changes for plan")
+			return
+		}
+	} else {
+		fmt.Println("all records are already up to date")
+	}
+
+	return
+}
 
 func (r *ExternalDNSReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	_ = log.FromContext(ctx)

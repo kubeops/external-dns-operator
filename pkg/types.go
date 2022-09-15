@@ -460,7 +460,7 @@ func CreateProviderFromCfg(cfg *externaldns.Config, ctx context.Context, endpoin
 	return &p, err
 }
 
-func CreateRegistry(cfg *externaldns.Config, p provider.Provider) (*registry.Registry, error) {
+func CreateRegistry(cfg *externaldns.Config, p provider.Provider) (registry.Registry, error) {
 
 	var r registry.Registry
 	var err error
@@ -478,5 +478,5 @@ func CreateRegistry(cfg *externaldns.Config, p provider.Provider) (*registry.Reg
 		err = errors.New(fmt.Sprintf("unknown registry: %s", cfg.Registry))
 	}
 
-	return &r, err
+	return r, err
 }
