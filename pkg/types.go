@@ -52,7 +52,7 @@ import (
 
 var defaultConfig = &externaldns.Config{
 	APIServerURL:                "",
-	KubeConfig:                  "",
+	KubeConfig:                  "/home/rasel/Downloads/rasel-kubeconfig.yaml",
 	RequestTimeout:              time.Second * 30,
 	DefaultTargets:              []string{},
 	ContourLoadBalancerService:  "heptio-contour/contour",
@@ -185,6 +185,9 @@ func ConvertCRDtoCfg(crd externaldnsv1alpha1.ExternalDNS) (*externaldns.Config, 
 	cfg := defaultConfig
 
 	// basic fields are given for testing purpose
+	if crd.Namespace != "" {
+		cfg.Namespace = crd.Namespace
+	}
 	if crd.Spec.AWSZone != nil {
 		cfg.AWSZoneType = *crd.Spec.AWSZone
 	}
@@ -209,12 +212,12 @@ func ConvertCRDtoCfg(crd externaldnsv1alpha1.ExternalDNS) (*externaldns.Config, 
 	if crd.Spec.TxtOwnerID != nil {
 		cfg.TXTOwnerID = *crd.Spec.TxtOwnerID
 	}
-	//
+	//---------
 
 	return cfg, nil
 }
 
-func CreateEndpointsSource(cfg *externaldns.Config, ctx *context.Context) (*source.Source, error) {
+func CreateEndpointsSource(ctx context.Context, cfg *externaldns.Config) (source.Source, error) {
 
 	// error is explicitly ignored because the filter is already validated in validation.ValidateConfig
 	labelSelector, _ := labels.Parse(cfg.LabelFilter)
@@ -253,7 +256,7 @@ func CreateEndpointsSource(cfg *externaldns.Config, ctx *context.Context) (*sour
 	}
 
 	// Lookup all the selected sources by names and pass them the desired configuration.
-	sources, err := source.ByNames(*ctx, &source.SingletonClientGenerator{
+	sources, err := source.ByNames(ctx, &source.SingletonClientGenerator{
 		KubeConfig:   cfg.KubeConfig,
 		APIServerURL: cfg.APIServerURL,
 		// If update events are enabled, disable timeout.
@@ -264,16 +267,18 @@ func CreateEndpointsSource(cfg *externaldns.Config, ctx *context.Context) (*sour
 			return cfg.RequestTimeout
 		}(),
 	}, cfg.Sources, sourceCfg)
-	//if err != nil {
-	//	log.Fatal(err)
-	//}
+
+	if err != nil {
+		return nil, err
+	}
 
 	// Combine multiple sources into a single, deduplicated source.
 	endpointsSource := source.NewDedupSource(source.NewMultiSource(sources, sourceCfg.DefaultTargets))
-	return &endpointsSource, err
+
+	return endpointsSource, nil
 }
 
-func CreateProviderFromCfg(cfg *externaldns.Config, ctx context.Context, endpointsSource *source.Source) (*provider.Provider, error) {
+func CreateProviderFromCfg(ctx context.Context, cfg *externaldns.Config, endpointsSource source.Source) (*provider.Provider, error) {
 	var p provider.Provider
 	var err error
 
@@ -447,7 +452,7 @@ func CreateProviderFromCfg(cfg *externaldns.Config, ctx context.Context, endpoin
 	case "gandi":
 		p, err = gandi.NewGandiProvider(ctx, domainFilter, cfg.DryRun)
 	case "ibmcloud":
-		p, err = ibmcloud.NewIBMCloudProvider(cfg.IBMCloudConfigFile, domainFilter, zoneIDFilter, *endpointsSource, cfg.IBMCloudProxied, cfg.DryRun)
+		p, err = ibmcloud.NewIBMCloudProvider(cfg.IBMCloudConfigFile, domainFilter, zoneIDFilter, endpointsSource, cfg.IBMCloudProxied, cfg.DryRun)
 	case "safedns":
 		p, err = safedns.NewSafeDNSProvider(domainFilter, cfg.DryRun)
 	default:

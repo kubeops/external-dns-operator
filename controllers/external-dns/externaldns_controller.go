@@ -20,11 +20,15 @@ import (
 	"context"
 	"fmt"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/klog/v2"
 	externaldnsv1alpha1 "kubeops.dev/external-dns-operator/apis/external-dns/v1alpha1"
 	"kubeops.dev/external-dns-operator/pkg"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"sigs.k8s.io/external-dns/pkg/apis/externaldns/validation"
 )
 
 // ExternalDNSReconciler reconciles a ExternalDNS object
@@ -47,20 +51,24 @@ type ExternalDNSReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.12.2/pkg/reconcile
 
-func createPlans(edns externaldnsv1alpha1.ExternalDNS, ctx *context.Context) {
-	cfg, err := pkg.ConvertCRDtoCfg(edns)
+func createAndApplyPlans(edns *externaldnsv1alpha1.ExternalDNS, ctx context.Context) {
+	cfg, err := pkg.ConvertCRDtoCfg(*edns)
 	if err != nil {
 		fmt.Println("failed to convert crd into cfg")
 		return
 	}
+	if err := validation.ValidateConfig(cfg); err != nil {
+		klog.Infof("config validation failed: %v", err)
+		return
+	}
 
-	endpointsSource, err := pkg.CreateEndpointsSource(cfg, ctx)
+	endpointsSource, err := pkg.CreateEndpointsSource(ctx, cfg)
 	if err != nil {
 		fmt.Println("failed to create endpoints source")
 		return
 	}
 
-	provider, err := pkg.CreateProviderFromCfg(cfg, *ctx, endpointsSource)
+	provider, err := pkg.CreateProviderFromCfg(ctx, cfg, endpointsSource)
 	if err != nil {
 		fmt.Println("failed to create provider")
 	}
@@ -71,22 +79,10 @@ func createPlans(edns externaldnsv1alpha1.ExternalDNS, ctx *context.Context) {
 		return
 	}
 
-	plan, err := pkg.CreateSinglePlanForCRD(cfg, reg, *ctx, *endpointsSource)
+	err = pkg.CreateAndApplySinglePlanForCRD(ctx, cfg, reg, endpointsSource)
 	if err != nil {
-		fmt.Println("failed to create plan")
+		klog.Info("failed to create plan")
 		return
-	}
-
-	plan = plan.Calculate()
-
-	if plan.Changes.HasChanges() {
-		err = reg.ApplyChanges(*ctx, plan.Changes)
-		if err != nil {
-			fmt.Println("failed to apply changes for plan")
-			return
-		}
-	} else {
-		fmt.Println("all records are already up to date")
 	}
 
 	return
@@ -96,17 +92,23 @@ func (r *ExternalDNSReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	_ = log.FromContext(ctx)
 
 	// TODO(user): your logic here
-	// get external dns
 
+	//get external dns
 	key := req.NamespacedName
 	edns := externaldnsv1alpha1.ExternalDNS{}
+
+	//if err := os.Setenv("AWS_DEFAULT_REGION", "us-east-1"); err != nil {
+	//	return ctrl.Result{}, err
+	//}
 
 	if err := r.Get(ctx, key, &edns); err != nil {
 		fmt.Println("failed to get external-dns")
 		return ctrl.Result{}, err
 	}
-	fmt.Println("found external-dns")
-	fmt.Println("Zone : ", edns.Spec.AWSZone)
+	fmt.Println("Reconciling: ", key.String())
+	fmt.Println("provider : ", *edns.Spec.Provider)
+
+	createAndApplyPlans(&edns, ctx)
 
 	// pkg/provider/aws.go
 	// dynamic watcher (source service) (later)
@@ -119,8 +121,35 @@ func (r *ExternalDNSReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *ExternalDNSReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	svcHandler := func(object client.Object) []reconcile.Request {
+		reconcileReq := make([]reconcile.Request, 0)
+
+		klog.Info("Get service event: ", object.GetName())
+
+		_, found := object.GetAnnotations()["external-dns.alpha.kubernetes.io/hostname"]
+		if !found {
+			return reconcileReq
+		}
+
+		kc := mgr.GetClient()
+		dnsList := &externaldnsv1alpha1.ExternalDNSList{}
+
+		if err := kc.List(context.TODO(), dnsList); err != nil {
+			klog.Info("failed to list external dns resource")
+			return reconcileReq
+		}
+
+		for _, ed := range dnsList.Items {
+			if *ed.Spec.Source == "service" {
+				klog.Info("Reconciling service for: ", object.GetName())
+				reconcileReq = append(reconcileReq, reconcile.Request{NamespacedName: client.ObjectKey{Name: ed.Name, Namespace: ed.Namespace}})
+			}
+		}
+		return reconcileReq
+	}
+
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&externaldnsv1alpha1.ExternalDNS{}).
-		//Watches() // service, handler
+		Watches(pkg.WatchingSources(), handler.EnqueueRequestsFromMapFunc(svcHandler)).
 		Complete(r)
 }

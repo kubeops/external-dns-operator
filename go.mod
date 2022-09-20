@@ -6,8 +6,10 @@ require (
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.18.1
 	github.com/sirupsen/logrus v1.9.0
+	k8s.io/api v0.24.4
 	k8s.io/apimachinery v0.24.4
 	k8s.io/client-go v0.24.2
+	k8s.io/klog/v2 v2.60.1
 	sigs.k8s.io/controller-runtime v0.12.2
 	sigs.k8s.io/external-dns v0.12.2
 )
@@ -58,7 +60,7 @@ require (
 	github.com/exoscale/egoscale v1.19.0 // indirect
 	github.com/fatih/structs v1.1.0 // indirect
 	github.com/ffledgling/pdns-go v0.0.0-20180219074714-524e7daccd99 // indirect
-	github.com/fsnotify/fsnotify v1.5.1 // indirect
+	github.com/fsnotify/fsnotify v1.5.4 // indirect
 	github.com/go-gandi/go-gandi v0.0.0-20200921091836-0d8a64b9cc09 // indirect
 	github.com/go-logr/logr v1.2.0 // indirect
 	github.com/go-logr/zapr v1.2.0 // indirect
@@ -91,7 +93,7 @@ require (
 	github.com/hashicorp/go-retryablehttp v0.7.1 // indirect
 	github.com/hashicorp/go-uuid v1.0.2 // indirect
 	github.com/hooklift/gowsdl v0.5.0 // indirect
-	github.com/imdario/mergo v0.3.12 // indirect
+	github.com/imdario/mergo v0.3.13 // indirect
 	github.com/infobloxopen/infoblox-go-client/v2 v2.1.2-0.20220407114022-6f4c71443168 // indirect
 	github.com/jcmturner/aescts/v2 v2.0.0 // indirect
 	github.com/jcmturner/dnsutils/v2 v2.0.0 // indirect
@@ -110,7 +112,7 @@ require (
 	github.com/matttproud/golang_protobuf_extensions v1.0.2-0.20181231171920-c182affec369 // indirect
 	github.com/miekg/dns v1.1.48 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
-	github.com/mitchellh/mapstructure v1.4.3 // indirect
+	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
@@ -133,6 +135,7 @@ require (
 	github.com/scaleway/scaleway-sdk-go v1.0.0-beta.7.0.20210127161313-bd30bebeac4f // indirect
 	github.com/smartystreets/go-aws-auth v0.0.0-20180515143844-0c1422d1fdb9 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
+	github.com/stretchr/testify v1.7.1 // indirect
 	github.com/terra-farm/udnssdk v1.3.5 // indirect
 	github.com/transip/gotransip/v6 v6.17.0 // indirect
 	github.com/ultradns/ultradns-sdk-go v0.0.0-20200616202852-e62052662f60 // indirect
@@ -155,7 +158,7 @@ require (
 	golang.org/x/sys v0.0.0-20220715151400-c0bba94af5f8 // indirect
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211 // indirect
 	golang.org/x/text v0.3.7 // indirect
-	golang.org/x/time v0.0.0-20220210224613-90d013bbcef8 // indirect
+	golang.org/x/time v0.0.0-20220411224347-583f2d630306 // indirect
 	golang.org/x/tools v0.1.10 // indirect
 	golang.org/x/xerrors v0.0.0-20220609144429-65e65417b02f // indirect
 	gomodules.xyz/jsonpatch/v2 v2.2.0 // indirect
@@ -175,10 +178,8 @@ require (
 	istio.io/api v0.0.0-20210128181506-0c4b8e54850f // indirect
 	istio.io/client-go v0.0.0-20210128182905-ee2edd059e02 // indirect
 	istio.io/gogo-genproto v0.0.0-20190930162913-45029607206a // indirect
-	k8s.io/api v0.24.4 // indirect
 	k8s.io/apiextensions-apiserver v0.24.2 // indirect
 	k8s.io/component-base v0.24.2 // indirect
-	k8s.io/klog/v2 v2.60.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20220328201542-3ee0da9b0b42 // indirect
 	k8s.io/utils v0.0.0-20220210201930-3a6ce19ff2f9 // indirect
 	sigs.k8s.io/gateway-api v0.4.3 // indirect
