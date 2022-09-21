@@ -25,7 +25,9 @@ import (
 	"kubeops.dev/external-dns-operator/pkg"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 // ExternalDNSReconciler reconciles a ExternalDNS object
@@ -122,35 +124,47 @@ func (r *ExternalDNSReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *ExternalDNSReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	/*
-		svcHandler := func(object client.Object) []reconcile.Request {
-			reconcileReq := make([]reconcile.Request, 0)
+	///*
 
-			klog.Info("Get service event: ", object.GetName())
-
-			_, found := object.GetAnnotations()["external-dns.alpha.kubernetes.io/hostname"]
-			if !found {
-				return reconcileReq
+	// hasSvc checks whether the external dns crd has a service type source.
+	// need to change when the crd changes
+	hasSvc := func(ed *externaldnsv1alpha1.ExternalDNS) bool {
+		for _, rc := range *ed.Spec.Records {
+			if *rc.Source == "service" {
+				return true
 			}
+		}
+		return false
+	}
 
-			kc := mgr.GetClient()
-			dnsList := &externaldnsv1alpha1.ExternalDNSList{}
+	svcHandler := func(object client.Object) []reconcile.Request {
+		reconcileReq := make([]reconcile.Request, 0)
 
-			if err := kc.List(context.TODO(), dnsList); err != nil {
-				klog.Info("failed to list external dns resource")
-				return reconcileReq
-			}
+		klog.Info("Get service event: ", object.GetName())
 
-			for _, ed := range dnsList.Items {
-				if *ed.Spec.Source == "service" {
-					klog.Info("Reconciling service for: ", object.GetName())
-					reconcileReq = append(reconcileReq, reconcile.Request{NamespacedName: client.ObjectKey{Name: ed.Name, Namespace: ed.Namespace}})
-				}
-			}
+		_, found := object.GetAnnotations()["external-dns.alpha.kubernetes.io/hostname"]
+		if !found {
 			return reconcileReq
 		}
 
-	*/
+		kc := mgr.GetClient()
+		dnsList := &externaldnsv1alpha1.ExternalDNSList{}
+
+		if err := kc.List(context.TODO(), dnsList); err != nil {
+			klog.Info("failed to list external dns resource")
+			return reconcileReq
+		}
+
+		for _, ed := range dnsList.Items {
+			if hasSvc(&ed) {
+				klog.Info("Reconciling service for: ", object.GetName())
+				reconcileReq = append(reconcileReq, reconcile.Request{NamespacedName: client.ObjectKey{Name: ed.Name, Namespace: ed.Namespace}})
+			}
+		}
+		return reconcileReq
+	}
+
+	//*/
 
 	/*
 		// for dynamic watcher
@@ -167,7 +181,7 @@ func (r *ExternalDNSReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&externaldnsv1alpha1.ExternalDNS{}).
-		//Watches(pkg.WatchingSources(), handler.EnqueueRequestsFromMapFunc(svcHandler)).
+		Watches(pkg.WatchingSources(), handler.EnqueueRequestsFromMapFunc(svcHandler)).
 		Complete(r)
 
 }
