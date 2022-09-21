@@ -500,29 +500,29 @@ func CreateRegistry(cfg *externaldns.Config, p provider.Provider) (registry.Regi
 }
 
 /*
-	APIServerURL                      string
-	KubeConfig                        string
-	RequestTimeout                    time.Duration
+		APIServerURL                      string
+		KubeConfig                        string
+		RequestTimeout                    time.Duration
 	DefaultTargets                    []string
-	ContourLoadBalancerService        string
+		ContourLoadBalancerService        string
 	GlooNamespace                     string
 	SkipperRouteGroupVersion          string
-	Sources                           []string
-	Namespace                         string
-	AnnotationFilter                  string
-	LabelFilter                       string
-	FQDNTemplate                      string
-	CombineFQDNAndAnnotation          bool
-	IgnoreHostnameAnnotation          bool
-	IgnoreIngressTLSSpec              bool
-	IgnoreIngressRulesSpec            bool
-	GatewayNamespace                  string
-	GatewayLabelFilter                string
-	Compatibility                     string
-	PublishInternal                   bool
-	PublishHostIP                     bool
-	AlwaysPublishNotReadyAddresses    bool
-	ConnectorSourceServer             string
+		Sources                           []string
+		Namespace                         string
+		AnnotationFilter                  string
+		LabelFilter                       string
+		FQDNTemplate                      string
+		CombineFQDNAndAnnotation          bool
+		IgnoreHostnameAnnotation          bool
+		IgnoreIngressTLSSpec              bool
+		IgnoreIngressRulesSpec            bool
+		GatewayNamespace                  string
+		GatewayLabelFilter                string
+		Compatibility                     string
+		PublishInternal                   bool
+		PublishHostIP                     bool
+		AlwaysPublishNotReadyAddresses    bool
+		ConnectorSourceServer             string
 	Provider                          string
 	GoogleProject                     string
 	GoogleBatchChangeSize             int
@@ -614,9 +614,9 @@ func CreateRegistry(cfg *externaldns.Config, p provider.Provider) (registry.Regi
 	CRDSourceAPIVersion               string
 	CRDSourceKind                     string
 	ServiceTypeFilter                 []string
-	CFAPIEndpoint                     string
-	CFUsername                        string
-	CFPassword                        string
+		CFAPIEndpoint                     string
+		CFUsername                        string
+		CFPassword                        string
 	RFC2136Host                       string
 	RFC2136Port                       int
 	RFC2136Zone                       string
@@ -642,7 +642,7 @@ func CreateRegistry(cfg *externaldns.Config, p provider.Provider) (registry.Regi
 	GoDaddySecretKey                  string `secure:"yes"`
 	GoDaddyTTL                        int64
 	GoDaddyOTE                        bool
-	OCPRouterName                     string
+		OCPRouterName                     string
 	IBMCloudProxied                   bool
 	IBMCloudConfigFile                string
 */
