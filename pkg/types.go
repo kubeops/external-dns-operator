@@ -181,40 +181,53 @@ var defaultConfig = &externaldns.Config{
 	IBMCloudConfigFile:          "/etc/kubernetes/ibmcloud.json",
 }
 
-func ConvertCRDtoCfg(crd externaldnsv1alpha1.ExternalDNS) (*externaldns.Config, error) {
-	cfg := defaultConfig
+func ConvertCRDtoCfg(crd externaldnsv1alpha1.ExternalDNS) (*[]externaldns.Config, error) {
 
 	// basic fields are given for testing purpose
-	if crd.Namespace != "" {
-		cfg.Namespace = crd.Namespace
-	}
-	if crd.Spec.AWSZone != nil {
-		cfg.AWSZoneType = *crd.Spec.AWSZone
-	}
-	if crd.Spec.Policy != nil {
-		cfg.Policy = *crd.Spec.Policy
-	}
-	if crd.Spec.Provider != nil {
-		cfg.Provider = *crd.Spec.Provider
-	}
-	if crd.Spec.Registry != nil {
-		cfg.Registry = *crd.Spec.Registry
-	}
-	if crd.Spec.Domain != nil {
-		cfg.DomainFilter = []string{*crd.Spec.Domain}
-	}
-	if crd.Spec.Source != nil {
-		cfg.Sources = []string{*crd.Spec.Source}
-	}
-	if crd.Spec.TxtPrefix != nil {
-		cfg.TXTPrefix = *crd.Spec.TxtPrefix
-	}
-	if crd.Spec.TxtOwnerID != nil {
-		cfg.TXTOwnerID = *crd.Spec.TxtOwnerID
-	}
-	//---------
 
-	return cfg, nil
+	if crd.Spec.Records != nil {
+		var configs []externaldns.Config
+		for _, rcd := range *crd.Spec.Records {
+
+			// Create a config file for single record
+			cfg := defaultConfig
+
+			if crd.Namespace != "" {
+				cfg.Namespace = crd.Namespace
+			}
+
+			if rcd.AWSZone != nil {
+				cfg.AWSZoneType = *rcd.AWSZone
+			}
+			if rcd.Policy != nil {
+				cfg.Policy = *rcd.Policy
+			}
+			if rcd.Provider != nil {
+				cfg.Provider = *rcd.Provider
+			}
+			if rcd.Registry != nil {
+				cfg.Registry = *rcd.Registry
+			}
+			if rcd.Domain != nil {
+				cfg.DomainFilter = []string{*rcd.Domain}
+			}
+			if rcd.Source != nil {
+				cfg.Sources = []string{*rcd.Source}
+			}
+			if rcd.TxtPrefix != nil {
+				cfg.TXTPrefix = *rcd.TxtPrefix
+			}
+			if rcd.TxtOwnerID != nil {
+				cfg.TXTOwnerID = *rcd.TxtOwnerID
+			}
+
+			configs = append(configs, *cfg)
+		}
+
+		return &configs, nil
+	} else {
+		return nil, errors.New("failed to fetch records")
+	}
 }
 
 func CreateEndpointsSource(ctx context.Context, cfg *externaldns.Config) (source.Source, error) {
@@ -485,3 +498,151 @@ func CreateRegistry(cfg *externaldns.Config, p provider.Provider) (registry.Regi
 
 	return r, err
 }
+
+/*
+	APIServerURL                      string
+	KubeConfig                        string
+	RequestTimeout                    time.Duration
+	DefaultTargets                    []string
+	ContourLoadBalancerService        string
+	GlooNamespace                     string
+	SkipperRouteGroupVersion          string
+	Sources                           []string
+	Namespace                         string
+	AnnotationFilter                  string
+	LabelFilter                       string
+	FQDNTemplate                      string
+	CombineFQDNAndAnnotation          bool
+	IgnoreHostnameAnnotation          bool
+	IgnoreIngressTLSSpec              bool
+	IgnoreIngressRulesSpec            bool
+	GatewayNamespace                  string
+	GatewayLabelFilter                string
+	Compatibility                     string
+	PublishInternal                   bool
+	PublishHostIP                     bool
+	AlwaysPublishNotReadyAddresses    bool
+	ConnectorSourceServer             string
+	Provider                          string
+	GoogleProject                     string
+	GoogleBatchChangeSize             int
+	GoogleBatchChangeInterval         time.Duration
+	GoogleZoneVisibility              string
+	DomainFilter                      []string
+	ExcludeDomains                    []string
+	RegexDomainFilter                 *regexp.Regexp
+	RegexDomainExclusion              *regexp.Regexp
+	ZoneNameFilter                    []string
+	ZoneIDFilter                      []string
+	AlibabaCloudConfigFile            string
+	AlibabaCloudZoneType              string
+	AWSZoneType                       string
+	AWSZoneTagFilter                  []string
+	AWSAssumeRole                     string
+	AWSBatchChangeSize                int
+	AWSBatchChangeInterval            time.Duration
+	AWSEvaluateTargetHealth           bool
+	AWSAPIRetries                     int
+	AWSPreferCNAME                    bool
+	AWSZoneCacheDuration              time.Duration
+	AWSSDServiceCleanup               bool
+	AzureConfigFile                   string
+	AzureResourceGroup                string
+	AzureSubscriptionID               string
+	AzureUserAssignedIdentityClientID string
+	BluecatDNSConfiguration           string
+	BluecatConfigFile                 string
+	BluecatDNSView                    string
+	BluecatGatewayHost                string
+	BluecatRootZone                   string
+	BluecatDNSServerName              string
+	BluecatDNSDeployType              string
+	BluecatSkipTLSVerify              bool
+	CloudflareProxied                 bool
+	CloudflareZonesPerPage            int
+	CoreDNSPrefix                     string
+	RcodezeroTXTEncrypt               bool
+	AkamaiServiceConsumerDomain       string
+	AkamaiClientToken                 string
+	AkamaiClientSecret                string
+	AkamaiAccessToken                 string
+	AkamaiEdgercPath                  string
+	AkamaiEdgercSection               string
+	InfobloxGridHost                  string
+	InfobloxWapiPort                  int
+	InfobloxWapiUsername              string
+	InfobloxWapiPassword              string `secure:"yes"`
+	InfobloxWapiVersion               string
+	InfobloxSSLVerify                 bool
+	InfobloxView                      string
+	InfobloxMaxResults                int
+	InfobloxFQDNRegEx                 string
+	InfobloxCreatePTR                 bool
+	InfobloxCacheDuration             int
+	DynCustomerName                   string
+	DynUsername                       string
+	DynPassword                       string `secure:"yes"`
+	DynMinTTLSeconds                  int
+	OCIConfigFile                     string
+	InMemoryZones                     []string
+	OVHEndpoint                       string
+	OVHApiRateLimit                   int
+	PDNSServer                        string
+	PDNSAPIKey                        string `secure:"yes"`
+	PDNSTLSEnabled                    bool
+	TLSCA                             string
+	TLSClientCert                     string
+	TLSClientCertKey                  string
+	Policy                            string
+	Registry                          string
+	TXTOwnerID                        string
+	TXTPrefix                         string
+	TXTSuffix                         string
+	Interval                          time.Duration
+	MinEventSyncInterval              time.Duration
+	Once                              bool
+	DryRun                            bool
+	UpdateEvents                      bool
+	LogFormat                         string
+	MetricsAddress                    string
+	LogLevel                          string
+	TXTCacheInterval                  time.Duration
+	TXTWildcardReplacement            string
+	ExoscaleEndpoint                  string
+	ExoscaleAPIKey                    string `secure:"yes"`
+	ExoscaleAPISecret                 string `secure:"yes"`
+	CRDSourceAPIVersion               string
+	CRDSourceKind                     string
+	ServiceTypeFilter                 []string
+	CFAPIEndpoint                     string
+	CFUsername                        string
+	CFPassword                        string
+	RFC2136Host                       string
+	RFC2136Port                       int
+	RFC2136Zone                       string
+	RFC2136Insecure                   bool
+	RFC2136GSSTSIG                    bool
+	RFC2136KerberosRealm              string
+	RFC2136KerberosUsername           string
+	RFC2136KerberosPassword           string `secure:"yes"`
+	RFC2136TSIGKeyName                string
+	RFC2136TSIGSecret                 string `secure:"yes"`
+	RFC2136TSIGSecretAlg              string
+	RFC2136TAXFR                      bool
+	RFC2136MinTTL                     time.Duration
+	RFC2136BatchChangeSize            int
+	NS1Endpoint                       string
+	NS1IgnoreSSL                      bool
+	NS1MinTTLSeconds                  int
+	TransIPAccountName                string
+	TransIPPrivateKeyFile             string
+	DigitalOceanAPIPageSize           int
+	ManagedDNSRecordTypes             []string
+	GoDaddyAPIKey                     string `secure:"yes"`
+	GoDaddySecretKey                  string `secure:"yes"`
+	GoDaddyTTL                        int64
+	GoDaddyOTE                        bool
+	OCPRouterName                     string
+	IBMCloudProxied                   bool
+	IBMCloudConfigFile                string
+*/

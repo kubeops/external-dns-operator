@@ -25,10 +25,7 @@ import (
 	"kubeops.dev/external-dns-operator/pkg"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"sigs.k8s.io/external-dns/pkg/apis/externaldns/validation"
 )
 
 // ExternalDNSReconciler reconciles a ExternalDNS object
@@ -51,41 +48,46 @@ type ExternalDNSReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.12.2/pkg/reconcile
 
-func createAndApplyPlans(edns *externaldnsv1alpha1.ExternalDNS, ctx context.Context) {
-	cfg, err := pkg.ConvertCRDtoCfg(*edns)
+func createAndApplyPlans(edns *externaldnsv1alpha1.ExternalDNS, ctx context.Context) error {
+	configs, err := pkg.ConvertCRDtoCfg(*edns)
 	if err != nil {
-		fmt.Println("failed to convert crd into cfg")
-		return
-	}
-	if err := validation.ValidateConfig(cfg); err != nil {
-		klog.Infof("config validation failed: %v", err)
-		return
+		klog.Info("failed to convert crd into cfg")
+		return err
 	}
 
-	endpointsSource, err := pkg.CreateEndpointsSource(ctx, cfg)
-	if err != nil {
-		fmt.Println("failed to create endpoints source")
-		return
-	}
+	/*
+		// Used for cfg validation
+		if err := validation.ValidateConfig(cfg); err != nil {
+			klog.Infof("config validation failed: %v", err)
+			return
+		}
+	*/
 
-	provider, err := pkg.CreateProviderFromCfg(ctx, cfg, endpointsSource)
-	if err != nil {
-		fmt.Println("failed to create provider")
-	}
+	for _, cfg := range *configs {
+		endpointsSource, err := pkg.CreateEndpointsSource(ctx, &cfg)
+		if err != nil {
+			klog.Info("failed to create config for domain ", cfg.DomainFilter)
+			return err
+		}
 
-	reg, err := pkg.CreateRegistry(cfg, *provider)
-	if err != nil {
-		fmt.Println("failed to create registry")
-		return
-	}
+		provider, err := pkg.CreateProviderFromCfg(ctx, &cfg, endpointsSource)
+		if err != nil {
+			klog.Info("failed to create provider for domain ", cfg.DomainFilter)
+			return err
+		}
 
-	err = pkg.CreateAndApplySinglePlanForCRD(ctx, cfg, reg, endpointsSource)
-	if err != nil {
-		klog.Info("failed to create plan")
-		return
-	}
+		reg, err := pkg.CreateRegistry(&cfg, *provider)
+		if err != nil {
+			klog.Info("failed to create register for domain ", cfg.DomainFilter)
+		}
 
-	return
+		err = pkg.CreateAndApplySinglePlanForCRD(ctx, &cfg, reg, endpointsSource)
+		if err != nil {
+			klog.Info("failed to create plan for domain ", cfg.DomainFilter)
+			return err
+		}
+	}
+	return nil
 }
 
 func (r *ExternalDNSReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
@@ -105,12 +107,11 @@ func (r *ExternalDNSReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		fmt.Println("failed to get external-dns")
 		return ctrl.Result{}, err
 	}
-	fmt.Println("Reconciling: ", key.String())
-	fmt.Println("provider : ", *edns.Spec.Provider)
 
-	createAndApplyPlans(&edns, ctx)
+	if err := createAndApplyPlans(&edns, ctx); err != nil {
+		klog.Info("unable to create plan")
+	}
 
-	// pkg/provider/aws.go
 	// dynamic watcher (source service) (later)
 	// spec/config function config --> plan.
 
@@ -121,35 +122,52 @@ func (r *ExternalDNSReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *ExternalDNSReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	svcHandler := func(object client.Object) []reconcile.Request {
-		reconcileReq := make([]reconcile.Request, 0)
+	/*
+		svcHandler := func(object client.Object) []reconcile.Request {
+			reconcileReq := make([]reconcile.Request, 0)
 
-		klog.Info("Get service event: ", object.GetName())
+			klog.Info("Get service event: ", object.GetName())
 
-		_, found := object.GetAnnotations()["external-dns.alpha.kubernetes.io/hostname"]
-		if !found {
-			return reconcileReq
-		}
-
-		kc := mgr.GetClient()
-		dnsList := &externaldnsv1alpha1.ExternalDNSList{}
-
-		if err := kc.List(context.TODO(), dnsList); err != nil {
-			klog.Info("failed to list external dns resource")
-			return reconcileReq
-		}
-
-		for _, ed := range dnsList.Items {
-			if *ed.Spec.Source == "service" {
-				klog.Info("Reconciling service for: ", object.GetName())
-				reconcileReq = append(reconcileReq, reconcile.Request{NamespacedName: client.ObjectKey{Name: ed.Name, Namespace: ed.Namespace}})
+			_, found := object.GetAnnotations()["external-dns.alpha.kubernetes.io/hostname"]
+			if !found {
+				return reconcileReq
 			}
+
+			kc := mgr.GetClient()
+			dnsList := &externaldnsv1alpha1.ExternalDNSList{}
+
+			if err := kc.List(context.TODO(), dnsList); err != nil {
+				klog.Info("failed to list external dns resource")
+				return reconcileReq
+			}
+
+			for _, ed := range dnsList.Items {
+				if *ed.Spec.Source == "service" {
+					klog.Info("Reconciling service for: ", object.GetName())
+					reconcileReq = append(reconcileReq, reconcile.Request{NamespacedName: client.ObjectKey{Name: ed.Name, Namespace: ed.Namespace}})
+				}
+			}
+			return reconcileReq
 		}
-		return reconcileReq
-	}
+
+	*/
+
+	/*
+		// for dynamic watcher
+		controller, err := ctrl.NewControllerManagedBy(mgr).
+			For(&externaldnsv1alpha1.ExternalDNS{}).
+			//Watches(pkg.WatchingSources(), handler.EnqueueRequestsFromMapFunc(svcHandler)).
+			Build(r)
+		if err != nil {
+			return err
+		}
+		// work with the controller
+		//controller.Watch(pkg.WatchingSources(), handler.EnqueueRequestsFromMapFunc(svc))
+	*/
 
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&externaldnsv1alpha1.ExternalDNS{}).
-		Watches(pkg.WatchingSources(), handler.EnqueueRequestsFromMapFunc(svcHandler)).
+		//Watches(pkg.WatchingSources(), handler.EnqueueRequestsFromMapFunc(svcHandler)).
 		Complete(r)
+
 }

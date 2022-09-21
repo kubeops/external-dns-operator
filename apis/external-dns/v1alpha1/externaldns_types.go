@@ -23,11 +23,7 @@ import (
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
-// ExternalDNSSpec defines the desired state of ExternalDNS
-type ExternalDNSSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-
+type BasicInfo struct {
 	Source     *string `json:"source"`
 	Domain     *string `json:"domain"`
 	Provider   *string `json:"provider"`
@@ -36,6 +32,32 @@ type ExternalDNSSpec struct {
 	Registry   *string `json:"registry"`
 	TxtOwnerID *string `json:"txt_owner_id"`
 	TxtPrefix  *string `json:"txt_prefix"`
+	/*
+	 */
+}
+
+// ExternalDNSSpec defines the desired state of ExternalDNS
+type ExternalDNSSpec struct {
+	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
+	// Important: Run "make" to regenerate code after modifying this file
+
+	Records *[]BasicInfo `json:"records"`
+
+	/*
+		// related to kubernetes
+		APIServerURL         *string `json:"api_server_url"`
+		Kubeconfig     *string        `json:"kubeconfig"`
+		RequestTimeout *time.Duration `json:"request_timeout"`
+
+		// related to cloud foundry
+		CFApiEndpoint *string `json:"cf_api_endpoint"`
+		CFUsername    *string `json:"cf_username"`
+		CFPassword    *string `json:"cf_password"`
+
+		//related to contour
+
+	*/
+
 }
 
 // ExternalDNSStatus defines the observed state of ExternalDNS

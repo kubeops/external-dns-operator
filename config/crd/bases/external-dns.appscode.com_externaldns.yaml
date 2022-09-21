@@ -35,31 +35,38 @@ spec:
           spec:
             description: ExternalDNSSpec defines the desired state of ExternalDNS
             properties:
-              aws_zone:
-                type: string
-              domain:
-                type: string
-              policy:
-                type: string
-              provider:
-                type: string
-              registry:
-                type: string
-              source:
-                type: string
-              txt_owner_id:
-                type: string
-              txt_prefix:
-                type: string
+              records:
+                items:
+                  properties:
+                    aws_zone:
+                      type: string
+                    domain:
+                      type: string
+                    policy:
+                      type: string
+                    provider:
+                      type: string
+                    registry:
+                      type: string
+                    source:
+                      type: string
+                    txt_owner_id:
+                      type: string
+                    txt_prefix:
+                      type: string
+                  required:
+                  - aws_zone
+                  - domain
+                  - policy
+                  - provider
+                  - registry
+                  - source
+                  - txt_owner_id
+                  - txt_prefix
+                  type: object
+                type: array
             required:
-            - aws_zone
-            - domain
-            - policy
-            - provider
-            - registry
-            - source
-            - txt_owner_id
-            - txt_prefix
+            - records
             type: object
           status:
             description: ExternalDNSStatus defines the observed state of ExternalDNS
