@@ -18,7 +18,6 @@ package v1alpha1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"regexp"
 	"time"
 )
 
@@ -214,11 +213,11 @@ type ProviderInfo struct {
 
 	// Limit possible domains and target zones by a Regex filter. Overrides domain filters
 	// +optional
-	RegexDomainFilter *regexp.Regexp `json:"regexDomainFilter"`
+	//RegexDomainFilter *regexp.Regexp `json:"regexDomainFilter"`
 
 	// Regex filter that excludes domains and target zones matched by.
 	// +optional
-	RegexDomainExclusion *regexp.Regexp `json:"regexDomainExclusion,omitempty"`
+	//RegexDomainExclusion *regexp.Regexp `json:"regexDomainExclusion,omitempty"`
 
 	// Filter target zones by hosted zone id
 	// +optional

@@ -278,12 +278,14 @@ func ConvertCRDtoCfg(crd externaldnsv1alpha1.ExternalDNS) (*[]externaldns.Config
 		if p.ExcludeDomains != nil {
 			c.ExcludeDomains = *p.ExcludeDomains
 		}
-		if p.RegexDomainFilter != nil {
-			c.RegexDomainFilter = p.RegexDomainFilter
-		}
-		if p.RegexDomainExclusion != nil {
-			c.RegexDomainExclusion = p.RegexDomainExclusion
-		}
+		/*
+			if p.RegexDomainFilter != nil {
+				c.RegexDomainFilter = p.RegexDomainFilter
+			}
+			if p.RegexDomainExclusion != nil {
+				c.RegexDomainExclusion = p.RegexDomainExclusion
+			}
+		*/
 		if p.ZoneIDFilter != nil {
 			c.ZoneIDFilter = *p.ZoneIDFilter
 		}
