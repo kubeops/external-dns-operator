@@ -129,9 +129,11 @@ func (r *ExternalDNSReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	// hasSvc checks whether the external dns crd has a service type source.
 	// need to change when the crd changes
 	hasSvc := func(ed *externaldnsv1alpha1.ExternalDNS) bool {
-		for _, rc := range *ed.Spec.Records {
-			if *rc.Source == "service" {
-				return true
+		for _, entry := range *ed.Spec.Entries {
+			for _, sc := range *entry.Sources.Names {
+				if sc == "Service" {
+					return true
+				}
 			}
 		}
 		return false

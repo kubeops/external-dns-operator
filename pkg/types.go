@@ -183,51 +183,157 @@ var defaultConfig = &externaldns.Config{
 
 func ConvertCRDtoCfg(crd externaldnsv1alpha1.ExternalDNS) (*[]externaldns.Config, error) {
 
-	// basic fields are given for testing purpose
+	var configs []externaldns.Config
+	for _, entry := range *crd.Spec.Entries {
 
-	if crd.Spec.Records != nil {
-		var configs []externaldns.Config
-		for _, rcd := range *crd.Spec.Records {
+		// Create a config file for single record
+		c := defaultConfig
 
-			// Create a config file for single record
-			cfg := defaultConfig
-
-			if crd.Namespace != "" {
-				cfg.Namespace = crd.Namespace
-			}
-
-			if rcd.AWSZone != nil {
-				cfg.AWSZoneType = *rcd.AWSZone
-			}
-			if rcd.Policy != nil {
-				cfg.Policy = *rcd.Policy
-			}
-			if rcd.Provider != nil {
-				cfg.Provider = *rcd.Provider
-			}
-			if rcd.Registry != nil {
-				cfg.Registry = *rcd.Registry
-			}
-			if rcd.Domain != nil {
-				cfg.DomainFilter = []string{*rcd.Domain}
-			}
-			if rcd.Source != nil {
-				cfg.Sources = []string{*rcd.Source}
-			}
-			if rcd.TxtPrefix != nil {
-				cfg.TXTPrefix = *rcd.TxtPrefix
-			}
-			if rcd.TxtOwnerID != nil {
-				cfg.TXTOwnerID = *rcd.TxtOwnerID
-			}
-
-			configs = append(configs, *cfg)
+		if crd.Namespace != "" {
+			c.Namespace = crd.Namespace
 		}
 
-		return &configs, nil
-	} else {
-		return nil, errors.New("failed to fetch records")
+		if crd.Spec.Kubeconfig != nil {
+			c.KubeConfig = *crd.Spec.Kubeconfig
+		}
+		if crd.Spec.APIServerURL != nil {
+			c.APIServerURL = *crd.Spec.APIServerURL
+		}
+		if crd.Spec.RequestTimeout != nil {
+			c.RequestTimeout = *crd.Spec.RequestTimeout
+		}
+
+		//Source
+		s := entry.Sources
+		if s.Names != nil {
+			c.Sources = *s.Names
+		}
+		if s.OCRouterName != nil {
+			c.OCPRouterName = *s.OCRouterName
+		}
+		if s.Namespace != nil {
+			c.Namespace = *s.Namespace
+		}
+		if s.AnnotationFilter != nil {
+			c.AnnotationFilter = *s.AnnotationFilter
+		}
+		if s.LabelFilter != nil {
+			c.LabelFilter = *s.LabelFilter
+		}
+		if s.FQDNTemplate != nil {
+			c.FQDNTemplate = *s.FQDNTemplate
+		}
+		if s.CombineFQDNAndAnnotation != nil {
+			c.CombineFQDNAndAnnotation = *s.CombineFQDNAndAnnotation
+		}
+		if s.IgnoreHostnameAnnotation != nil {
+			c.IgnoreHostnameAnnotation = *s.IgnoreHostnameAnnotation
+		}
+		if s.IgnoreIngressTLSSpec != nil {
+			c.IgnoreIngressTLSSpec = *s.IgnoreIngressTLSSpec
+		}
+		if s.IgnoreIngressRulesSpec != nil {
+			c.IgnoreIngressRulesSpec = *s.IgnoreIngressRulesSpec
+		}
+		if s.GatewayNamespace != nil {
+			c.GatewayNamespace = *s.GatewayNamespace
+		}
+		if s.GatewayLabelFilter != nil {
+			c.GatewayLabelFilter = *s.GatewayLabelFilter
+		}
+		if s.Compatibility != nil {
+			c.Compatibility = *s.Compatibility
+		}
+		if s.PublishInternal != nil {
+			c.PublishInternal = *s.PublishInternal
+		}
+		if s.PublishHostIP != nil {
+			c.PublishHostIP = *s.PublishHostIP
+		}
+		if s.AlwaysPublishNotReadyAddresses != nil {
+			c.AlwaysPublishNotReadyAddresses = *s.AlwaysPublishNotReadyAddresses
+		}
+		if s.ConnectorSourceServer != nil {
+			c.ConnectorSourceServer = *s.ConnectorSourceServer
+		}
+		if s.ServiceTypeFilter != nil {
+			c.ServiceTypeFilter = *s.ServiceTypeFilter
+		}
+		if s.ManageDNSRecordTypes != nil {
+			c.ManagedDNSRecordTypes = *s.ManageDNSRecordTypes
+		}
+		if s.DefaultTargets != nil {
+			c.DefaultTargets = *s.DefaultTargets
+		}
+
+		// PROVIDER
+		p := entry.Provider
+
+		if p.Name != nil {
+			c.Provider = *p.Name
+		}
+		if p.DomainFilter != nil {
+			c.DomainFilter = *p.DomainFilter
+		}
+		if p.ExcludeDomains != nil {
+			c.ExcludeDomains = *p.ExcludeDomains
+		}
+		if p.RegexDomainFilter != nil {
+			c.RegexDomainFilter = p.RegexDomainFilter
+		}
+		if p.RegexDomainExclusion != nil {
+			c.RegexDomainExclusion = p.RegexDomainExclusion
+		}
+		if p.ZoneIDFilter != nil {
+			c.ZoneIDFilter = *p.ZoneIDFilter
+		}
+
+		// For AWS Provider
+		aw := p.AWS
+		if aw.AWSZoneTagFilter != nil {
+			c.AWSZoneTagFilter = *aw.AWSZoneTagFilter
+		}
+		if aw.AWSZoneType != nil {
+			c.AWSZoneType = *aw.AWSZoneType
+		}
+		if aw.AWSAssumeRole != nil {
+			c.AWSAssumeRole = *aw.AWSAssumeRole
+		}
+		if aw.AWSBatchChangeSize != nil {
+			c.AWSBatchChangeSize = *aw.AWSBatchChangeSize
+		}
+		if aw.AWSBatchChangeInterval != nil {
+			c.AWSBatchChangeInterval = *aw.AWSBatchChangeInterval
+		}
+		if aw.AWSEvaluateTargetHealth != nil {
+			c.AWSEvaluateTargetHealth = *aw.AWSEvaluateTargetHealth
+		}
+		if aw.AWSAPIRetries != nil {
+			c.AWSAPIRetries = *aw.AWSAPIRetries
+		}
+		if aw.AWSPreferCNAME != nil {
+			c.AWSPreferCNAME = *aw.AWSPreferCNAME
+		}
+		if aw.AWSZoneCacheDuration != nil {
+			c.AWSZoneCacheDuration = *aw.AWSZoneCacheDuration
+		}
+		if aw.AWSSDServiceCleanup != nil {
+			c.AWSSDServiceCleanup = *aw.AWSSDServiceCleanup
+		}
+
+		// For Cloudflare provider
+		cfl := p.Cloudflare
+		if cfl.CloudflareProxied != nil {
+			c.CloudflareProxied = *cfl.CloudflareProxied
+		}
+		if cfl.CloudflareZonesPerPage != nil {
+			c.CloudflareZonesPerPage = *cfl.CloudflareZonesPerPage
+		}
+
+		configs = append(configs, *c)
 	}
+
+	return &configs, nil
 }
 
 func CreateEndpointsSource(ctx context.Context, cfg *externaldns.Config) (source.Source, error) {
@@ -523,29 +629,29 @@ func CreateRegistry(cfg *externaldns.Config, p provider.Provider) (registry.Regi
 		PublishHostIP                     bool
 		AlwaysPublishNotReadyAddresses    bool
 		ConnectorSourceServer             string
-	Provider                          string
+		Provider                          string
 	GoogleProject                     string
 	GoogleBatchChangeSize             int
 	GoogleBatchChangeInterval         time.Duration
 	GoogleZoneVisibility              string
-	DomainFilter                      []string
-	ExcludeDomains                    []string
-	RegexDomainFilter                 *regexp.Regexp
-	RegexDomainExclusion              *regexp.Regexp
+		DomainFilter                      []string
+		ExcludeDomains                    []string
+		RegexDomainFilter                 *regexp.Regexp
+		RegexDomainExclusion              *regexp.Regexp
 	ZoneNameFilter                    []string
-	ZoneIDFilter                      []string
+		ZoneIDFilter                      []string
 	AlibabaCloudConfigFile            string
 	AlibabaCloudZoneType              string
-	AWSZoneType                       string
-	AWSZoneTagFilter                  []string
-	AWSAssumeRole                     string
-	AWSBatchChangeSize                int
-	AWSBatchChangeInterval            time.Duration
-	AWSEvaluateTargetHealth           bool
-	AWSAPIRetries                     int
-	AWSPreferCNAME                    bool
-	AWSZoneCacheDuration              time.Duration
-	AWSSDServiceCleanup               bool
+		AWSZoneType                       string
+		AWSZoneTagFilter                  []string
+		AWSAssumeRole                     string
+		AWSBatchChangeSize                int
+		AWSBatchChangeInterval            time.Duration
+		AWSEvaluateTargetHealth           bool
+		AWSAPIRetries                     int
+		AWSPreferCNAME                    bool
+		AWSZoneCacheDuration              time.Duration
+		AWSSDServiceCleanup               bool
 	AzureConfigFile                   string
 	AzureResourceGroup                string
 	AzureSubscriptionID               string
@@ -558,8 +664,8 @@ func CreateRegistry(cfg *externaldns.Config, p provider.Provider) (registry.Regi
 	BluecatDNSServerName              string
 	BluecatDNSDeployType              string
 	BluecatSkipTLSVerify              bool
-	CloudflareProxied                 bool
-	CloudflareZonesPerPage            int
+		CloudflareProxied                 bool
+		CloudflareZonesPerPage            int
 	CoreDNSPrefix                     string
 	RcodezeroTXTEncrypt               bool
 	AkamaiServiceConsumerDomain       string
@@ -593,11 +699,11 @@ func CreateRegistry(cfg *externaldns.Config, p provider.Provider) (registry.Regi
 	TLSCA                             string
 	TLSClientCert                     string
 	TLSClientCertKey                  string
-	Policy                            string
-	Registry                          string
-	TXTOwnerID                        string
-	TXTPrefix                         string
-	TXTSuffix                         string
+		Policy                            string
+		Registry                          string
+		TXTOwnerID                        string
+		TXTPrefix                         string
+		TXTSuffix                         string
 	Interval                          time.Duration
 	MinEventSyncInterval              time.Duration
 	Once                              bool
@@ -607,13 +713,13 @@ func CreateRegistry(cfg *externaldns.Config, p provider.Provider) (registry.Regi
 	MetricsAddress                    string
 	LogLevel                          string
 	TXTCacheInterval                  time.Duration
-	TXTWildcardReplacement            string
+		TXTWildcardReplacement            string
 	ExoscaleEndpoint                  string
 	ExoscaleAPIKey                    string `secure:"yes"`
 	ExoscaleAPISecret                 string `secure:"yes"`
 	CRDSourceAPIVersion               string
 	CRDSourceKind                     string
-	ServiceTypeFilter                 []string
+		ServiceTypeFilter                 []string
 		CFAPIEndpoint                     string
 		CFUsername                        string
 		CFPassword                        string
@@ -637,7 +743,7 @@ func CreateRegistry(cfg *externaldns.Config, p provider.Provider) (registry.Regi
 	TransIPAccountName                string
 	TransIPPrivateKeyFile             string
 	DigitalOceanAPIPageSize           int
-	ManagedDNSRecordTypes             []string
+		ManagedDNSRecordTypes             []string
 	GoDaddyAPIKey                     string `secure:"yes"`
 	GoDaddySecretKey                  string `secure:"yes"`
 	GoDaddyTTL                        int64
@@ -645,4 +751,8 @@ func CreateRegistry(cfg *externaldns.Config, p provider.Provider) (registry.Regi
 		OCPRouterName                     string
 	IBMCloudProxied                   bool
 	IBMCloudConfigFile                string
+
+cfg.Registry -> spec.Registry.Type
+cfg.Provider -> spec.Provider.Name
+cfg.Sources -> ... SourceInfo.Names
 */

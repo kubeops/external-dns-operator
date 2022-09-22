@@ -18,6 +18,7 @@ package v1alpha1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"regexp"
 	"time"
 )
 
@@ -37,55 +38,62 @@ type BasicInfo struct {
 	 */
 }
 
-type CloudFoundry struct {
-	// The fully-qualified domain name of the cloud foundry instance you are targeting
+type AWSProvider struct {
+	// When using the AWS provider, filter for zones of this type. (support: public, private)
 	// +optional
-	CFApiEndpoint *string `json:"cfApiEndpoint,omitempty"`
+	AWSZoneType *string `json:"awsZoneType,omitempty"`
 
-	// The username to log into the cloud foundry API
+	// When using the AWS provider, filter for zones with these tags
 	// +optional
-	CFUsername *string `json:"cfUsername,omitempty"`
+	AWSZoneTagFilter *[]string `json:"awsZoneTagFilter,omitempty"`
 
-	// The password to log into cloud foundry API
+	// When using the AWS provider, assume this IAM role. Useful for hosted zones in another AWS account. Specify the
+	// full ARN, e.g. `arn:aws:iam::123455567:role/external-dns`
 	// +optional
-	CFPassword *string `json:"cfPassword,omitempty"`
+	AWSAssumeRole *string `json:"awsAssumeRole,omitempty"`
+
+	// When using AWS provide, set the maximum number of changes that will be applied in each batch
+	// +optional
+	AWSBatchChangeSize *int `json:"awsBatchChangeSize,omitempty"`
+
+	// When using the AWS provider, set the interval between batch changes.
+	// +optional
+	AWSBatchChangeInterval *time.Duration `json:"awsBatchChangeInterval,omitempty"`
+
+	// When using the AWS provider, set whether to evaluate the health of the DNS target (default: enable, disable with --no-aws-evaluate-target-health)
+	// +optional
+	AWSEvaluateTargetHealth *bool `json:"awsEvaluateTargetHealth,omitempty"`
+
+	// When using the AWS provider, set the maximum number of retries for API calls before giving up.
+	// +optional
+	AWSAPIRetries *int `json:"awsAPIRetries,omitempty"`
+
+	// When using the AWS provider, prefer using CNAME instead of ALIAS (default: disabled)
+	// +optional
+	AWSPreferCNAME *bool `json:"awsPreferCNAME,omitempty"`
+
+	// When using the AWS provider, set the zones list cache TTL (0s to disable).
+	// +optional
+	AWSZoneCacheDuration *time.Duration `json:"awsZoneCacheDuration,omitempty"`
+
+	// When using the AWS CloudMap provider, delete empty Services without endpoints (default: disabled)
+	// +optional
+	AWSSDServiceCleanup *bool `json:"awsSDServiceCleanup,omitempty"`
 }
 
-// ExternalDNSSpec defines the desired state of ExternalDNS
-type ExternalDNSSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-
-	//Records *[]BasicInfo `json:"records"`
-
-	// related to kubernetes
-
-	// The kubernetes API server to connect to
+type CloudflareProvider struct {
+	// When using the Cloudflare provider, specify if the proxy mode must be enabled (default: disabled)
 	// +optional
-	APIServerURL *string `json:"apiServerURL,omitempty"`
+	CloudflareProxied *bool `json:"cloudflareProxied,omitempty"`
 
-	// Path to kubernetes configuration file
+	// When using the Cloudflare provider, specify how many zones per page listed, max. possible 50 (default: 50)
 	// +optional
-	Kubeconfig *string `json:"kubeconfig,omitempty"`
+	CloudflareZonesPerPage *int `json:"cloudflareZonesPerPage"`
+}
 
-	// Request timeout when calling Kubernetes API. 0s means no timeout
-	// +optional
-	RequestTimeout *time.Duration `json:"requestTimeout,omitempty"`
-
-	// related to cloud foundry
-	// +optional
-	CloudFoundry *CloudFoundry `json:"cloudFoundry,omitempty"`
-
-	// RELATED TO CONTOUR
-	// The fully-qualified name of the Contour load balancer service. (Default: heptio-contour/contour)
-	// +optional
-	ContourLoadBalancer *string `json:"contourLoadBalancer,omitempty"`
-
-	// RELATED TO PROCESSING SOURCE
-
+type SourceInfo struct {
 	// The resource types that are queried for endpoints; List of source. ex: source, ingress, node etc.
-	// +optional
-	Sources *[]string `json:"sources,omitempty"`
+	Names *[]string `json:"names,omitempty"`
 
 	// If source is openshift router then you can pass the ingress controller name. Based on this name the
 	// external dns will select the respective router from the route status and map that routeCanonicalHostname
@@ -153,6 +161,119 @@ type ExternalDNSSpec struct {
 	// The server to connect for connector source, valid only when using connector source
 	// +optional
 	ConnectorSourceServer *string `json:"connectorSourceServer,omitempty"`
+
+	// The service types to take care about (default all, expected: ClusterIP, NodePort, LoadBalancer or ExternalName)
+	// +optional
+	ServiceTypeFilter *[]string `json:"serviceTypeFilter,omitempty"`
+
+	// Comma separated list of record types to manage (default: A, CNAME; supported: A,CNAME,NS)
+	// +optional
+	ManageDNSRecordTypes *[]string `json:"manageDNSRecordTypes,omitempty"`
+
+	// Set globally a list of default IP address that will apply as a target instead of source addresses.
+	// +optional
+	DefaultTargets *[]string `json:"defaultTargets,omitempty"`
+}
+
+type RegistryInfo struct {
+	// The registry implementation to use to keep track of DNS record ownership (default: txt, options: txt, noop, aws-sd)
+	// +optional
+	Type *string `json:"type,omitempty"`
+
+	// When using the TXT registry, a name that identifies this instance of ExternalDNS (default: default)
+	// +optional
+	TXTOwnerID *string `json:"txtOwnerID,omitempty"`
+
+	// When using the TXT registry, a custom string that's prefixed to each ownership DNS record (optional). Could
+	// contain record type template like '%{record_type}-prefix-'. Mutual exclusive with txt-suffix!
+	// +optional
+	TXTPrefix *string `json:"txtPrefix,omitempty"`
+
+	// When using the TXT registry, a custom string that's suffixed to the host portion of each ownership DNS
+	// record. Could contain record type template like '-%{record_type}-suffix'. Mutual exclusive with txt-prefix!
+	// +optional
+	TXTSuffix *string `json:"txtSuffix,omitempty"`
+
+	// When using the TXT registry, a custom string that's used instead of an asterisk for TXT records corresponding
+	// to wildcard DNS records
+	// +optional
+	TXTWildcardReplacement *string `json:"txtWildcardReplacement,omitempty"`
+}
+
+type ProviderInfo struct {
+	// The DNS provider where the DNS records will be created. (AWS, Cloudflare)
+	Name *string `json:"name,omitempty"`
+
+	// Limit possible target zones by a domain suffix
+	// +optional
+	DomainFilter *[]string `json:"domainFilter,omitempty"`
+
+	// Exclude subdomains
+	// +optional
+	ExcludeDomains *[]string `json:"excludeDomains,omitempty"`
+
+	// Limit possible domains and target zones by a Regex filter. Overrides domain filters
+	// +optional
+	RegexDomainFilter *regexp.Regexp `json:"regexDomainFilter"`
+
+	// Regex filter that excludes domains and target zones matched by.
+	// +optional
+	RegexDomainExclusion *regexp.Regexp `json:"regexDomainExclusion,omitempty"`
+
+	// Filter target zones by hosted zone id
+	// +optional
+	ZoneIDFilter *[]string `json:"zoneIDFilter,omitempty"`
+
+	// AWS provider information
+	// +optional
+	AWS *AWSProvider `json:"aws,omitempty"`
+
+	// Cloudflare provider information
+	// +optional
+	Cloudflare *CloudflareProvider `json:"cloudflare,omitempty"`
+}
+
+type Entry struct {
+	// RELATED TO PROCESSING SOURCE
+
+	// Sources information
+	// +optional
+	Sources *SourceInfo `json:"sources,omitempty"`
+
+	// RELATED TO PROVIDERS
+
+	// Provider information
+	// +optional
+	Provider *ProviderInfo `json:"provider,omitempty"`
+
+	// Modify how DNS records are synchronized between sources and providers (default: sync, options: sync, upsert-only, create-only)
+	// +optional
+	Policy *string `json:"policy,omitempty"`
+
+	// Registry information
+	// +optional
+	Registry *RegistryInfo `json:"registry,omitempty"`
+}
+
+// ExternalDNSSpec defines the desired state of ExternalDNS
+type ExternalDNSSpec struct {
+	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
+	// Important: Run "make" to regenerate code after modifying this file
+
+	// The kubernetes API server to connect to
+	// +optional
+	APIServerURL *string `json:"apiServerURL,omitempty"`
+
+	// Path to kubernetes configuration file
+	// +optional
+	Kubeconfig *string `json:"kubeconfig,omitempty"`
+
+	// Request timeout when calling Kubernetes API. 0s means no timeout
+	// +optional
+	RequestTimeout *time.Duration `json:"requestTimeout,omitempty"`
+
+	// Information about entries
+	Entries *[]Entry `json:"entries,omitempty"`
 }
 
 // ExternalDNSStatus defines the observed state of ExternalDNS
@@ -185,153 +306,3 @@ type ExternalDNSList struct {
 func init() {
 	SchemeBuilder.Register(&ExternalDNS{}, &ExternalDNSList{})
 }
-
-/*
-type Config struct {
-	APIServerURL                      string
-	KubeConfig                        string
-	RequestTimeout                    time.Duration
-	DefaultTargets                    []string
-	ContourLoadBalancerService        string
-	GlooNamespace                     string
-	SkipperRouteGroupVersion          string
-	Sources                           []string
-	Namespace                         string
-	AnnotationFilter                  string
-	LabelFilter                       string
-	FQDNTemplate                      string
-	CombineFQDNAndAnnotation          bool
-	IgnoreHostnameAnnotation          bool
-	IgnoreIngressTLSSpec              bool
-	IgnoreIngressRulesSpec            bool
-	GatewayNamespace                  string
-	GatewayLabelFilter                string
-	Compatibility                     string
-	PublishInternal                   bool
-	PublishHostIP                     bool
-	AlwaysPublishNotReadyAddresses    bool
-	ConnectorSourceServer             string
-	Provider                          string
-	GoogleProject                     string
-	GoogleBatchChangeSize             int
-	GoogleBatchChangeInterval         time.Duration
-	GoogleZoneVisibility              string
-	DomainFilter                      []string
-	ExcludeDomains                    []string
-	RegexDomainFilter                 *regexp.Regexp
-	RegexDomainExclusion              *regexp.Regexp
-	ZoneNameFilter                    []string
-	ZoneIDFilter                      []string
-	AlibabaCloudConfigFile            string
-	AlibabaCloudZoneType              string
-	AWSZoneType                       string
-	AWSZoneTagFilter                  []string
-	AWSAssumeRole                     string
-	AWSBatchChangeSize                int
-	AWSBatchChangeInterval            time.Duration
-	AWSEvaluateTargetHealth           bool
-	AWSAPIRetries                     int
-	AWSPreferCNAME                    bool
-	AWSZoneCacheDuration              time.Duration
-	AWSSDServiceCleanup               bool
-	AzureConfigFile                   string
-	AzureResourceGroup                string
-	AzureSubscriptionID               string
-	AzureUserAssignedIdentityClientID string
-	BluecatDNSConfiguration           string
-	BluecatConfigFile                 string
-	BluecatDNSView                    string
-	BluecatGatewayHost                string
-	BluecatRootZone                   string
-	BluecatDNSServerName              string
-	BluecatDNSDeployType              string
-	BluecatSkipTLSVerify              bool
-	CloudflareProxied                 bool
-	CloudflareZonesPerPage            int
-	CoreDNSPrefix                     string
-	RcodezeroTXTEncrypt               bool
-	AkamaiServiceConsumerDomain       string
-	AkamaiClientToken                 string
-	AkamaiClientSecret                string
-	AkamaiAccessToken                 string
-	AkamaiEdgercPath                  string
-	AkamaiEdgercSection               string
-	InfobloxGridHost                  string
-	InfobloxWapiPort                  int
-	InfobloxWapiUsername              string
-	InfobloxWapiPassword              string `secure:"yes"`
-	InfobloxWapiVersion               string
-	InfobloxSSLVerify                 bool
-	InfobloxView                      string
-	InfobloxMaxResults                int
-	InfobloxFQDNRegEx                 string
-	InfobloxCreatePTR                 bool
-	InfobloxCacheDuration             int
-	DynCustomerName                   string
-	DynUsername                       string
-	DynPassword                       string `secure:"yes"`
-	DynMinTTLSeconds                  int
-	OCIConfigFile                     string
-	InMemoryZones                     []string
-	OVHEndpoint                       string
-	OVHApiRateLimit                   int
-	PDNSServer                        string
-	PDNSAPIKey                        string `secure:"yes"`
-	PDNSTLSEnabled                    bool
-	TLSCA                             string
-	TLSClientCert                     string
-	TLSClientCertKey                  string
-	Policy                            string
-	Registry                          string
-	TXTOwnerID                        string
-	TXTPrefix                         string
-	TXTSuffix                         string
-	Interval                          time.Duration
-	MinEventSyncInterval              time.Duration
-	Once                              bool
-	DryRun                            bool
-	UpdateEvents                      bool
-	LogFormat                         string
-	MetricsAddress                    string
-	LogLevel                          string
-	TXTCacheInterval                  time.Duration
-	TXTWildcardReplacement            string
-	ExoscaleEndpoint                  string
-	ExoscaleAPIKey                    string `secure:"yes"`
-	ExoscaleAPISecret                 string `secure:"yes"`
-	CRDSourceAPIVersion               string
-	CRDSourceKind                     string
-	ServiceTypeFilter                 []string
-	CFAPIEndpoint                     string
-	CFUsername                        string
-	CFPassword                        string
-	RFC2136Host                       string
-	RFC2136Port                       int
-	RFC2136Zone                       string
-	RFC2136Insecure                   bool
-	RFC2136GSSTSIG                    bool
-	RFC2136KerberosRealm              string
-	RFC2136KerberosUsername           string
-	RFC2136KerberosPassword           string `secure:"yes"`
-	RFC2136TSIGKeyName                string
-	RFC2136TSIGSecret                 string `secure:"yes"`
-	RFC2136TSIGSecretAlg              string
-	RFC2136TAXFR                      bool
-	RFC2136MinTTL                     time.Duration
-	RFC2136BatchChangeSize            int
-	NS1Endpoint                       string
-	NS1IgnoreSSL                      bool
-	NS1MinTTLSeconds                  int
-	TransIPAccountName                string
-	TransIPPrivateKeyFile             string
-	DigitalOceanAPIPageSize           int
-	ManagedDNSRecordTypes             []string
-	GoDaddyAPIKey                     string `secure:"yes"`
-	GoDaddySecretKey                  string `secure:"yes"`
-	GoDaddyTTL                        int64
-	GoDaddyOTE                        bool
-	OCPRouterName                     string
-	IBMCloudProxied                   bool
-	IBMCloudConfigFile                string
-}
-*/
