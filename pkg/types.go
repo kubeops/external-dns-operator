@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/klog/v2"
 	externaldnsv1alpha1 "kubeops.dev/external-dns-operator/apis/external-dns/v1alpha1"
 	"log"
 	"regexp"
@@ -203,7 +204,9 @@ func ConvertCRDtoCfg(crd externaldnsv1alpha1.ExternalDNS) (*[]externaldns.Config
 			c.RequestTimeout = *crd.Spec.RequestTimeout
 		}
 
-		//Source
+		fmt.Println("debug: 0.25")
+
+		//SOURCE
 		s := entry.Sources
 		if s.Names != nil {
 			c.Sources = *s.Names
@@ -266,6 +269,8 @@ func ConvertCRDtoCfg(crd externaldnsv1alpha1.ExternalDNS) (*[]externaldns.Config
 			c.DefaultTargets = *s.DefaultTargets
 		}
 
+		fmt.Println("debug: 0.5")
+
 		// PROVIDER
 		p := entry.Provider
 
@@ -290,46 +295,86 @@ func ConvertCRDtoCfg(crd externaldnsv1alpha1.ExternalDNS) (*[]externaldns.Config
 			c.ZoneIDFilter = *p.ZoneIDFilter
 		}
 
-		// For AWS Provider
-		aw := p.AWS
-		if aw.AWSZoneTagFilter != nil {
-			c.AWSZoneTagFilter = *aw.AWSZoneTagFilter
-		}
-		if aw.AWSZoneType != nil {
-			c.AWSZoneType = *aw.AWSZoneType
-		}
-		if aw.AWSAssumeRole != nil {
-			c.AWSAssumeRole = *aw.AWSAssumeRole
-		}
-		if aw.AWSBatchChangeSize != nil {
-			c.AWSBatchChangeSize = *aw.AWSBatchChangeSize
-		}
-		if aw.AWSBatchChangeInterval != nil {
-			c.AWSBatchChangeInterval = *aw.AWSBatchChangeInterval
-		}
-		if aw.AWSEvaluateTargetHealth != nil {
-			c.AWSEvaluateTargetHealth = *aw.AWSEvaluateTargetHealth
-		}
-		if aw.AWSAPIRetries != nil {
-			c.AWSAPIRetries = *aw.AWSAPIRetries
-		}
-		if aw.AWSPreferCNAME != nil {
-			c.AWSPreferCNAME = *aw.AWSPreferCNAME
-		}
-		if aw.AWSZoneCacheDuration != nil {
-			c.AWSZoneCacheDuration = *aw.AWSZoneCacheDuration
-		}
-		if aw.AWSSDServiceCleanup != nil {
-			c.AWSSDServiceCleanup = *aw.AWSSDServiceCleanup
+		// for aws provider
+		if p.AWS != nil {
+
+			aw := p.AWS
+			if aw.AWSZoneTagFilter != nil {
+				c.AWSZoneTagFilter = *aw.AWSZoneTagFilter
+			}
+			if aw.AWSZoneType != nil {
+				c.AWSZoneType = *aw.AWSZoneType
+			}
+			if aw.AWSAssumeRole != nil {
+				c.AWSAssumeRole = *aw.AWSAssumeRole
+			}
+			if aw.AWSBatchChangeSize != nil {
+				c.AWSBatchChangeSize = *aw.AWSBatchChangeSize
+			}
+			if aw.AWSBatchChangeInterval != nil {
+				c.AWSBatchChangeInterval = *aw.AWSBatchChangeInterval
+			}
+			if aw.AWSEvaluateTargetHealth != nil {
+				c.AWSEvaluateTargetHealth = *aw.AWSEvaluateTargetHealth
+			}
+			if aw.AWSAPIRetries != nil {
+				c.AWSAPIRetries = *aw.AWSAPIRetries
+			}
+			if aw.AWSPreferCNAME != nil {
+				c.AWSPreferCNAME = *aw.AWSPreferCNAME
+			}
+			if aw.AWSZoneCacheDuration != nil {
+				c.AWSZoneCacheDuration = *aw.AWSZoneCacheDuration
+			}
+			if aw.AWSSDServiceCleanup != nil {
+				c.AWSSDServiceCleanup = *aw.AWSSDServiceCleanup
+			}
 		}
 
-		// For Cloudflare provider
-		cfl := p.Cloudflare
-		if cfl.CloudflareProxied != nil {
-			c.CloudflareProxied = *cfl.CloudflareProxied
+		fmt.Println("debug: 0.75")
+
+		// for cloudflare provider
+		if p.Cloudflare != nil {
+
+			cfl := p.Cloudflare
+			if cfl.CloudflareProxied != nil {
+				c.CloudflareProxied = *cfl.CloudflareProxied
+			}
+
+			fmt.Println("debug: 0.80")
+
+			if cfl.CloudflareZonesPerPage != nil {
+				c.CloudflareZonesPerPage = *cfl.CloudflareZonesPerPage
+			}
+
+			fmt.Println("debug: 0.85")
 		}
-		if cfl.CloudflareZonesPerPage != nil {
-			c.CloudflareZonesPerPage = *cfl.CloudflareZonesPerPage
+
+		// POLICY
+
+		if entry.Policy != nil {
+			c.Policy = *entry.Policy
+		}
+
+		// REGISTRY
+		if entry.Registry != nil {
+			r := entry.Registry
+
+			if r.Type != nil {
+				c.Registry = *r.Type
+			}
+			if r.TXTOwnerID != nil {
+				c.TXTOwnerID = *r.TXTOwnerID
+			}
+			if r.TXTPrefix != nil {
+				c.TXTPrefix = *r.TXTPrefix
+			}
+			if r.TXTSuffix != nil {
+				c.TXTSuffix = *r.TXTSuffix
+			}
+			if r.TXTWildcardReplacement != nil {
+				c.TXTWildcardReplacement = *r.TXTWildcardReplacement
+			}
 		}
 
 		configs = append(configs, *c)
@@ -388,8 +433,8 @@ func CreateEndpointsSource(ctx context.Context, cfg *externaldns.Config) (source
 			return cfg.RequestTimeout
 		}(),
 	}, cfg.Sources, sourceCfg)
-
 	if err != nil {
+		klog.Info(err.Error())
 		return nil, err
 	}
 

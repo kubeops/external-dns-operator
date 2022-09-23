@@ -51,11 +51,16 @@ type ExternalDNSReconciler struct {
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.12.2/pkg/reconcile
 
 func createAndApplyPlans(edns *externaldnsv1alpha1.ExternalDNS, ctx context.Context) error {
+
+	fmt.Println("debug :0")
+
 	configs, err := pkg.ConvertCRDtoCfg(*edns)
 	if err != nil {
 		klog.Info("failed to convert crd into cfg")
 		return err
 	}
+
+	fmt.Println("debug :1")
 
 	/*
 		// Used for cfg validation
@@ -66,26 +71,42 @@ func createAndApplyPlans(edns *externaldnsv1alpha1.ExternalDNS, ctx context.Cont
 	*/
 
 	for _, cfg := range *configs {
+
+		fmt.Println("configuration file =============================================")
+		fmt.Println("KubeConfig: ", cfg.KubeConfig)
+		fmt.Println("APIServerURL: ", cfg.APIServerURL)
+		fmt.Println("Sources: ", cfg.Sources)
+		fmt.Println("Provider: ", cfg.Provider)
+		fmt.Println("DomainFilter: ", cfg.DomainFilter)
+		fmt.Println("AWSZoneType: ", cfg.AWSZoneType)
+		fmt.Println("Policy: ", cfg.Policy)
+		fmt.Println("Registry: ", cfg.Registry)
+		fmt.Println("Registry: ", cfg.TXTOwnerID)
+		fmt.Println("Registry: ", cfg.TXTPrefix)
+		fmt.Println("configuration file =============================================")
+
+		fmt.Println("debug: 1.1 -> cfg.txtPrefix: ", cfg.TXTPrefix)
+
 		endpointsSource, err := pkg.CreateEndpointsSource(ctx, &cfg)
 		if err != nil {
-			klog.Info("failed to create config for domain ", cfg.DomainFilter)
+			klog.Info("failed to create endpoints source for domain ", cfg.TXTPrefix, ".", cfg.DomainFilter[0])
 			return err
 		}
 
 		provider, err := pkg.CreateProviderFromCfg(ctx, &cfg, endpointsSource)
 		if err != nil {
-			klog.Info("failed to create provider for domain ", cfg.DomainFilter)
+			klog.Info("failed to create provider for domain ", cfg.TXTPrefix, ".", cfg.DomainFilter[0])
 			return err
 		}
 
 		reg, err := pkg.CreateRegistry(&cfg, *provider)
 		if err != nil {
-			klog.Info("failed to create register for domain ", cfg.DomainFilter)
+			klog.Info("failed to create Registry for domain ", cfg.TXTPrefix, ".", cfg.DomainFilter[0])
 		}
 
 		err = pkg.CreateAndApplySinglePlanForCRD(ctx, &cfg, reg, endpointsSource)
 		if err != nil {
-			klog.Info("failed to create plan for domain ", cfg.DomainFilter)
+			klog.Info("failed to create and apply plan for domain ", cfg.TXTPrefix, ".", cfg.DomainFilter[0])
 			return err
 		}
 	}
@@ -111,7 +132,7 @@ func (r *ExternalDNSReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	}
 
 	if err := createAndApplyPlans(&edns, ctx); err != nil {
-		klog.Info("unable to create plan")
+		klog.Info("unable to create entry")
 	}
 
 	// dynamic watcher (source service) (later)
@@ -131,7 +152,7 @@ func (r *ExternalDNSReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	hasSvc := func(ed *externaldnsv1alpha1.ExternalDNS) bool {
 		for _, entry := range *ed.Spec.Entries {
 			for _, sc := range *entry.Sources.Names {
-				if sc == "Service" {
+				if sc == "service" {
 					return true
 				}
 			}

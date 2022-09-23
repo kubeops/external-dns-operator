@@ -1384,7 +1384,6 @@ sigs.k8s.io/controller-runtime/pkg/webhook/internal/metrics
 ## explicit; go 1.18
 sigs.k8s.io/external-dns/endpoint
 sigs.k8s.io/external-dns/pkg/apis/externaldns
-sigs.k8s.io/external-dns/pkg/apis/externaldns/validation
 sigs.k8s.io/external-dns/pkg/tlsutils
 sigs.k8s.io/external-dns/plan
 sigs.k8s.io/external-dns/provider
