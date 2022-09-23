@@ -204,8 +204,6 @@ func ConvertCRDtoCfg(crd externaldnsv1alpha1.ExternalDNS) (*[]externaldns.Config
 			c.RequestTimeout = *crd.Spec.RequestTimeout
 		}
 
-		fmt.Println("debug: 0.25")
-
 		//SOURCE
 		s := entry.Sources
 		if s.Names != nil {
@@ -269,8 +267,6 @@ func ConvertCRDtoCfg(crd externaldnsv1alpha1.ExternalDNS) (*[]externaldns.Config
 			c.DefaultTargets = *s.DefaultTargets
 		}
 
-		fmt.Println("debug: 0.5")
-
 		// PROVIDER
 		p := entry.Provider
 
@@ -331,8 +327,6 @@ func ConvertCRDtoCfg(crd externaldnsv1alpha1.ExternalDNS) (*[]externaldns.Config
 			}
 		}
 
-		fmt.Println("debug: 0.75")
-
 		// for cloudflare provider
 		if p.Cloudflare != nil {
 
@@ -341,13 +335,10 @@ func ConvertCRDtoCfg(crd externaldnsv1alpha1.ExternalDNS) (*[]externaldns.Config
 				c.CloudflareProxied = *cfl.CloudflareProxied
 			}
 
-			fmt.Println("debug: 0.80")
-
 			if cfl.CloudflareZonesPerPage != nil {
 				c.CloudflareZonesPerPage = *cfl.CloudflareZonesPerPage
 			}
 
-			fmt.Println("debug: 0.85")
 		}
 
 		// POLICY
@@ -650,6 +641,49 @@ func CreateRegistry(cfg *externaldns.Config, p provider.Provider) (registry.Regi
 	}
 
 	return r, err
+}
+
+func CreateAndApplyPlans(edns *externaldnsv1alpha1.ExternalDNS, ctx context.Context) error {
+
+	configs, err := ConvertCRDtoCfg(*edns)
+	if err != nil {
+		klog.Info("failed to convert crd into cfg")
+		return err
+	}
+
+	/*
+		// Used for cfg validation
+		if err := validation.ValidateConfig(cfg); err != nil {
+			klog.Infof("config validation failed: %v", err)
+			return
+		}
+	*/
+
+	for _, cfg := range *configs {
+		endpointsSource, err := CreateEndpointsSource(ctx, &cfg)
+		if err != nil {
+			klog.Info("failed to create endpoints source for domain ", cfg.TXTPrefix, ".", cfg.DomainFilter[0])
+			return err
+		}
+
+		provider, err := CreateProviderFromCfg(ctx, &cfg, endpointsSource)
+		if err != nil {
+			klog.Info("failed to create provider for domain ", cfg.TXTPrefix, ".", cfg.DomainFilter[0])
+			return err
+		}
+
+		reg, err := CreateRegistry(&cfg, *provider)
+		if err != nil {
+			klog.Info("failed to create Registry for domain ", cfg.TXTPrefix, ".", cfg.DomainFilter[0])
+		}
+
+		err = CreateAndApplySinglePlanForCRD(ctx, &cfg, reg, endpointsSource)
+		if err != nil {
+			klog.Info("failed to create and apply plan for domain ", cfg.TXTPrefix, ".", cfg.DomainFilter[0])
+			return err
+		}
+	}
+	return nil
 }
 
 /*
