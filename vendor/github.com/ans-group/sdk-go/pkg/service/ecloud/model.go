@@ -681,14 +681,18 @@ type BillingMetric struct {
 
 // Image represents an eCloud image
 type Image struct {
-	ID               string              `json:"id"`
-	Name             string              `json:"name"`
-	LogoURI          string              `json:"logo_uri"`
-	Description      string              `json:"description"`
-	DocumentationURI string              `json:"documentation_uri"`
-	Publisher        string              `json:"publisher"`
-	CreatedAt        connection.DateTime `json:"created_at"`
-	UpdatedAt        connection.DateTime `json:"updated_at"`
+	ID                 string              `json:"id"`
+	Name               string              `json:"name"`
+	LogoURI            string              `json:"logo_uri"`
+	Description        string              `json:"description"`
+	DocumentationURI   string              `json:"documentation_uri"`
+	Platform           string              `json:"platform"`
+	Visibility         string              `json:"visibility"`
+	VPCID              string              `json:"vpc_id"`
+	AvailabilityZoneID string              `json:"availability_zone_id"`
+	Sync               ResourceSync        `json:"sync"`
+	CreatedAt          connection.DateTime `json:"created_at"`
+	UpdatedAt          connection.DateTime `json:"updated_at"`
 }
 
 // ImageParameter represents an eCloud image parameter

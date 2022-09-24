@@ -175,6 +175,7 @@ type ECloudService interface {
 	DetachInstanceVolume(instanceID string, req AttachDetachInstanceVolumeRequest) (string, error)
 	GetInstanceFloatingIPs(instanceID string, parameters connection.APIRequestParameters) ([]FloatingIP, error)
 	GetInstanceFloatingIPsPaginated(instanceID string, parameters connection.APIRequestParameters) (*connection.Paginated[FloatingIP], error)
+	CreateInstanceImage(instanceID string, req CreateInstanceImageRequest) (TaskReference, error)
 
 	// Floating IP
 	GetFloatingIPs(parameters connection.APIRequestParameters) ([]FloatingIP, error)
@@ -277,6 +278,8 @@ type ECloudService interface {
 	GetImages(parameters connection.APIRequestParameters) ([]Image, error)
 	GetImagesPaginated(parameters connection.APIRequestParameters) (*connection.Paginated[Image], error)
 	GetImage(imageID string) (Image, error)
+	UpdateImage(imageID string, req UpdateImageRequest) (TaskReference, error)
+	DeleteImage(imageID string) (string, error)
 	GetImageParameters(imageID string, parameters connection.APIRequestParameters) ([]ImageParameter, error)
 	GetImageParametersPaginated(imageID string, parameters connection.APIRequestParameters) (*connection.Paginated[ImageParameter], error)
 	GetImageMetadata(imageID string, parameters connection.APIRequestParameters) ([]ImageMetadata, error)

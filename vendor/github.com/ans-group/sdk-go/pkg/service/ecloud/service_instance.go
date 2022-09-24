@@ -622,3 +622,18 @@ func (s *Service) getInstanceFloatingIPsPaginatedResponseBody(instanceID string,
 		return nil
 	})
 }
+
+// CreateInstanceImage attaches a volume to an instance
+func (s *Service) CreateInstanceImage(instanceID string, req CreateInstanceImageRequest) (TaskReference, error) {
+	body, err := s.createInstanceImageResponseBody(instanceID, req)
+
+	return body.Data, err
+}
+
+func (s *Service) createInstanceImageResponseBody(instanceID string, req CreateInstanceImageRequest) (*connection.APIResponseBodyData[TaskReference], error) {
+	if instanceID == "" {
+		return &connection.APIResponseBodyData[TaskReference]{}, fmt.Errorf("invalid instance id")
+	}
+
+	return connection.Post[TaskReference](s.connection, fmt.Sprintf("/ecloud/v2/instances/%s/create-image", instanceID), &req, connection.NotFoundResponseHandler(&InstanceNotFoundError{ID: instanceID}))
+}
