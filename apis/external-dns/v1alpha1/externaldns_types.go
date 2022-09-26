@@ -24,12 +24,20 @@ import (
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
+// kubebuilder:validation:Enum:=sync;upsert-only
+type Policy string
+
+const (
+	PolicySync       Policy = "sync"
+	PolicyUpsertOnly Policy = "upsert-only"
+)
+
 type BasicInfo struct {
 	Source     *string `json:"source"`
 	Domain     *string `json:"domain"`
 	Provider   *string `json:"provider"`
-	Policy     *string `json:"policy"`
-	AWSZone    *string `json:"aws_zone"`
+	Policy     Policy  `json:"policy"`
+	AWSZone    *string `json:"awsZone"`
 	Registry   *string `json:"registry"`
 	TxtOwnerID *string `json:"txt_owner_id"`
 	TxtPrefix  *string `json:"txt_prefix"`
@@ -90,9 +98,22 @@ type CloudflareProvider struct {
 	CloudflareZonesPerPage *int `json:"cloudflareZonesPerPage"`
 }
 
+type Target struct {
+	Group   string `json:"group"`
+	Version string `json:"version"`
+	Kind    string `json:"kind"`
+}
+
 type SourceInfo struct {
 	// The resource types that are queried for endpoints; List of source. ex: source, ingress, node etc.
-	Names *[]string `json:"names,omitempty"`
+	Target []Source `json:"sources,omitempty"`
+	// sources:
+	//    - group: ""
+	//      version: v1
+	//      kind: Service
+	//    - group: ""
+	//      version: v1
+	//      kind: Node
 
 	// If source is openshift router then you can pass the ingress controller name. Based on this name the
 	// external dns will select the respective router from the route status and map that routeCanonicalHostname
@@ -272,7 +293,7 @@ type ExternalDNSSpec struct {
 	RequestTimeout *time.Duration `json:"requestTimeout,omitempty"`
 
 	// Information about entries
-	Entries *[]Entry `json:"entries,omitempty"`
+	Entries []Entry `json:"entries,omitempty"`
 }
 
 // ExternalDNSStatus defines the observed state of ExternalDNS

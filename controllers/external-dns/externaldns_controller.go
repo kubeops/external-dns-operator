@@ -23,6 +23,7 @@ import (
 	"k8s.io/klog/v2"
 	externaldnsv1alpha1 "kubeops.dev/external-dns-operator/apis/external-dns/v1alpha1"
 	"kubeops.dev/external-dns-operator/pkg"
+	"kubeops.dev/external-dns-operator/pkg/informers"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -34,6 +35,8 @@ import (
 type ExternalDNSReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
+
+	watcher informers.ObjectTracker
 }
 
 //+kubebuilder:rbac:groups=external-dns.appscode.com,resources=externaldns,verbs=get;list;watch;create;update;patch;delete
@@ -123,25 +126,32 @@ func (r *ExternalDNSReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		}
 		return reconcileReq
 	}
+	//*/
 
+	///*
+	// for dynamic watcher
+	controller, err := ctrl.NewControllerManagedBy(mgr).
+		For(&externaldnsv1alpha1.ExternalDNS{}).
+		Watches(pkg.WatchingSources(), handler.EnqueueRequestsFromMapFunc(svcHandler)).
+		Build(r)
+	if err != nil {
+		return err
+	}
+
+	r.watcher.Controller = controller
+
+	return nil
+
+	// work with the controller
+	//controller.Watch(pkg.WatchingSources(), handler.EnqueueRequestsFromMapFunc(svc))
 	//*/
 
 	/*
-		// for dynamic watcher
-		controller, err := ctrl.NewControllerManagedBy(mgr).
+		return ctrl.NewControllerManagedBy(mgr).
 			For(&externaldnsv1alpha1.ExternalDNS{}).
-			//Watches(pkg.WatchingSources(), handler.EnqueueRequestsFromMapFunc(svcHandler)).
-			Build(r)
-		if err != nil {
-			return err
-		}
-		// work with the controller
-		//controller.Watch(pkg.WatchingSources(), handler.EnqueueRequestsFromMapFunc(svc))
-	*/
+			Watches(pkg.WatchingSources(), handler.EnqueueRequestsFromMapFunc(svcHandler)).
+			Complete(r)
 
-	return ctrl.NewControllerManagedBy(mgr).
-		For(&externaldnsv1alpha1.ExternalDNS{}).
-		Watches(pkg.WatchingSources(), handler.EnqueueRequestsFromMapFunc(svcHandler)).
-		Complete(r)
+	*/
 
 }
