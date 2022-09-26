@@ -24,25 +24,26 @@ import (
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
-// kubebuilder:validation:Enum:=sync;upsert-only
+// kubebuilder:validation:Enum:=sync;upsert-only;create-only
 type Policy string
+
+// kubebuilder:validation:Enum:=aws;cloudflare
+type Provider string
 
 const (
 	PolicySync       Policy = "sync"
 	PolicyUpsertOnly Policy = "upsert-only"
+	PolicyCreateOnly Policy = "create-only"
+
+	//Provider
+	ProviderAWS        Provider = "aws"
+	providerCloudflare Provider = "cloudflare"
 )
 
-type BasicInfo struct {
-	Source     *string `json:"source"`
-	Domain     *string `json:"domain"`
-	Provider   *string `json:"provider"`
-	Policy     Policy  `json:"policy"`
-	AWSZone    *string `json:"awsZone"`
-	Registry   *string `json:"registry"`
-	TxtOwnerID *string `json:"txt_owner_id"`
-	TxtPrefix  *string `json:"txt_prefix"`
-	/*
-	 */
+type Target struct {
+	Group   string `json:"group"`
+	Version string `json:"version"`
+	Kind    string `json:"kind"`
 }
 
 type AWSProvider struct {
@@ -52,7 +53,7 @@ type AWSProvider struct {
 
 	// When using the AWS provider, filter for zones with these tags
 	// +optional
-	AWSZoneTagFilter *[]string `json:"awsZoneTagFilter,omitempty"`
+	AWSZoneTagFilter []string `json:"awsZoneTagFilter,omitempty"`
 
 	// When using the AWS provider, assume this IAM role. Useful for hosted zones in another AWS account. Specify the
 	// full ARN, e.g. `arn:aws:iam::123455567:role/external-dns`
@@ -98,15 +99,27 @@ type CloudflareProvider struct {
 	CloudflareZonesPerPage *int `json:"cloudflareZonesPerPage"`
 }
 
-type Target struct {
-	Group   string `json:"group"`
-	Version string `json:"version"`
-	Kind    string `json:"kind"`
-}
+// ExternalDNSSpec defines the desired state of ExternalDNS
+type ExternalDNSSpec struct {
+	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
+	// Important: Run "make" to regenerate code after modifying this file
 
-type SourceInfo struct {
+	// The kubernetes API server to connect to
+	// +optional
+	APIServerURL *string `json:"apiServerURL,omitempty"`
+
+	// Path to kubernetes configuration file
+	// +optional
+	Kubeconfig *string `json:"kubeconfig,omitempty"`
+
+	// Request timeout when calling Kubernetes API. 0s means no timeout
+	// +optional
+	RequestTimeout *time.Duration `json:"requestTimeout,omitempty"`
+
+	// RELATED TO PROCESSING SOURCE
+
 	// The resource types that are queried for endpoints; List of source. ex: source, ingress, node etc.
-	Target []Source `json:"sources,omitempty"`
+	Sources []Target `json:"sources,omitempty"`
 	// sources:
 	//    - group: ""
 	//      version: v1
@@ -184,21 +197,52 @@ type SourceInfo struct {
 
 	// The service types to take care about (default all, expected: ClusterIP, NodePort, LoadBalancer or ExternalName)
 	// +optional
-	ServiceTypeFilter *[]string `json:"serviceTypeFilter,omitempty"`
+	ServiceTypeFilter []string `json:"serviceTypeFilter,omitempty"`
 
 	// Comma separated list of record types to manage (default: A, CNAME; supported: A,CNAME,NS)
 	// +optional
-	ManageDNSRecordTypes *[]string `json:"manageDNSRecordTypes,omitempty"`
+	ManageDNSRecordTypes []string `json:"manageDNSRecordTypes,omitempty"`
 
 	// Set globally a list of default IP address that will apply as a target instead of source addresses.
 	// +optional
-	DefaultTargets *[]string `json:"defaultTargets,omitempty"`
-}
+	DefaultTargets []string `json:"defaultTargets,omitempty"`
 
-type RegistryInfo struct {
+	//.
+
+	// RELATED TO PROVIDERS
+
+	// The DNS provider where the DNS records will be created. (AWS, Cloudflare)
+	Provider Provider `json:"provider,omitempty"`
+
+	// Limit possible target zones by a domain suffix
+	// +optional
+	DomainFilter *[]string `json:"domainFilter,omitempty"`
+
+	// Exclude subdomains
+	// +optional
+	ExcludeDomains *[]string `json:"excludeDomains,omitempty"`
+
+	// Filter target zones by hosted zone id
+	// +optional
+	ZoneIDFilter []string `json:"zoneIDFilter,omitempty"`
+
+	// AWS provider information
+	// +optional
+	AWS *AWSProvider `json:"aws,omitempty"`
+
+	// Cloudflare provider information
+	// +optional
+	Cloudflare *CloudflareProvider `json:"cloudflare,omitempty"`
+
+	// Modify how DNS records are synchronized between sources and providers (default: sync, options: sync, upsert-only, create-only)
+	// +optional
+	Policy Policy `json:"policy,omitempty"`
+
+	// Registry information
+	//
 	// The registry implementation to use to keep track of DNS record ownership (default: txt, options: txt, noop, aws-sd)
 	// +optional
-	Type *string `json:"type,omitempty"`
+	Registry *string `json:"registry,omitempty"`
 
 	// When using the TXT registry, a name that identifies this instance of ExternalDNS (default: default)
 	// +optional
@@ -218,82 +262,6 @@ type RegistryInfo struct {
 	// to wildcard DNS records
 	// +optional
 	TXTWildcardReplacement *string `json:"txtWildcardReplacement,omitempty"`
-}
-
-type ProviderInfo struct {
-	// The DNS provider where the DNS records will be created. (AWS, Cloudflare)
-	Name *string `json:"name,omitempty"`
-
-	// Limit possible target zones by a domain suffix
-	// +optional
-	DomainFilter *[]string `json:"domainFilter,omitempty"`
-
-	// Exclude subdomains
-	// +optional
-	ExcludeDomains *[]string `json:"excludeDomains,omitempty"`
-
-	// Limit possible domains and target zones by a Regex filter. Overrides domain filters
-	// +optional
-	//RegexDomainFilter *regexp.Regexp `json:"regexDomainFilter"`
-
-	// Regex filter that excludes domains and target zones matched by.
-	// +optional
-	//RegexDomainExclusion *regexp.Regexp `json:"regexDomainExclusion,omitempty"`
-
-	// Filter target zones by hosted zone id
-	// +optional
-	ZoneIDFilter *[]string `json:"zoneIDFilter,omitempty"`
-
-	// AWS provider information
-	// +optional
-	AWS *AWSProvider `json:"aws,omitempty"`
-
-	// Cloudflare provider information
-	// +optional
-	Cloudflare *CloudflareProvider `json:"cloudflare,omitempty"`
-}
-
-type Entry struct {
-	// RELATED TO PROCESSING SOURCE
-
-	// Sources information
-	// +optional
-	Sources *SourceInfo `json:"sources,omitempty"`
-
-	// RELATED TO PROVIDERS
-
-	// Provider information
-	// +optional
-	Provider *ProviderInfo `json:"provider,omitempty"`
-
-	// Modify how DNS records are synchronized between sources and providers (default: sync, options: sync, upsert-only, create-only)
-	// +optional
-	Policy *string `json:"policy,omitempty"`
-
-	// Registry information
-	// +optional
-	Registry *RegistryInfo `json:"registry,omitempty"`
-}
-
-// ExternalDNSSpec defines the desired state of ExternalDNS
-type ExternalDNSSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-
-	// The kubernetes API server to connect to
-	// +optional
-	APIServerURL *string `json:"apiServerURL,omitempty"`
-
-	// Path to kubernetes configuration file
-	// +optional
-	Kubeconfig *string `json:"kubeconfig,omitempty"`
-
-	// Request timeout when calling Kubernetes API. 0s means no timeout
-	// +optional
-	RequestTimeout *time.Duration `json:"requestTimeout,omitempty"`
-
-	// Information about entries
-	Entries []Entry `json:"entries,omitempty"`
 }
 
 // ExternalDNSStatus defines the observed state of ExternalDNS
