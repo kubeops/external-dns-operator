@@ -1,10 +1,13 @@
 package informers
 
 import (
+	"fmt"
 	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/klog/v2"
+	externaldnsv1alpha1 "kubeops.dev/external-dns-operator/apis/external-dns/v1alpha1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -14,7 +17,7 @@ import (
 )
 
 type ObjectTracker struct {
-	m sync.Map
+	m *sync.Map
 
 	controller.Controller
 }
@@ -47,25 +50,25 @@ func (o ObjectTracker) Watch(obj runtime.Object, handler handler.EventHandler) e
 }
 
 func sourceHandler(object client.Object) []reconcile.Request {
-
+	fmt.Println("===================================== debug: 3 ")
+	// -------------------------------------------------------------------------------------------------------- need to complete the code
+	klog.Info("entered into the source handler function")
+	return nil
 }
 
-func getRuntimeObject(gvk schema.GroupVersionKind) (runtime.Object, error) {
+func getRuntimeObject(gvk schema.GroupVersionKind) runtime.Object {
+	fmt.Println("===================================== debug: 1 ")
+
 	unObj := &unstructured.Unstructured{}
 	unObj.SetGroupVersionKind(gvk)
-	return unObj, nil
-	//if *src == "service"{
-	//	return &v1.Service{},nil
-	//}
-	//if *src == "ingress" {
-	//
-	//}
-
+	fmt.Println("===================================== debug: 2 ")
+	return unObj
 }
 
-func RegisterWatcher(sourceList []string, watcher ObjectTracker) {
-	for _, source := range sourceList {
+func RegisterWatcher(crd externaldnsv1alpha1.ExternalDNS, watcher ObjectTracker) {
 
-		watcher.Watch(&unstructured.Unstructured{}, handler.EnqueueRequestsFromMapFunc(sourceHandler))
+	fmt.Println("===================================== debug: 0 ")
+	for _, src := range crd.Spec.Sources {
+		watcher.Watch(getRuntimeObject(*src.GroupVersionKind()), handler.EnqueueRequestsFromMapFunc(sourceHandler))
 	}
 }

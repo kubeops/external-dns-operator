@@ -185,191 +185,172 @@ var defaultConfig = &externaldns.Config{
 func ConvertCRDtoCfg(crd externaldnsv1alpha1.ExternalDNS) (*[]externaldns.Config, error) {
 
 	var configs []externaldns.Config
-	for _, entry := range *crd.Spec.Entries {
 
-		// Create a config file for single record
-		c := defaultConfig
+	// Create a config file for single record
+	c := defaultConfig
 
-		if crd.Namespace != "" {
-			c.Namespace = crd.Namespace
-		}
-
-		if crd.Spec.Kubeconfig != nil {
-			c.KubeConfig = *crd.Spec.Kubeconfig
-		}
-		if crd.Spec.APIServerURL != nil {
-			c.APIServerURL = *crd.Spec.APIServerURL
-		}
-		if crd.Spec.RequestTimeout != nil {
-			c.RequestTimeout = *crd.Spec.RequestTimeout
-		}
-
-		//SOURCE
-		s := entry.Sources
-		if s.Names != nil {
-			c.Sources = *s.Names
-		}
-		if s.OCRouterName != nil {
-			c.OCPRouterName = *s.OCRouterName
-		}
-		if s.Namespace != nil {
-			c.Namespace = *s.Namespace
-		}
-		if s.AnnotationFilter != nil {
-			c.AnnotationFilter = *s.AnnotationFilter
-		}
-		if s.LabelFilter != nil {
-			c.LabelFilter = *s.LabelFilter
-		}
-		if s.FQDNTemplate != nil {
-			c.FQDNTemplate = *s.FQDNTemplate
-		}
-		if s.CombineFQDNAndAnnotation != nil {
-			c.CombineFQDNAndAnnotation = *s.CombineFQDNAndAnnotation
-		}
-		if s.IgnoreHostnameAnnotation != nil {
-			c.IgnoreHostnameAnnotation = *s.IgnoreHostnameAnnotation
-		}
-		if s.IgnoreIngressTLSSpec != nil {
-			c.IgnoreIngressTLSSpec = *s.IgnoreIngressTLSSpec
-		}
-		if s.IgnoreIngressRulesSpec != nil {
-			c.IgnoreIngressRulesSpec = *s.IgnoreIngressRulesSpec
-		}
-		if s.GatewayNamespace != nil {
-			c.GatewayNamespace = *s.GatewayNamespace
-		}
-		if s.GatewayLabelFilter != nil {
-			c.GatewayLabelFilter = *s.GatewayLabelFilter
-		}
-		if s.Compatibility != nil {
-			c.Compatibility = *s.Compatibility
-		}
-		if s.PublishInternal != nil {
-			c.PublishInternal = *s.PublishInternal
-		}
-		if s.PublishHostIP != nil {
-			c.PublishHostIP = *s.PublishHostIP
-		}
-		if s.AlwaysPublishNotReadyAddresses != nil {
-			c.AlwaysPublishNotReadyAddresses = *s.AlwaysPublishNotReadyAddresses
-		}
-		if s.ConnectorSourceServer != nil {
-			c.ConnectorSourceServer = *s.ConnectorSourceServer
-		}
-		if s.ServiceTypeFilter != nil {
-			c.ServiceTypeFilter = *s.ServiceTypeFilter
-		}
-		if s.ManageDNSRecordTypes != nil {
-			c.ManagedDNSRecordTypes = *s.ManageDNSRecordTypes
-		}
-		if s.DefaultTargets != nil {
-			c.DefaultTargets = *s.DefaultTargets
-		}
-
-		// PROVIDER
-		p := entry.Provider
-
-		if p.Name != nil {
-			c.Provider = *p.Name
-		}
-		if p.DomainFilter != nil {
-			c.DomainFilter = *p.DomainFilter
-		}
-		if p.ExcludeDomains != nil {
-			c.ExcludeDomains = *p.ExcludeDomains
-		}
-		/*
-			if p.RegexDomainFilter != nil {
-				c.RegexDomainFilter = p.RegexDomainFilter
-			}
-			if p.RegexDomainExclusion != nil {
-				c.RegexDomainExclusion = p.RegexDomainExclusion
-			}
-		*/
-		if p.ZoneIDFilter != nil {
-			c.ZoneIDFilter = *p.ZoneIDFilter
-		}
-
-		// for aws provider
-		if p.AWS != nil {
-
-			aw := p.AWS
-			if aw.AWSZoneTagFilter != nil {
-				c.AWSZoneTagFilter = *aw.AWSZoneTagFilter
-			}
-			if aw.AWSZoneType != nil {
-				c.AWSZoneType = *aw.AWSZoneType
-			}
-			if aw.AWSAssumeRole != nil {
-				c.AWSAssumeRole = *aw.AWSAssumeRole
-			}
-			if aw.AWSBatchChangeSize != nil {
-				c.AWSBatchChangeSize = *aw.AWSBatchChangeSize
-			}
-			if aw.AWSBatchChangeInterval != nil {
-				c.AWSBatchChangeInterval = *aw.AWSBatchChangeInterval
-			}
-			if aw.AWSEvaluateTargetHealth != nil {
-				c.AWSEvaluateTargetHealth = *aw.AWSEvaluateTargetHealth
-			}
-			if aw.AWSAPIRetries != nil {
-				c.AWSAPIRetries = *aw.AWSAPIRetries
-			}
-			if aw.AWSPreferCNAME != nil {
-				c.AWSPreferCNAME = *aw.AWSPreferCNAME
-			}
-			if aw.AWSZoneCacheDuration != nil {
-				c.AWSZoneCacheDuration = *aw.AWSZoneCacheDuration
-			}
-			if aw.AWSSDServiceCleanup != nil {
-				c.AWSSDServiceCleanup = *aw.AWSSDServiceCleanup
-			}
-		}
-
-		// for cloudflare provider
-		if p.Cloudflare != nil {
-
-			cfl := p.Cloudflare
-			if cfl.CloudflareProxied != nil {
-				c.CloudflareProxied = *cfl.CloudflareProxied
-			}
-
-			if cfl.CloudflareZonesPerPage != nil {
-				c.CloudflareZonesPerPage = *cfl.CloudflareZonesPerPage
-			}
-
-		}
-
-		// POLICY
-
-		if entry.Policy != nil {
-			c.Policy = *entry.Policy
-		}
-
-		// REGISTRY
-		if entry.Registry != nil {
-			r := entry.Registry
-
-			if r.Type != nil {
-				c.Registry = *r.Type
-			}
-			if r.TXTOwnerID != nil {
-				c.TXTOwnerID = *r.TXTOwnerID
-			}
-			if r.TXTPrefix != nil {
-				c.TXTPrefix = *r.TXTPrefix
-			}
-			if r.TXTSuffix != nil {
-				c.TXTSuffix = *r.TXTSuffix
-			}
-			if r.TXTWildcardReplacement != nil {
-				c.TXTWildcardReplacement = *r.TXTWildcardReplacement
-			}
-		}
-
-		configs = append(configs, *c)
+	if crd.Namespace != "" {
+		c.Namespace = crd.Namespace
 	}
+
+	if crd.Spec.RequestTimeout != nil {
+		c.RequestTimeout = *crd.Spec.RequestTimeout
+	}
+
+	s := crd.Spec
+
+	//SOURCE
+	var sources []string
+	for _, src := range s.Sources {
+		sources = append(sources, src.Kind) // --------------------------------------------------------------- may cause problem due to capital letter starting
+	}
+	c.Sources = sources
+	fmt.Println("============================================================ sources : ", sources)
+
+	if s.OCRouterName != nil {
+		c.OCPRouterName = *s.OCRouterName
+	}
+	if s.Namespace != nil {
+		c.Namespace = *s.Namespace
+	}
+	if s.AnnotationFilter != nil {
+		c.AnnotationFilter = *s.AnnotationFilter
+	}
+	if s.LabelFilter != nil {
+		c.LabelFilter = *s.LabelFilter
+	}
+	if s.FQDNTemplate != nil {
+		c.FQDNTemplate = *s.FQDNTemplate
+	}
+	if s.CombineFQDNAndAnnotation != nil {
+		c.CombineFQDNAndAnnotation = *s.CombineFQDNAndAnnotation
+	}
+	if s.IgnoreHostnameAnnotation != nil {
+		c.IgnoreHostnameAnnotation = *s.IgnoreHostnameAnnotation
+	}
+	if s.IgnoreIngressTLSSpec != nil {
+		c.IgnoreIngressTLSSpec = *s.IgnoreIngressTLSSpec
+	}
+	if s.IgnoreIngressRulesSpec != nil {
+		c.IgnoreIngressRulesSpec = *s.IgnoreIngressRulesSpec
+	}
+	if s.GatewayNamespace != nil {
+		c.GatewayNamespace = *s.GatewayNamespace
+	}
+	if s.GatewayLabelFilter != nil {
+		c.GatewayLabelFilter = *s.GatewayLabelFilter
+	}
+	if s.Compatibility != nil {
+		c.Compatibility = *s.Compatibility
+	}
+	if s.PublishInternal != nil {
+		c.PublishInternal = *s.PublishInternal
+	}
+	if s.PublishHostIP != nil {
+		c.PublishHostIP = *s.PublishHostIP
+	}
+	if s.AlwaysPublishNotReadyAddresses != nil {
+		c.AlwaysPublishNotReadyAddresses = *s.AlwaysPublishNotReadyAddresses
+	}
+	if s.ConnectorSourceServer != nil {
+		c.ConnectorSourceServer = *s.ConnectorSourceServer
+	}
+	if s.ServiceTypeFilter != nil {
+		c.ServiceTypeFilter = s.ServiceTypeFilter
+	}
+	if s.ManageDNSRecordTypes != nil {
+		c.ManagedDNSRecordTypes = s.ManageDNSRecordTypes
+	}
+	if s.DefaultTargets != nil {
+		c.DefaultTargets = s.DefaultTargets
+	}
+
+	// PROVIDER
+	c.Provider = s.Provider.String()
+
+	if s.DomainFilter != nil {
+		c.DomainFilter = s.DomainFilter
+	}
+	if s.ExcludeDomains != nil {
+		c.ExcludeDomains = s.ExcludeDomains
+	}
+	if s.ZoneIDFilter != nil {
+		c.ZoneIDFilter = s.ZoneIDFilter
+	}
+
+	// for aws provider
+	if s.AWS != nil {
+
+		aw := s.AWS
+		if aw.AWSZoneTagFilter != nil {
+			c.AWSZoneTagFilter = aw.AWSZoneTagFilter
+		}
+		if aw.AWSZoneType != nil {
+			c.AWSZoneType = *aw.AWSZoneType
+		}
+		if aw.AWSAssumeRole != nil {
+			c.AWSAssumeRole = *aw.AWSAssumeRole
+		}
+		if aw.AWSBatchChangeSize != nil {
+			c.AWSBatchChangeSize = *aw.AWSBatchChangeSize
+		}
+		if aw.AWSBatchChangeInterval != nil {
+			c.AWSBatchChangeInterval = *aw.AWSBatchChangeInterval
+		}
+		if aw.AWSEvaluateTargetHealth != nil {
+			c.AWSEvaluateTargetHealth = *aw.AWSEvaluateTargetHealth
+		}
+		if aw.AWSAPIRetries != nil {
+			c.AWSAPIRetries = *aw.AWSAPIRetries
+		}
+		if aw.AWSPreferCNAME != nil {
+			c.AWSPreferCNAME = *aw.AWSPreferCNAME
+		}
+		if aw.AWSZoneCacheDuration != nil {
+			c.AWSZoneCacheDuration = *aw.AWSZoneCacheDuration
+		}
+		if aw.AWSSDServiceCleanup != nil {
+			c.AWSSDServiceCleanup = *aw.AWSSDServiceCleanup
+		}
+	}
+
+	// for cloudflare provider
+	if s.Cloudflare != nil {
+
+		cfl := s.Cloudflare
+		if cfl.CloudflareProxied != nil {
+			c.CloudflareProxied = *cfl.CloudflareProxied
+		}
+
+		if cfl.CloudflareZonesPerPage != nil {
+			c.CloudflareZonesPerPage = *cfl.CloudflareZonesPerPage
+		}
+	}
+
+	// POLICY
+
+	if s.Policy != nil {
+		c.Policy = s.Policy.String()
+	}
+
+	// REGISTRY
+	if s.Registry != nil {
+		c.Registry = *s.Registry
+	}
+	if s.TXTOwnerID != nil {
+		c.TXTOwnerID = *s.TXTOwnerID
+	}
+	if s.TXTPrefix != nil {
+		c.TXTPrefix = *s.TXTPrefix
+	}
+	if s.TXTSuffix != nil {
+		c.TXTSuffix = *s.TXTSuffix
+	}
+	if s.TXTWildcardReplacement != nil {
+		c.TXTWildcardReplacement = *s.TXTWildcardReplacement
+	}
+
+	configs = append(configs, *c)
 
 	return &configs, nil
 }
@@ -659,20 +640,23 @@ func CreateAndApplyPlans(edns *externaldnsv1alpha1.ExternalDNS, ctx context.Cont
 		}
 	*/
 
+	fmt.Println("============================================ configs length: ", len(*configs))
+
 	for _, cfg := range *configs {
+		fmt.Println("========================================== sources passed : ", cfg.Sources)
 		endpointsSource, err := CreateEndpointsSource(ctx, &cfg)
 		if err != nil {
 			klog.Info("failed to create endpoints source for domain ", cfg.TXTPrefix, ".", cfg.DomainFilter[0])
 			return err
 		}
 
-		provider, err := CreateProviderFromCfg(ctx, &cfg, endpointsSource)
+		pvdr, err := CreateProviderFromCfg(ctx, &cfg, endpointsSource)
 		if err != nil {
 			klog.Info("failed to create provider for domain ", cfg.TXTPrefix, ".", cfg.DomainFilter[0])
 			return err
 		}
 
-		reg, err := CreateRegistry(&cfg, *provider)
+		reg, err := CreateRegistry(&cfg, *pvdr)
 		if err != nil {
 			klog.Info("failed to create Registry for domain ", cfg.TXTPrefix, ".", cfg.DomainFilter[0])
 		}

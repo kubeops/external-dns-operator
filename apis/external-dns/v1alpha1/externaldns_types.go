@@ -17,7 +17,10 @@ limitations under the License.
 package v1alpha1
 
 import (
+	core "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	kmapi "kmodules.xyz/client-go/api/v1"
 	"time"
 )
 
@@ -27,8 +30,16 @@ import (
 // kubebuilder:validation:Enum:=sync;upsert-only;create-only
 type Policy string
 
+func (p Policy) String() string {
+	return string(p)
+}
+
 // kubebuilder:validation:Enum:=aws;cloudflare
 type Provider string
+
+func (p Provider) String() string {
+	return string(p)
+}
 
 const (
 	PolicySync       Policy = "sync"
@@ -44,6 +55,14 @@ type Target struct {
 	Group   string `json:"group"`
 	Version string `json:"version"`
 	Kind    string `json:"kind"`
+}
+
+func (t Target) GroupVersionKind() *schema.GroupVersionKind {
+	return &schema.GroupVersionKind{
+		Group:   t.Group,
+		Version: t.Version,
+		Kind:    t.Kind,
+	}
 }
 
 type AWSProvider struct {
@@ -104,13 +123,8 @@ type ExternalDNSSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	// The kubernetes API server to connect to
 	// +optional
-	APIServerURL *string `json:"apiServerURL,omitempty"`
-
-	// Path to kubernetes configuration file
-	// +optional
-	Kubeconfig *string `json:"kubeconfig,omitempty"`
+	ProviderSecretRef *core.LocalObjectReference `json:"providerSecretRef,omitempty"`
 
 	// Request timeout when calling Kubernetes API. 0s means no timeout
 	// +optional
@@ -119,7 +133,7 @@ type ExternalDNSSpec struct {
 	// RELATED TO PROCESSING SOURCE
 
 	// The resource types that are queried for endpoints; List of source. ex: source, ingress, node etc.
-	Sources []Target `json:"sources,omitempty"`
+	Sources []Target `json:"sources"`
 	// sources:
 	//    - group: ""
 	//      version: v1
@@ -207,20 +221,20 @@ type ExternalDNSSpec struct {
 	// +optional
 	DefaultTargets []string `json:"defaultTargets,omitempty"`
 
-	//.
+	//
 
 	// RELATED TO PROVIDERS
 
 	// The DNS provider where the DNS records will be created. (AWS, Cloudflare)
-	Provider Provider `json:"provider,omitempty"`
+	Provider Provider `json:"provider"`
 
 	// Limit possible target zones by a domain suffix
 	// +optional
-	DomainFilter *[]string `json:"domainFilter,omitempty"`
+	DomainFilter []string `json:"domainFilter,omitempty"`
 
 	// Exclude subdomains
 	// +optional
-	ExcludeDomains *[]string `json:"excludeDomains,omitempty"`
+	ExcludeDomains []string `json:"excludeDomains,omitempty"`
 
 	// Filter target zones by hosted zone id
 	// +optional
@@ -234,11 +248,15 @@ type ExternalDNSSpec struct {
 	// +optional
 	Cloudflare *CloudflareProvider `json:"cloudflare,omitempty"`
 
+	//
+	//POLICY INFORMATION
+	//
 	// Modify how DNS records are synchronized between sources and providers (default: sync, options: sync, upsert-only, create-only)
 	// +optional
-	Policy Policy `json:"policy,omitempty"`
+	Policy *Policy `json:"policy,omitempty"`
 
-	// Registry information
+	//
+	// REGISTRY information
 	//
 	// The registry implementation to use to keep track of DNS record ownership (default: txt, options: txt, noop, aws-sd)
 	// +optional
@@ -268,7 +286,23 @@ type ExternalDNSSpec struct {
 type ExternalDNSStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
+	// +optional
+	Phase ExternalDNSPhase `json:"phase,omitempty"`
+
+	// +optional
+	ObservedGeneration *int64 `json:"observedGeneration,omitempty"`
+
+	// +optional
+	Conditions []kmapi.Condition `json:"conditions,omitempty"`
 }
+
+type ExternalDNSPhase string
+
+const (
+	ExternalDNSPhaseCurrent    ExternalDNSPhase = "Current"
+	ExternalDNSPhaseFailed     ExternalDNSPhase = "Failed"
+	ExternalDNSPhaseInProgress ExternalDNSPhase = "InProgress"
+)
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
