@@ -19,7 +19,9 @@ package externaldns
 import (
 	"context"
 	"fmt"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog/v2"
 	externaldnsv1alpha1 "kubeops.dev/external-dns-operator/apis/external-dns/v1alpha1"
 	"kubeops.dev/external-dns-operator/pkg"
@@ -51,6 +53,14 @@ type ExternalDNSReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.12.2/pkg/reconcile
 
+func (r ExternalDNSReconciler) GetSecret(ctx context.Context, key types.NamespacedName) (*v1.Secret, error) {
+	secret := v1.Secret{}
+	if err := r.Get(ctx, key, &secret); err != nil {
+		return nil, err
+	}
+	return &secret, nil
+}
+
 func (r *ExternalDNSReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	_ = log.FromContext(ctx)
 
@@ -59,6 +69,16 @@ func (r *ExternalDNSReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	//get external dns
 	key := req.NamespacedName
 	edns := externaldnsv1alpha1.ExternalDNS{}
+
+	// get secret
+	// providerRef:
+	//    name: secret-name
+	if edns.Spec.ProviderSecretRef != nil {
+		secret, err := r.GetSecret(ctx, types.NamespacedName{edns.Namespace, edns.Spec.ProviderSecretRef.Name})
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+	}
 
 	//if err := os.Setenv("AWS_DEFAULT_REGION", "us-east-1"); err != nil {
 	//	return ctrl.Result{}, err
