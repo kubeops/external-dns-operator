@@ -24,8 +24,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog/v2"
 	externaldnsv1alpha1 "kubeops.dev/external-dns-operator/apis/external-dns/v1alpha1"
-	"kubeops.dev/external-dns-operator/pkg"
 	"kubeops.dev/external-dns-operator/pkg/informers"
+	types2 "kubeops.dev/external-dns-operator/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -91,7 +91,7 @@ func (r *ExternalDNSReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 
 	//os.Setenv()
 
-	if err := pkg.CreateAndApplyPlans(&edns, ctx); err != nil {
+	if err := types2.CreateAndApplyPlans(&edns, ctx); err != nil {
 		klog.Infof("unable to create entry: %s", err.Error())
 		return ctrl.Result{}, err
 	}

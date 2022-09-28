@@ -1,4 +1,4 @@
-package pkg
+package types
 
 import (
 	"context"
@@ -8,6 +8,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/klog/v2"
 	externaldnsv1alpha1 "kubeops.dev/external-dns-operator/apis/external-dns/v1alpha1"
+	"kubeops.dev/external-dns-operator/pkg/plan"
 	"log"
 	"regexp"
 	"sigs.k8s.io/external-dns/endpoint"
@@ -661,7 +662,7 @@ func CreateAndApplyPlans(edns *externaldnsv1alpha1.ExternalDNS, ctx context.Cont
 			klog.Info("failed to create Registry for domain ", cfg.TXTPrefix, ".", cfg.DomainFilter[0])
 		}
 
-		err = CreateAndApplySinglePlanForCRD(ctx, &cfg, reg, endpointsSource)
+		err = plan.CreateAndApplySinglePlanForCRD(ctx, &cfg, reg, endpointsSource)
 		if err != nil {
 			klog.Info("failed to create and apply plan for domain ", cfg.TXTPrefix, ".", cfg.DomainFilter[0])
 			return err
