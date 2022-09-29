@@ -49,6 +49,7 @@ import (
 	"sigs.k8s.io/external-dns/provider/vultr"
 	"sigs.k8s.io/external-dns/registry"
 	"sigs.k8s.io/external-dns/source"
+	"strings"
 	"time"
 )
 
@@ -203,7 +204,8 @@ func ConvertCRDtoCfg(crd externaldnsv1alpha1.ExternalDNS) (*[]externaldns.Config
 	//SOURCE
 	var sources []string
 	for _, src := range s.Sources {
-		sources = append(sources, src.Kind) // --------------------------------------------------------------- may cause problem due to capital letter starting
+		knd := strings.ToLower(src.Kind)
+		sources = append(sources, knd) // --------------------------------------------------------------- may cause problem due to capital letter starting
 	}
 	c.Sources = sources
 

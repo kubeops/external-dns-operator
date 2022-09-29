@@ -17,12 +17,12 @@ import (
 )
 
 type ObjectTracker struct {
-	m *sync.Map
+	m sync.Map
 
 	controller.Controller
 }
 
-func (o ObjectTracker) Watch(obj runtime.Object, handler handler.EventHandler) error {
+func (o *ObjectTracker) Watch(obj runtime.Object, handler handler.EventHandler) error {
 	if o.Controller == nil {
 		return nil
 	}
@@ -57,18 +57,16 @@ func sourceHandler(object client.Object) []reconcile.Request {
 }
 
 func getRuntimeObject(gvk schema.GroupVersionKind) runtime.Object {
-	fmt.Println("===================================== debug: 1 ")
-
 	unObj := &unstructured.Unstructured{}
 	unObj.SetGroupVersionKind(gvk)
-	fmt.Println("===================================== debug: 2 ")
 	return unObj
 }
 
-func RegisterWatcher(crd externaldnsv1alpha1.ExternalDNS, watcher ObjectTracker) {
-
-	fmt.Println("===================================== debug: 0 ")
+func RegisterWatcher(crd externaldnsv1alpha1.ExternalDNS, watcher *ObjectTracker) error {
 	for _, src := range crd.Spec.Sources {
-		watcher.Watch(getRuntimeObject(*src.GroupVersionKind()), handler.EnqueueRequestsFromMapFunc(sourceHandler))
+		if err := watcher.Watch(getRuntimeObject(*src.GroupVersionKind()), handler.EnqueueRequestsFromMapFunc(sourceHandler)); err != nil {
+			return err
+		}
 	}
+	return nil
 }

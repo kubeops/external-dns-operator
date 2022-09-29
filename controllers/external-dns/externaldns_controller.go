@@ -36,7 +36,7 @@ type ExternalDNSReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
 
-	watcher informers.ObjectTracker
+	watcher *informers.ObjectTracker
 }
 
 //+kubebuilder:rbac:groups=external-dns.appscode.com,resources=externaldns,verbs=get;list;watch;create;update;patch;delete
@@ -78,6 +78,11 @@ func (r *ExternalDNSReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		return ctrl.Result{}, err
 	}
 
+	// dynamic watcher (source service) (later)
+	if err := informers.RegisterWatcher(edns, r.watcher); err != nil {
+		return ctrl.Result{}, err
+	}
+
 	if edns.Spec.ProviderSecretRef != nil {
 		secret, err := r.GetSecret(ctx, types.NamespacedName{
 			Namespace: edns.Namespace,
@@ -98,9 +103,6 @@ func (r *ExternalDNSReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		klog.Infof("unable to create entry: %s", err.Error())
 		return ctrl.Result{}, err
 	}
-
-	// dynamic watcher (source service) (later)
-	informers.RegisterWatcher(edns, r.watcher)
 
 	// spec/config function config --> plan.
 
@@ -164,7 +166,9 @@ func (r *ExternalDNSReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		return err
 	}
 
-	r.watcher.Controller = controller
+	r.watcher = &informers.ObjectTracker{
+		Controller: controller,
+	}
 
 	return nil
 
