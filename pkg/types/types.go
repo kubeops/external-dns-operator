@@ -206,7 +206,6 @@ func ConvertCRDtoCfg(crd externaldnsv1alpha1.ExternalDNS) (*[]externaldns.Config
 		sources = append(sources, src.Kind) // --------------------------------------------------------------- may cause problem due to capital letter starting
 	}
 	c.Sources = sources
-	fmt.Println("============================================================ sources : ", sources)
 
 	if s.OCRouterName != nil {
 		c.OCPRouterName = *s.OCRouterName
@@ -641,10 +640,7 @@ func CreateAndApplyPlans(edns *externaldnsv1alpha1.ExternalDNS, ctx context.Cont
 		}
 	*/
 
-	fmt.Println("============================================ configs length: ", len(*configs))
-
 	for _, cfg := range *configs {
-		fmt.Println("========================================== sources passed : ", cfg.Sources)
 		endpointsSource, err := CreateEndpointsSource(ctx, &cfg)
 		if err != nil {
 			klog.Info("failed to create endpoints source for domain ", cfg.TXTPrefix, ".", cfg.DomainFilter[0])

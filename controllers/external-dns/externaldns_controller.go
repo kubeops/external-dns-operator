@@ -18,14 +18,14 @@ package externaldns
 
 import (
 	"context"
-	"fmt"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog/v2"
 	externaldnsv1alpha1 "kubeops.dev/external-dns-operator/apis/external-dns/v1alpha1"
+	"kubeops.dev/external-dns-operator/pkg/credentials"
 	"kubeops.dev/external-dns-operator/pkg/informers"
-	types2 "kubeops.dev/external-dns-operator/pkg/types"
+	selfTypes "kubeops.dev/external-dns-operator/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -70,28 +70,31 @@ func (r *ExternalDNSReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	key := req.NamespacedName
 	edns := externaldnsv1alpha1.ExternalDNS{}
 
-	// get secret
+	// get credentials
 	// providerRef:
-	//    name: secret-name
+	//    name: credentials-name
+
+	if err := r.Get(ctx, key, &edns); err != nil {
+		return ctrl.Result{}, err
+	}
+
 	if edns.Spec.ProviderSecretRef != nil {
-		secret, err := r.GetSecret(ctx, types.NamespacedName{edns.Namespace, edns.Spec.ProviderSecretRef.Name})
+		secret, err := r.GetSecret(ctx, types.NamespacedName{
+			Namespace: edns.Namespace,
+			Name:      edns.Spec.ProviderSecretRef.Name})
 		if err != nil {
 			return ctrl.Result{}, err
 		}
+		credentials.SetCredential(secret, key, edns.Spec.Provider.String())
 	}
 
 	//if err := os.Setenv("AWS_DEFAULT_REGION", "us-east-1"); err != nil {
 	//	return ctrl.Result{}, err
 	//}
 
-	if err := r.Get(ctx, key, &edns); err != nil {
-		fmt.Println("failed to get external-dns")
-		return ctrl.Result{}, err
-	}
-
 	//os.Setenv()
 
-	if err := types2.CreateAndApplyPlans(&edns, ctx); err != nil {
+	if err := selfTypes.CreateAndApplyPlans(&edns, ctx); err != nil {
 		klog.Infof("unable to create entry: %s", err.Error())
 		return ctrl.Result{}, err
 	}
@@ -150,30 +153,32 @@ func (r *ExternalDNSReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			return reconcileReq
 		}
 
-		// for dynamic watcher
-		controller, err := ctrl.NewControllerManagedBy(mgr).
-			For(&externaldnsv1alpha1.ExternalDNS{}).
-			//Watches(pkg.WatchingSources(), handler.EnqueueRequestsFromMapFunc(svcHandler)).
-			Build(r)
-		if err != nil {
-			return err
-		}
-
-		r.watcher.Controller = controller
-
-		return nil
-
 	*/
+
+	// for dynamic watcher
+	controller, err := ctrl.NewControllerManagedBy(mgr).
+		For(&externaldnsv1alpha1.ExternalDNS{}).
+		//Watches(pkg.WatchingSources(), handler.EnqueueRequestsFromMapFunc(svcHandler)).
+		Build(r)
+	if err != nil {
+		return err
+	}
+
+	r.watcher.Controller = controller
+
+	return nil
+
+	//*/
 
 	// work with the controller
 	//controller.Watch(pkg.WatchingSources(), handler.EnqueueRequestsFromMapFunc(svc))
 
-	///*
-	return ctrl.NewControllerManagedBy(mgr).
-		For(&externaldnsv1alpha1.ExternalDNS{}).
-		//Watches(pkg.WatchingSources(), handler.EnqueueRequestsFromMapFunc(svcHandler)).
-		Complete(r)
+	/*
+		return ctrl.NewControllerManagedBy(mgr).
+			For(&externaldnsv1alpha1.ExternalDNS{}).
+			//Watches(pkg.WatchingSources(), handler.EnqueueRequestsFromMapFunc(svcHandler)).
+			Complete(r)
 
-	//*/
+	*/
 
 }
