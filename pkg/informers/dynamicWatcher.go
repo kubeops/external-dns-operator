@@ -1,7 +1,7 @@
 package informers
 
 import (
-	"fmt"
+	"context"
 	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -49,20 +49,50 @@ func (o *ObjectTracker) Watch(obj runtime.Object, handler handler.EventHandler) 
 	return nil
 }
 
-func sourceHandler(object client.Object) []reconcile.Request {
-	fmt.Println("===================================== debug: 3 ")
-	// -------------------------------------------------------------------------------------------------------- need to complete the code
-	klog.Info("entered into the source handler function")
-	return nil
-}
-
 func getRuntimeObject(gvk schema.GroupVersionKind) runtime.Object {
 	unObj := &unstructured.Unstructured{}
 	unObj.SetGroupVersionKind(gvk)
 	return unObj
 }
 
-func RegisterWatcher(crd externaldnsv1alpha1.ExternalDNS, watcher *ObjectTracker) error {
+func RegisterWatcher(ctx context.Context, crd externaldnsv1alpha1.ExternalDNS, watcher *ObjectTracker, r client.Client) error {
+	sourceHandler := func(object client.Object) []reconcile.Request {
+		klog.Infof("================= Get watch request for resource: name: %s, namespace: %s, kind: %s", object.GetName(), object.GetNamespace(), object.GetObjectKind().GroupVersionKind().Kind)
+
+		reconcileReq := make([]reconcile.Request, 0)
+		_, found := object.GetAnnotations()["external-dns.alpha.kubernetes.io/hostname"]
+		if !found {
+			return reconcileReq
+		}
+
+		dnsList := &externaldnsv1alpha1.ExternalDNSList{}
+
+		if err := r.List(ctx, dnsList); err != nil {
+			klog.Info("failed to list the external dns resources")
+			return reconcileReq
+		}
+
+		objNamespace := object.GetNamespace()
+		objKind := object.GetObjectKind().GroupVersionKind().Kind
+
+		for _, edns := range dnsList.Items {
+			if edns.Namespace == objNamespace {
+				isAppendable := false
+				for _, src := range edns.Spec.Sources {
+					if src.Kind == objKind {
+						isAppendable = true
+						break
+					}
+				}
+
+				if isAppendable {
+					reconcileReq = append(reconcileReq, reconcile.Request{NamespacedName: client.ObjectKey{Name: edns.Name, Namespace: edns.Namespace}})
+				}
+			}
+		}
+		return reconcileReq
+	}
+
 	for _, src := range crd.Spec.Sources {
 		if err := watcher.Watch(getRuntimeObject(*src.GroupVersionKind()), handler.EnqueueRequestsFromMapFunc(sourceHandler)); err != nil {
 			return err

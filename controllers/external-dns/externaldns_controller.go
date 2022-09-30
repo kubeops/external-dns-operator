@@ -79,7 +79,7 @@ func (r *ExternalDNSReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	}
 
 	// dynamic watcher (source service) (later)
-	if err := informers.RegisterWatcher(edns, r.watcher); err != nil {
+	if err := informers.RegisterWatcher(ctx, edns, r.watcher, r.Client); err != nil {
 		return ctrl.Result{}, err
 	}
 
