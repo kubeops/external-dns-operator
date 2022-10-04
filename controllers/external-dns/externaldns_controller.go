@@ -23,12 +23,15 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog/v2"
 	externaldnsv1alpha1 "kubeops.dev/external-dns-operator/apis/external-dns/v1alpha1"
+	thiscmp "kubeops.dev/external-dns-operator/pkg/cmp"
 	"kubeops.dev/external-dns-operator/pkg/credentials"
 	"kubeops.dev/external-dns-operator/pkg/informers"
 	selfTypes "kubeops.dev/external-dns-operator/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )
 
 // ExternalDNSReconciler reconciles a ExternalDNS object
@@ -70,16 +73,14 @@ func (r *ExternalDNSReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	key := req.NamespacedName
 	edns := externaldnsv1alpha1.ExternalDNS{}
 
-	// get credentials
-	// providerRef:
-	//    name: credentials-name
-
 	if err := r.Get(ctx, key, &edns); err != nil {
+		klog.Info("failed to get resource ", key)
 		return ctrl.Result{}, err
 	}
 
 	// dynamic watcher (source service) (later)
 	if err := informers.RegisterWatcher(ctx, edns, r.watcher, r.Client); err != nil {
+		klog.Infof("failed to register watcher for %s", edns.Name)
 		return ctrl.Result{}, err
 	}
 
@@ -88,81 +89,40 @@ func (r *ExternalDNSReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			Namespace: edns.Namespace,
 			Name:      edns.Spec.ProviderSecretRef.Name})
 		if err != nil {
+			klog.Infof("failed to get provider secret reference %s", edns.Spec.ProviderSecretRef.Name)
 			return ctrl.Result{}, err
 		}
 		credentials.SetCredential(secret, key, edns.Spec.Provider.String())
 	}
 
-	//if err := os.Setenv("AWS_DEFAULT_REGION", "us-east-1"); err != nil {
-	//	return ctrl.Result{}, err
-	//}
-
-	//os.Setenv()
-
 	if err := selfTypes.CreateAndApplyPlans(&edns, ctx); err != nil {
-		klog.Infof("unable to create entry: %s", err.Error())
+		klog.Infof("failed to create plan. ", err.Error())
 		return ctrl.Result{}, err
 	}
 
-	// spec/config function config --> plan.
-
-	// Pending, Current, InProgress
+	// status -> Pending, Current, InProgress
 
 	return ctrl.Result{}, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *ExternalDNSReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	/*
-
-		// hasSvc checks whether the external dns crd has a service type source.
-		// need to change when the crd changes
-		hasSvc := func(ed *externaldnsv1alpha1.ExternalDNS) bool {
-			for _, entry := range *ed.Spec.Entries {
-				for _, sc := range *entry.Sources.Names {
-					if sc == "service" {
-						return true
-					}
-				}
-			}
-			return false
-		}
-
-		svcHandler := func(object client.Object) []reconcile.Request {
-			reconcileReq := make([]reconcile.Request, 0)
-
-			klog.Info("Get service event: ", object.GetName())
-
-			_, found := object.GetAnnotations()["external-dns.alpha.kubernetes.io/hostname"]
-			if !found {
-				return reconcileReq
-			}
-
-			kc := mgr.GetClient()
-			dnsList := &externaldnsv1alpha1.ExternalDNSList{}
-
-			if err := kc.List(context.TODO(), dnsList); err != nil {
-				klog.Info("failed to list external dns resource")
-				return reconcileReq
-			}
-
-			for _, ed := range dnsList.Items {
-				if hasSvc(&ed) {
-					klog.Info("Reconciling service for: ", object.GetName())
-					reconcileReq = append(reconcileReq, reconcile.Request{NamespacedName: client.ObjectKey{Name: ed.Name, Namespace: ed.Namespace}})
-				}
-			}
-			return reconcileReq
-		}
-
-	*/
 
 	// for dynamic watcher
 	controller, err := ctrl.NewControllerManagedBy(mgr).
 		For(&externaldnsv1alpha1.ExternalDNS{}).
-		//Watches(pkg.WatchingSources(), handler.EnqueueRequestsFromMapFunc(svcHandler)).
+		WithEventFilter(predicate.Funcs{
+			UpdateFunc: func(e event.UpdateEvent) bool {
+
+				klog.Infof("***********************************")
+				klog.Infof("WithEventFilter function working")
+
+				return !thiscmp.Equal(e.ObjectNew, e.ObjectOld)
+			},
+		}).
 		Build(r)
 	if err != nil {
+		klog.Infof("failed to build controller")
 		return err
 	}
 
@@ -171,18 +131,4 @@ func (r *ExternalDNSReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	}
 
 	return nil
-
-	//*/
-
-	// work with the controller
-	//controller.Watch(pkg.WatchingSources(), handler.EnqueueRequestsFromMapFunc(svc))
-
-	/*
-		return ctrl.NewControllerManagedBy(mgr).
-			For(&externaldnsv1alpha1.ExternalDNS{}).
-			//Watches(pkg.WatchingSources(), handler.EnqueueRequestsFromMapFunc(svcHandler)).
-			Complete(r)
-
-	*/
-
 }

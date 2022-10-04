@@ -205,8 +205,10 @@ func ConvertCRDtoCfg(crd externaldnsv1alpha1.ExternalDNS) (*[]externaldns.Config
 	var sources []string
 	for _, src := range s.Sources {
 		knd := strings.ToLower(src.Kind)
-		sources = append(sources, knd) // --------------------------------------------------------------- may cause problem due to capital letter starting
+		sources = append(sources, knd)
 	}
+
+	// sources[] must contain strings that are lower case
 	c.Sources = sources
 
 	if s.OCRouterName != nil {
@@ -618,8 +620,6 @@ func CreateRegistry(cfg *externaldns.Config, p provider.Provider) (registry.Regi
 	case "aws-sd":
 		r, err = registry.NewAWSSDRegistry(p.(*awssd.AWSSDProvider), cfg.TXTOwnerID)
 	default:
-		//fmt.Println("unknown registry")
-		//log.Fatalf("unknown registry: %s", cfg.Registry)
 		err = errors.New(fmt.Sprintf("unknown registry: %s", cfg.Registry))
 	}
 
@@ -633,14 +633,6 @@ func CreateAndApplyPlans(edns *externaldnsv1alpha1.ExternalDNS, ctx context.Cont
 		klog.Info("failed to convert crd into cfg")
 		return err
 	}
-
-	/*
-		// Used for cfg validation
-		if err := validation.ValidateConfig(cfg); err != nil {
-			klog.Infof("config validation failed: %v", err)
-			return
-		}
-	*/
 
 	for _, cfg := range *configs {
 		endpointsSource, err := CreateEndpointsSource(ctx, &cfg)

@@ -18,7 +18,6 @@ func setAWSCredential(secret *v1.Secret, key types.NamespacedName) error {
 	filePath := fmt.Sprintf("/home/rasel/Desktop/" + fileName)
 	//filePath := fmt.Sprintf("/tmp/" + fileName)
 	file, err := os.Create(filePath)
-
 	if err != nil {
 		return err
 	}
