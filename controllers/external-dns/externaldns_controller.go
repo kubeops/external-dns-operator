@@ -23,10 +23,10 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog/v2"
 	externaldnsv1alpha1 "kubeops.dev/external-dns-operator/apis/external-dns/v1alpha1"
-	thiscmp "kubeops.dev/external-dns-operator/pkg/cmp"
 	"kubeops.dev/external-dns-operator/pkg/credentials"
 	"kubeops.dev/external-dns-operator/pkg/informers"
-	selfTypes "kubeops.dev/external-dns-operator/pkg/types"
+	"kubeops.dev/external-dns-operator/pkg/plan"
+	"reflect"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
@@ -56,12 +56,12 @@ type ExternalDNSReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.12.2/pkg/reconcile
 
-func (r ExternalDNSReconciler) GetSecret(ctx context.Context, key types.NamespacedName) (*v1.Secret, error) {
-	secret := v1.Secret{}
-	if err := r.Get(ctx, key, &secret); err != nil {
+func (r *ExternalDNSReconciler) GetSecret(ctx context.Context, key *types.NamespacedName) (*v1.Secret, error) {
+	secret := &v1.Secret{}
+	if err := r.Get(ctx, *key, secret); err != nil {
 		return nil, err
 	}
-	return &secret, nil
+	return secret, nil
 }
 
 func (r *ExternalDNSReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
@@ -71,32 +71,32 @@ func (r *ExternalDNSReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 
 	//get external dns
 	key := req.NamespacedName
-	edns := externaldnsv1alpha1.ExternalDNS{}
+	edns := &externaldnsv1alpha1.ExternalDNS{}
 
-	if err := r.Get(ctx, key, &edns); err != nil {
-		klog.Info("failed to get resource ", key)
-		return ctrl.Result{}, err
+	if err := r.Get(ctx, key, edns); err != nil {
+		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
+	edns = edns.DeepCopy()
 
-	// dynamic watcher (source service) (later)
+	// dynamic watcher
 	if err := informers.RegisterWatcher(ctx, edns, r.watcher, r.Client); err != nil {
-		klog.Infof("failed to register watcher for %s", edns.Name)
+		klog.Info("failed to register watcher.", err.Error())
 		return ctrl.Result{}, err
 	}
 
 	if edns.Spec.ProviderSecretRef != nil {
-		secret, err := r.GetSecret(ctx, types.NamespacedName{
+		secret, err := r.GetSecret(ctx, &types.NamespacedName{
 			Namespace: edns.Namespace,
 			Name:      edns.Spec.ProviderSecretRef.Name})
 		if err != nil {
-			klog.Infof("failed to get provider secret reference %s", edns.Spec.ProviderSecretRef.Name)
+			klog.Info("failed to get provider secret. ", err.Error())
 			return ctrl.Result{}, err
 		}
 		credentials.SetCredential(secret, key, edns.Spec.Provider.String())
 	}
 
-	if err := selfTypes.CreateAndApplyPlans(&edns, ctx); err != nil {
-		klog.Infof("failed to create plan. ", err.Error())
+	if err := plan.MakePlan(edns, ctx); err != nil {
+		klog.Info("failed to create plan. ", err.Error())
 		return ctrl.Result{}, err
 	}
 
@@ -113,16 +113,24 @@ func (r *ExternalDNSReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		For(&externaldnsv1alpha1.ExternalDNS{}).
 		WithEventFilter(predicate.Funcs{
 			UpdateFunc: func(e event.UpdateEvent) bool {
+				klog.Info("==================== IN Update filter =================")
 
-				klog.Infof("***********************************")
-				klog.Infof("WithEventFilter function working")
+				if e.ObjectNew.GetObjectKind().GroupVersionKind().String() != "Node" {
+					return true
+				}
+				oldNode := e.ObjectOld.(*v1.Node).DeepCopy()
+				newNode := e.ObjectNew.(*v1.Node).DeepCopy()
 
-				return !thiscmp.Equal(e.ObjectNew, e.ObjectOld)
+				return !reflect.DeepEqual(oldNode.Status.Addresses, newNode.Status.Addresses)
+				//klog.Infof("***********************************")
+				//klog.Infof("WithEventFilter() function working")
+				//
+				//return !thiscmp.Equal(e.ObjectNew, e.ObjectOld)
 			},
 		}).
 		Build(r)
 	if err != nil {
-		klog.Infof("failed to build controller")
+		klog.Infof("failed to build controller.", err.Error())
 		return err
 	}
 

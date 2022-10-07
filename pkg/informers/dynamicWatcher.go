@@ -34,6 +34,8 @@ func (o *ObjectTracker) Watch(obj runtime.Object, handler handler.EventHandler) 
 		return nil
 	}
 
+	klog.Info("Loaded in Map :>>>>>>>> ", key)
+
 	u := &unstructured.Unstructured{}
 	u.SetGroupVersionKind(gvk)
 
@@ -55,9 +57,9 @@ func getRuntimeObject(gvk schema.GroupVersionKind) runtime.Object {
 	return unObj
 }
 
-func RegisterWatcher(ctx context.Context, crd externaldnsv1alpha1.ExternalDNS, watcher *ObjectTracker, r client.Client) error {
+func RegisterWatcher(ctx context.Context, crd *externaldnsv1alpha1.ExternalDNS, watcher *ObjectTracker, r client.Client) error {
+
 	sourceHandler := func(object client.Object) []reconcile.Request {
-		klog.Infof("================= Get watch request for resource: name: %s, namespace: %s, kind: %s", object.GetName(), object.GetNamespace(), object.GetObjectKind().GroupVersionKind().Kind)
 
 		reconcileReq := make([]reconcile.Request, 0)
 		_, found := object.GetAnnotations()["external-dns.alpha.kubernetes.io/hostname"]
@@ -68,29 +70,27 @@ func RegisterWatcher(ctx context.Context, crd externaldnsv1alpha1.ExternalDNS, w
 		dnsList := &externaldnsv1alpha1.ExternalDNSList{}
 
 		if err := r.List(ctx, dnsList); err != nil {
-			klog.Info("failed to list the external dns resources")
-			return reconcileReq
+			klog.Info("failed to list the external dns resources: ", err.Error())
+			return nil
 		}
 
-		objNamespace := object.GetNamespace()
 		objKind := object.GetObjectKind().GroupVersionKind().Kind
 
 		for _, edns := range dnsList.Items {
-			if edns.Namespace == objNamespace {
-				isAppendable := false
-				for _, src := range edns.Spec.Sources {
-					if src.Kind == objKind {
-						isAppendable = true
-						break
-					}
-				}
-
-				if isAppendable {
-					reconcileReq = append(reconcileReq, reconcile.Request{NamespacedName: client.ObjectKey{Name: edns.Name, Namespace: edns.Namespace}})
+			isAppendable := false
+			for _, src := range edns.Spec.Sources {
+				if src.Kind == objKind {
+					isAppendable = true
+					break
 				}
 			}
+
+			if isAppendable {
+				reconcileReq = append(reconcileReq, reconcile.Request{NamespacedName: client.ObjectKey{Name: edns.Name, Namespace: edns.Namespace}})
+			}
 		}
-		return reconcileReq
+
+		return nil
 	}
 
 	for _, src := range crd.Spec.Sources {
@@ -99,4 +99,5 @@ func RegisterWatcher(ctx context.Context, crd externaldnsv1alpha1.ExternalDNS, w
 		}
 	}
 	return nil
+
 }
