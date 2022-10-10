@@ -274,10 +274,7 @@ func ConvertCRDtoCfg(crd externaldnsv1alpha1.ExternalDNS) (*externaldns.Config, 
 
 	//SOURCE
 	var sources []string
-	for _, src := range s.Sources {
-		knd := strings.ToLower(src.Kind)
-		sources = append(sources, knd)
-	}
+	sources = append(sources, strings.ToLower(s.Source.Kind))
 	// sources[] must contain strings that are lower cased
 	c.Sources = sources
 
@@ -877,7 +874,7 @@ func MakePlan(edns *externaldnsv1alpha1.ExternalDNS, ctx context.Context) error 
 	IBMCloudProxied                   bool
 	IBMCloudConfigFile                string
 
-cfg.Registry -> spec.Registry.Type
+cfg.Registry -> spec.Registry.TypeInfo
 cfg.Provider -> spec.Provider.Name
 cfg.Sources -> ... SourceInfo.Names
 */
