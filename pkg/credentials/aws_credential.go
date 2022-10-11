@@ -14,9 +14,9 @@ func setEnvVar(envVarName string, value string) error {
 func setAWSCredential(secret *v1.Secret, key types.NamespacedName) error {
 	fileName := fmt.Sprintf(key.Namespace + "-" + key.Name + "-credential")
 
-	//////-------------------------------------------------------------------- Remove before deploy
-	//filePath := fmt.Sprintf("/home/rasel/Desktop/" + fileName)
-	filePath := fmt.Sprintf("/tmp/" + fileName)
+	////-------------------------------------------------------------------- Remove before deploy
+	filePath := fmt.Sprintf("/home/rasel/Desktop/" + fileName)
+	//filePath := fmt.Sprintf("/tmp/" + fileName)
 	file, err := os.Create(filePath)
 	if err != nil {
 		return err

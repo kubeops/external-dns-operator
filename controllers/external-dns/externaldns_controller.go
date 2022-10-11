@@ -22,6 +22,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog/v2"
+	kmapi "kmodules.xyz/client-go/api/v1"
 	externaldnsv1alpha1 "kubeops.dev/external-dns-operator/apis/external-dns/v1alpha1"
 	"kubeops.dev/external-dns-operator/pkg/credentials"
 	"kubeops.dev/external-dns-operator/pkg/informers"
@@ -78,11 +79,16 @@ func (r *ExternalDNSReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	}
 	edns = edns.DeepCopy()
 
+	edns.Status.Phase = externaldnsv1alpha1.ExternalDNSPhaseInProgress
+
 	// dynamic watcher
 	if err := informers.RegisterWatcher(ctx, edns, r.watcher, r.Client); err != nil {
 		klog.Info("failed to register watcher.", err.Error())
+		edns.Status.Phase = externaldnsv1alpha1.ExternalDNSPhaseFailed
+		kmapi.SetCondition(edns.Status.Conditions, kmapi.NewCondition(externaldnsv1alpha1.ConditionWatcher, "failed to register watcher", edns.Status.ObservedGeneration, false))
 		return ctrl.Result{}, err
 	}
+	kmapi.SetCondition(edns.Status.Conditions, kmapi.NewCondition(externaldnsv1alpha1.ConditionWatcher, "watcher registered", edns.Status.ObservedGeneration, true))
 
 	if edns.Spec.ProviderSecretRef != nil {
 		secret, err := r.GetSecret(ctx, &types.NamespacedName{
@@ -90,21 +96,31 @@ func (r *ExternalDNSReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			Name:      edns.Spec.ProviderSecretRef.Name})
 		if err != nil {
 			klog.Info("failed to get provider secret. ", err.Error())
+			edns.Status.Phase = externaldnsv1alpha1.ExternalDNSPhaseFailed
+			kmapi.SetCondition(edns.Status.Conditions, kmapi.NewCondition(externaldnsv1alpha1.ConditionCredential, "failed to create/set provider credential", edns.Status.ObservedGeneration, false))
 			return ctrl.Result{}, err
 		}
 
 		err = credentials.SetCredential(secret, key, edns.Spec.Provider.String())
 		if err != nil {
+			edns.Status.Phase = externaldnsv1alpha1.ExternalDNSPhaseFailed
+			kmapi.SetCondition(edns.Status.Conditions, kmapi.NewCondition(externaldnsv1alpha1.ConditionCredential, "failed to create/set provider credential", edns.Status.ObservedGeneration, false))
 			return ctrl.Result{}, err
 		}
+		kmapi.SetCondition(edns.Status.Conditions, kmapi.NewCondition(externaldnsv1alpha1.ConditionCredential, "provider credential configured", edns.Status.ObservedGeneration, true))
 	}
 
 	if err := plan.MakePlan(edns, ctx); err != nil {
 		klog.Info("failed to create plan. ", err.Error())
+		edns.Status.Phase = externaldnsv1alpha1.ExternalDNSPhaseFailed
+		kmapi.SetCondition(edns.Status.Conditions, kmapi.NewCondition(externaldnsv1alpha1.ConditionPlan, "failed to create/apply plan", edns.Status.ObservedGeneration, false))
 		return ctrl.Result{}, err
 	}
+	// unable to figure out between 'plan applied' and 'plan already up to date'
+	kmapi.SetCondition(edns.Status.Conditions, kmapi.NewCondition(externaldnsv1alpha1.ConditionPlan, "plan up to date", edns.Status.ObservedGeneration, true))
 
-	// status -> Pending, Current, InProgress
+	edns.Status.Phase = externaldnsv1alpha1.ExternalDNSPhaseCurrent
+	edns.Status.ObservedGeneration += 1
 
 	return ctrl.Result{}, nil
 }

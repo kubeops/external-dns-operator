@@ -30,18 +30,21 @@ import (
 // kubebuilder:validation:Enum:=sync;upsert-only;create-only
 type Policy string
 
-func (p Policy) String() string {
-	return string(p)
-}
+type ExternalDNSPhase string
 
 // kubebuilder:validation:Enum:=aws;cloudflare
 type Provider string
+
+func (p Policy) String() string {
+	return string(p)
+}
 
 func (p Provider) String() string {
 	return string(p)
 }
 
 const (
+	//Policy
 	PolicySync       Policy = "sync"
 	PolicyUpsertOnly Policy = "upsert-only"
 	PolicyCreateOnly Policy = "create-only"
@@ -49,6 +52,16 @@ const (
 	//Provider
 	ProviderAWS        Provider = "aws"
 	providerCloudflare Provider = "cloudflare"
+
+	//ExternalDNSPhase
+	ExternalDNSPhaseCurrent    ExternalDNSPhase = "Current"
+	ExternalDNSPhaseFailed     ExternalDNSPhase = "Failed"
+	ExternalDNSPhaseInProgress ExternalDNSPhase = "InProgress"
+
+	//ConditionType
+	ConditionWatcher    = "CreateAndRegisterWatcher"
+	ConditionCredential = "CreateAndSetCredential"
+	ConditionPlan       = "CreateAndApplyPlan"
 )
 
 type TypeInfo struct {
@@ -334,25 +347,15 @@ type ExternalDNSSpec struct {
 
 // ExternalDNSStatus defines the observed state of ExternalDNS
 type ExternalDNSStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
 	// +optional
 	Phase ExternalDNSPhase `json:"phase,omitempty"`
 
 	// +optional
-	ObservedGeneration *int64 `json:"observedGeneration,omitempty"`
+	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
 
 	// +optional
 	Conditions []kmapi.Condition `json:"conditions,omitempty"`
 }
-
-type ExternalDNSPhase string
-
-const (
-	ExternalDNSPhaseCurrent    ExternalDNSPhase = "Current"
-	ExternalDNSPhaseFailed     ExternalDNSPhase = "Failed"
-	ExternalDNSPhaseInProgress ExternalDNSPhase = "InProgress"
-)
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
