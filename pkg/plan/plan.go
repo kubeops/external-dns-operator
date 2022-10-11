@@ -274,15 +274,23 @@ func ConvertCRDtoCfg(crd externaldnsv1alpha1.ExternalDNS) (*externaldns.Config, 
 
 	//SOURCE
 	var sources []string
-	sources = append(sources, strings.ToLower(s.Source.Kind))
+	sources = append(sources, strings.ToLower(s.Source.Type.Kind))
 	// sources[] must contain strings that are lower cased
 	c.Sources = sources
 
 	if s.OCRouterName != nil {
 		c.OCPRouterName = *s.OCRouterName
 	}
-	if s.Namespace != nil {
-		c.Namespace = *s.Namespace
+	ss := s.Source
+	sss := ss.Service
+	ssi := ss.Ingress
+	ssn := ss.Node
+
+	if sss.Namespace != nil {
+		c.Namespace = *sss.Namespace
+	}
+	if ssi.Namespace != nil {
+		c.Namespace =
 	}
 
 	if s.AnnotationFilter != nil {

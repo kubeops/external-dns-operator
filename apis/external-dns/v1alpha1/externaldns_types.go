@@ -238,17 +238,16 @@ type NodeConfig struct {
 }
 
 type SourceConfig struct {
-
 	Type TypeInfo `json:"type"`
 
 	// +optional
-	Node *NodeConfig `json:"node"`
+	Node NodeConfig `json:"node"`
 
 	// +optional
-	Service *ServiceConfig `json:"service"`
+	Service ServiceConfig `json:"service"`
 
 	// +optional
-	Ingress *IngressConfig `json:"ingress"`
+	Ingress IngressConfig `json:"ingress"`
 }
 
 type ProviderConfig struct {
@@ -291,7 +290,7 @@ type ExternalDNSSpec struct {
 
 	// RELATED TO PROCESSING SOURCE
 	// The resource types that are queried for endpoints; List of source. ex: source, ingress, node etc.
-	Source *SourceConfig `json:"source"`
+	Source SourceConfig `json:"source"`
 	// sources:
 	//    - group: ""
 	//      version: v1

@@ -35,60 +35,52 @@ spec:
           spec:
             description: ExternalDNSSpec defines the desired state of ExternalDNS
             properties:
-              alwaysPublishNotReadyAddresses:
-                description: Always publish also not ready addresses for headless
-                  services
-                type: boolean
-              annotationFilter:
-                description: Filter sources managed by external-dns via label selector
-                  when listing all resources
-                type: string
               aws:
                 description: AWS provider information
                 properties:
-                  awsAPIRetries:
+                  apiRetries:
                     description: When using the AWS provider, set the maximum number
                       of retries for API calls before giving up.
                     type: integer
-                  awsAssumeRole:
+                  assumeRole:
                     description: When using the AWS provider, assume this IAM role.
                       Useful for hosted zones in another AWS account. Specify the
                       full ARN, e.g. `arn:aws:iam::123455567:role/external-dns`
                     type: string
-                  awsBatchChangeInterval:
+                  batchChangeInterval:
                     description: When using the AWS provider, set the interval between
                       batch changes.
                     format: int64
                     type: integer
-                  awsBatchChangeSize:
+                  batchChangeSize:
                     description: When using AWS provide, set the maximum number of
                       changes that will be applied in each batch
                     type: integer
-                  awsEvaluateTargetHealth:
+                  evaluateTargetHealth:
                     description: 'When using the AWS provider, set whether to evaluate
                       the health of the DNS target (default: enable, disable with
                       --no-aws-evaluate-target-health)'
                     type: boolean
-                  awsPreferCNAME:
+                  preferCNAME:
                     description: 'When using the AWS provider, prefer using CNAME
                       instead of ALIAS (default: disabled)'
                     type: boolean
-                  awsSDServiceCleanup:
+                  sdServiceCleanup:
                     description: 'When using the AWS CloudMap provider, delete empty
                       Services without endpoints (default: disabled)'
                     type: boolean
-                  awsZoneCacheDuration:
+                  zoneCacheDuration:
                     description: When using the AWS provider, set the zones list cache
                       TTL (0s to disable).
                     format: int64
                     type: integer
-                  awsZoneTagFilter:
+                  zoneTagFilter:
                     description: When using the AWS provider, filter for zones with
                       these tags
                     items:
                       type: string
                     type: array
-                  awsZoneType:
+                  zoneType:
                     description: 'When using the AWS provider, filter for zones of
                       this type. (support: public, private)'
                     type: string
@@ -96,21 +88,15 @@ spec:
               cloudflare:
                 description: Cloudflare provider information
                 properties:
-                  cloudflareProxied:
+                  proxied:
                     description: 'When using the Cloudflare provider, specify if the
                       proxy mode must be enabled (default: disabled)'
                     type: boolean
-                  cloudflareZonesPerPage:
+                  zonesPerPage:
                     description: 'When using the Cloudflare provider, specify how
                       many zones per page listed, max. possible 50 (default: 50)'
                     type: integer
                 type: object
-              combineFQDNAndAnnotation:
-                description: Combine FQDN template and Annotations instead of overwriting
-                type: boolean
-              compatibility:
-                description: Process  annotation semantics from legacy implementations
-                type: string
               connectorSourceServer:
                 description: The server to connect for connector source, valid only
                   when using connector source
@@ -131,32 +117,11 @@ spec:
                 items:
                   type: string
                 type: array
-              fqdnTemplate:
-                description: A templated string that's used to generate DNS names
-                  from source that don't define a hostname themselves, or to add a
-                  hostname suffix when paired with the fake source
-                type: string
               gatewayLabelFilter:
                 description: Filter Gateways of Route endpoints via label selector
                 type: string
               gatewayNamespace:
                 description: Limit Gateways of route endpoints to a specific namespace
-                type: string
-              ignoreHostnameAnnotation:
-                description: Ignore hostname annotation when generating DNS names,
-                  valid only when using fqdn-template is set
-                type: boolean
-              ignoreIngressRulesSpec:
-                description: Ignore rules spec section in ingresses resources, applicable
-                  only for ingress sources
-                type: boolean
-              ignoreIngressTLSSpec:
-                description: Ignore TLS Spec section in ingresses resources, applicable
-                  only for ingress source
-                type: boolean
-              labelFilter:
-                description: Filter sources managed by external-dns via annotation
-                  using label selector semantics
                 type: string
               manageDNSRecordTypes:
                 description: 'Comma separated list of record types to manage (default:
@@ -164,10 +129,6 @@ spec:
                 items:
                   type: string
                 type: array
-              namespace:
-                description: 'Limit sources of endpoints to a specific namespace (default:
-                  all namespaces)'
-                type: string
               ocRouterName:
                 description: If source is openshift router then you can pass the ingress
                   controller name. Based on this name the external dns will select
@@ -193,46 +154,133 @@ spec:
                     type: string
                 type: object
                 x-kubernetes-map-type: atomic
-              publishHostIP:
-                description: Allow external-dns to publish host-ip for headless services
-                type: boolean
-              publishInternal:
-                description: Allow  externals-dns to publish DNS records for ClusterIP
-                  services
-                type: boolean
               registry:
-                description: "REGISTRY information \n The registry implementation
-                  to use to keep track of DNS record ownership (default: txt, options:
-                  txt, noop, aws-sd)"
+                description: 'The registry implementation to use to keep track of
+                  DNS record ownership (default: txt, options: txt, noop, aws-sd)'
                 type: string
               requestTimeout:
                 description: Request timeout when calling Kubernetes API. 0s means
                   no timeout
                 format: int64
                 type: integer
-              serviceTypeFilter:
-                description: 'The service types to take care about (default all, expected:
-                  ClusterIP, NodePort, LoadBalancer or ExternalName)'
-                items:
-                  type: string
-                type: array
-              sources:
-                description: 'The resource types that are queried for endpoints; List
-                  of source. ex: source, ingress, node etc.'
-                items:
-                  properties:
-                    group:
-                      type: string
-                    kind:
-                      type: string
-                    version:
-                      type: string
-                  required:
-                  - group
-                  - kind
-                  - version
-                  type: object
-                type: array
+              source:
+                description: 'RELATED TO PROCESSING SOURCE The resource types that
+                  are queried for endpoints; List of source. ex: source, ingress,
+                  node etc.'
+                properties:
+                  ingress:
+                    properties:
+                      annotationFilter:
+                        description: Filter sources managed by external-dns via label
+                          selector when listing all resources
+                        type: string
+                      combineFQDNAndAnnotation:
+                        description: Combine FQDN template and Annotations instead
+                          of overwriting
+                        type: boolean
+                      fqdnTemplate:
+                        description: A templated string that's used to generate DNS
+                          names from source that don't define a hostname themselves,
+                          or to add a hostname suffix when paired with the fake source
+                        type: string
+                      ignoreHostnameAnnotation:
+                        description: Ignore hostname annotation when generating DNS
+                          names, valid only when using fqdn-template is set
+                        type: boolean
+                      ignoreIngressRulesSpec:
+                        description: Ignore rules spec section in ingresses resources,
+                          applicable only for ingress sources
+                        type: boolean
+                      ignoreIngressTLSSpec:
+                        description: Ignore TLS Spec section in ingresses resources,
+                          applicable only for ingress source
+                        type: boolean
+                      labelFilter:
+                        description: Filter sources managed by external-dns via annotation
+                          using label selector semantics
+                        type: string
+                      namespace:
+                        description: 'Limit sources of endpoints to a specific namespace
+                          (default: all namespaces)'
+                        type: string
+                    type: object
+                  node:
+                    properties:
+                      annotationFilter:
+                        description: Filter sources managed by external-dns via label
+                          selector when listing all resources
+                        type: string
+                      fqdnTemplate:
+                        description: A templated string that's used to generate DNS
+                          names from source that don't define a hostname themselves,
+                          or to add a hostname suffix when paired with the fake source
+                        type: string
+                    type: object
+                  service:
+                    properties:
+                      alwaysPublishNotReadyAddresses:
+                        description: Always publish also not ready addresses for headless
+                          services
+                        type: boolean
+                      annotationFilter:
+                        description: Filter sources managed by external-dns via label
+                          selector when listing all resources
+                        type: string
+                      combineFQDNAndAnnotation:
+                        description: Combine FQDN template and Annotations instead
+                          of overwriting
+                        type: boolean
+                      compatibility:
+                        description: Process  annotation semantics from legacy implementations
+                        type: string
+                      fqdnTemplate:
+                        description: A templated string that's used to generate DNS
+                          names from source that don't define a hostname themselves,
+                          or to add a hostname suffix when paired with the fake source
+                        type: string
+                      ignoreHostnameAnnotation:
+                        description: Ignore hostname annotation when generating DNS
+                          names, valid only when using fqdn-template is set
+                        type: boolean
+                      labelFilter:
+                        description: Filter sources managed by external-dns via annotation
+                          using label selector semantics
+                        type: string
+                      namespace:
+                        description: 'Limit sources of endpoints to a specific namespace
+                          (default: all namespaces)'
+                        type: string
+                      publishHostIP:
+                        description: Allow external-dns to publish host-ip for headless
+                          services
+                        type: boolean
+                      publishInternal:
+                        description: Allow  externals-dns to publish DNS records for
+                          ClusterIP services
+                        type: boolean
+                      serviceTypeFilter:
+                        description: 'The service types to take care about (default
+                          all, expected: ClusterIP, NodePort, LoadBalancer or ExternalName)'
+                        items:
+                          type: string
+                        type: array
+                    type: object
+                  type:
+                    properties:
+                      group:
+                        type: string
+                      kind:
+                        type: string
+                      version:
+                        type: string
+                    required:
+                    - group
+                    - kind
+                    - version
+                    type: object
+                required:
+                - type
+                type: object
               txtOwnerID:
                 description: 'When using the TXT registry, a name that identifies
                   this instance of ExternalDNS (default: default)'
@@ -260,7 +308,7 @@ spec:
                 type: array
             required:
             - provider
-            - sources
+            - source
             type: object
           status:
             description: ExternalDNSStatus defines the observed state of ExternalDNS
