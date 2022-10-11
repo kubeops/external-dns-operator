@@ -212,7 +212,7 @@ type NodeConfig struct {
 }
 
 type SourceConfig struct {
-	Type *TypeInfo `json:"type"`
+	Type TypeInfo `json:"type"`
 
 	// +optional
 	Node *NodeConfig `json:"node"`
