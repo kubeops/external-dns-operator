@@ -118,32 +118,6 @@ type CloudflareProvider struct {
 	ZonesPerPage *int `json:"zonesPerPage,omitempty"`
 }
 
-type RegistryConfig struct {
-	//
-	// The registry implementation to use to keep track of DNS record ownership (default: txt, options: txt, noop, aws-sd)
-	// +optional
-	Registry *string `json:"registry,omitempty"`
-
-	// When using the TXT registry, a name that identifies this instance of ExternalDNS (default: default)
-	// +optional
-	TXTOwnerID *string `json:"txtOwnerID,omitempty"`
-
-	// When using the TXT registry, a custom string that's prefixed to each ownership DNS record (optional). Could
-	// contain record type template like '%{record_type}-prefix-'. Mutual exclusive with txt-suffix!
-	// +optional
-	TXTPrefix *string `json:"txtPrefix,omitempty"`
-
-	// When using the TXT registry, a custom string that's suffixed to the host portion of each ownership DNS
-	// record. Could contain record type template like '-%{record_type}-suffix'. Mutual exclusive with txt-prefix!
-	// +optional
-	TXTSuffix *string `json:"txtSuffix,omitempty"`
-
-	// When using the TXT registry, a custom string that's used instead of an asterisk for TXT records corresponding
-	// to wildcard DNS records
-	// +optional
-	TXTWildcardReplacement *string `json:"txtWildcardReplacement,omitempty"`
-}
-
 type ServiceConfig struct {
 	// Limit sources of endpoints to a specific namespace (default: all namespaces)
 	// +optional
@@ -238,42 +212,16 @@ type NodeConfig struct {
 }
 
 type SourceConfig struct {
-	Type TypeInfo `json:"type"`
+	Type *TypeInfo `json:"type"`
 
 	// +optional
-	Node NodeConfig `json:"node"`
+	Node *NodeConfig `json:"node"`
 
 	// +optional
-	Service ServiceConfig `json:"service"`
+	Service *ServiceConfig `json:"service"`
 
 	// +optional
-	Ingress IngressConfig `json:"ingress"`
-}
-
-type ProviderConfig struct {
-
-	// The DNS provider where the DNS records will be created. (AWS, Cloudflare)
-	Provider Provider `json:"provider"`
-
-	// Limit possible target zones by a domain suffix
-	// +optional
-	DomainFilter []string `json:"domainFilter,omitempty"`
-
-	// Exclude subdomains
-	// +optional
-	ExcludeDomains []string `json:"excludeDomains,omitempty"`
-
-	// Filter target zones by hosted zone id
-	// +optional
-	ZoneIDFilter []string `json:"zoneIDFilter,omitempty"`
-
-	// AWS provider information
-	// +optional
-	AWS *AWSProvider `json:"aws,omitempty"`
-
-	// Cloudflare provider information
-	// +optional
-	Cloudflare *CloudflareProvider `json:"cloudflare,omitempty"`
+	Ingress *IngressConfig `json:"ingress"`
 }
 
 // ExternalDNSSpec defines the desired state of ExternalDNS
@@ -328,7 +276,28 @@ type ExternalDNSSpec struct {
 	//
 
 	// RELATED TO PROVIDERS
-	ProviderConfig `json:",inline"`
+	// The DNS provider where the DNS records will be created. (AWS, Cloudflare)
+	Provider Provider `json:"provider"`
+
+	// Limit possible target zones by a domain suffix
+	// +optional
+	DomainFilter []string `json:"domainFilter,omitempty"`
+
+	// Exclude subdomains
+	// +optional
+	ExcludeDomains []string `json:"excludeDomains,omitempty"`
+
+	// Filter target zones by hosted zone id
+	// +optional
+	ZoneIDFilter []string `json:"zoneIDFilter,omitempty"`
+
+	// AWS provider information
+	// +optional
+	AWS *AWSProvider `json:"aws,omitempty"`
+
+	// Cloudflare provider information
+	// +optional
+	Cloudflare *CloudflareProvider `json:"cloudflare,omitempty"`
 
 	//
 	//POLICY INFORMATION
@@ -339,7 +308,29 @@ type ExternalDNSSpec struct {
 
 	//
 	// REGISTRY information
-	RegistryConfig `json:",inline"`
+	//
+	// The registry implementation to use to keep track of DNS record ownership (default: txt, options: txt, noop, aws-sd)
+	// +optional
+	Registry *string `json:"registry,omitempty"`
+
+	// When using the TXT registry, a name that identifies this instance of ExternalDNS (default: default)
+	// +optional
+	TXTOwnerID *string `json:"txtOwnerID,omitempty"`
+
+	// When using the TXT registry, a custom string that's prefixed to each ownership DNS record (optional). Could
+	// contain record type template like '%{record_type}-prefix-'. Mutual exclusive with txt-suffix!
+	// +optional
+	TXTPrefix *string `json:"txtPrefix,omitempty"`
+
+	// When using the TXT registry, a custom string that's suffixed to the host portion of each ownership DNS
+	// record. Could contain record type template like '-%{record_type}-suffix'. Mutual exclusive with txt-prefix!
+	// +optional
+	TXTSuffix *string `json:"txtSuffix,omitempty"`
+
+	// When using the TXT registry, a custom string that's used instead of an asterisk for TXT records corresponding
+	// to wildcard DNS records
+	// +optional
+	TXTWildcardReplacement *string `json:"txtWildcardReplacement,omitempty"`
 }
 
 // ExternalDNSStatus defines the observed state of ExternalDNS
