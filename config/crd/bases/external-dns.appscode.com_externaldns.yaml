@@ -141,8 +141,8 @@ spec:
                   create-only)"
                 type: string
               provider:
-                description: The DNS provider where the DNS records will be created.
-                  (AWS, Cloudflare)
+                description: RELATED TO PROVIDERS The DNS provider where the DNS records
+                  will be created. (AWS, Cloudflare)
                 type: string
               providerSecretRef:
                 description: LocalObjectReference contains enough information to let
@@ -155,8 +155,9 @@ spec:
                 type: object
                 x-kubernetes-map-type: atomic
               registry:
-                description: 'The registry implementation to use to keep track of
-                  DNS record ownership (default: txt, options: txt, noop, aws-sd)'
+                description: "REGISTRY information \n The registry implementation
+                  to use to keep track of DNS record ownership (default: txt, options:
+                  txt, noop, aws-sd)"
                 type: string
               requestTimeout:
                 description: Request timeout when calling Kubernetes API. 0s means

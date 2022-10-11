@@ -203,8 +203,7 @@ type IngressConfig struct {
 type NodeConfig struct {
 	// A templated string that's used to generate DNS names from source that don't define a hostname themselves, or to
 	// add a hostname suffix when paired with the fake source
-	// +optional
-	FQDNTemplate *string `json:"fqdnTemplate,omitempty"`
+	FQDNTemplate string `json:"fqdnTemplate,omitempty"`
 
 	// Filter sources managed by external-dns via label selector when listing all resources
 	// +optional

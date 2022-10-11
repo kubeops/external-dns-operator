@@ -55,8 +55,8 @@ import (
 
 var defaultConfig = externaldns.Config{
 	APIServerURL: "",
-	KubeConfig:   "/home/rasel/Downloads/rasel-kubeconfig.yaml",
-	//KubeConfig:                  "",// ----------------------------------------------------------------------- comment out the kubeconfig path to empty
+	//KubeConfig:   "/home/rasel/Downloads/rasel-kubeconfig.yaml",
+	KubeConfig:                  "", // ----------------------------------------------------------------------- comment out the kubeconfig path to empty
 	RequestTimeout:              time.Second * 30,
 	DefaultTargets:              []string{},
 	ContourLoadBalancerService:  "heptio-contour/contour",
@@ -207,8 +207,6 @@ func CreateAndApplyPlan(ctx context.Context, cfg *externaldns.Config, r registry
 		return err
 	}
 
-	klog.Infof("*********************** annotationFilter: %s ****************************", cfg.AnnotationFilter)
-
 	endpoints = r.AdjustEndpoints(endpoints)
 
 	if len(missingRecords) > 0 {
@@ -273,6 +271,18 @@ func ConvertCRDtoCfg(crd externaldnsv1alpha1.ExternalDNS) (*externaldns.Config, 
 	s := crd.Spec
 
 	//SOURCE
+
+	//knd := s.Source.Type.Kind
+	//if knd == "Node" && s.Source.Node == nil {
+	//	return nil, errors.New("missing source info")
+	//}
+	//if knd == "Ingress" && s.Source.Ingress == nil {
+	//	return nil, errors.New("missing source info")
+	//}
+	//if knd == "Service" && s.Source.Service == nil {
+	//	return nil, errors.New("missing source info")
+	//}
+
 	var sources []string
 	sources = append(sources, strings.ToLower(s.Source.Type.Kind))
 	// sources[] must contain strings that are lower cased
@@ -281,69 +291,95 @@ func ConvertCRDtoCfg(crd externaldnsv1alpha1.ExternalDNS) (*externaldns.Config, 
 	if s.OCRouterName != nil {
 		c.OCPRouterName = *s.OCRouterName
 	}
-	ss := s.Source
-	sss := ss.Service
-	ssi := ss.Ingress
-	ssn := ss.Node
-
-	if sss.Namespace != nil {
-		c.Namespace = *sss.Namespace
-	}
-	if ssi.Namespace != nil {
-		c.Namespace =
-	}
-
-	if s.AnnotationFilter != nil {
-		c.AnnotationFilter = *s.AnnotationFilter
-	}
-
-	if s.LabelFilter != nil {
-		c.LabelFilter = *s.LabelFilter
-	}
-	if s.FQDNTemplate != nil {
-		c.FQDNTemplate = *s.FQDNTemplate
-	}
-	if s.CombineFQDNAndAnnotation != nil {
-		c.CombineFQDNAndAnnotation = *s.CombineFQDNAndAnnotation
-	}
-	if s.IgnoreHostnameAnnotation != nil {
-		c.IgnoreHostnameAnnotation = *s.IgnoreHostnameAnnotation
-	}
-	if s.IgnoreIngressTLSSpec != nil {
-		c.IgnoreIngressTLSSpec = *s.IgnoreIngressTLSSpec
-	}
-	if s.IgnoreIngressRulesSpec != nil {
-		c.IgnoreIngressRulesSpec = *s.IgnoreIngressRulesSpec
-	}
 	if s.GatewayNamespace != nil {
 		c.GatewayNamespace = *s.GatewayNamespace
 	}
 	if s.GatewayLabelFilter != nil {
 		c.GatewayLabelFilter = *s.GatewayLabelFilter
 	}
-	if s.Compatibility != nil {
-		c.Compatibility = *s.Compatibility
-	}
-	if s.PublishInternal != nil {
-		c.PublishInternal = *s.PublishInternal
-	}
-	if s.PublishHostIP != nil {
-		c.PublishHostIP = *s.PublishHostIP
-	}
-	if s.AlwaysPublishNotReadyAddresses != nil {
-		c.AlwaysPublishNotReadyAddresses = *s.AlwaysPublishNotReadyAddresses
-	}
-	if s.ConnectorSourceServer != nil {
-		c.ConnectorSourceServer = *s.ConnectorSourceServer
-	}
-	if s.ServiceTypeFilter != nil {
-		c.ServiceTypeFilter = s.ServiceTypeFilter
-	}
 	if s.ManageDNSRecordTypes != nil {
 		c.ManagedDNSRecordTypes = s.ManageDNSRecordTypes
 	}
 	if s.DefaultTargets != nil {
 		c.DefaultTargets = s.DefaultTargets
+	}
+
+	ss := s.Source
+
+	// For Node
+	if ss.Node != nil && ss.Type.Kind == "Node" {
+		ssn := ss.Node
+		c.FQDNTemplate = ssn.FQDNTemplate
+		if ssn.AnnotationFilter != nil {
+			c.AnnotationFilter = *ssn.AnnotationFilter
+		}
+	}
+
+	// For Service
+	if ss.Service != nil && ss.Type.Kind == "Service" {
+		sss := ss.Service
+		if sss.LabelFilter != nil {
+			c.LabelFilter = *sss.LabelFilter
+		}
+		if sss.Namespace != nil {
+			c.Namespace = *sss.Namespace
+		}
+		if sss.AnnotationFilter != nil {
+			c.AnnotationFilter = *sss.AnnotationFilter
+		}
+		if sss.FQDNTemplate != nil {
+			c.FQDNTemplate = *sss.FQDNTemplate
+		}
+		if sss.CombineFQDNAndAnnotation != nil {
+			c.CombineFQDNAndAnnotation = *sss.CombineFQDNAndAnnotation
+		}
+		if sss.Compatibility != nil {
+			c.Compatibility = *sss.Compatibility
+		}
+		if sss.PublishInternal != nil {
+			c.PublishInternal = *sss.PublishInternal
+		}
+		if sss.PublishHostIP != nil {
+			c.PublishHostIP = *sss.PublishHostIP
+		}
+		if sss.AlwaysPublishNotReadyAddresses != nil {
+			c.AlwaysPublishNotReadyAddresses = *sss.AlwaysPublishNotReadyAddresses
+		}
+		if sss.ServiceTypeFilter != nil {
+			c.ServiceTypeFilter = sss.ServiceTypeFilter
+		}
+		if sss.IgnoreHostnameAnnotation != nil {
+			c.IgnoreHostnameAnnotation = *sss.IgnoreHostnameAnnotation
+		}
+	}
+
+	// For Ingress
+	if ss.Ingress != nil && ss.Type.Kind == "Ingress" {
+		ssi := ss.Ingress
+		if ssi.IgnoreIngressRulesSpec != nil {
+			c.IgnoreIngressRulesSpec = *ssi.IgnoreIngressRulesSpec
+		}
+		if ssi.IgnoreHostnameAnnotation != nil {
+			c.IgnoreHostnameAnnotation = *ssi.IgnoreHostnameAnnotation
+		}
+		if ssi.FQDNTemplate != nil {
+			c.FQDNTemplate = *ssi.FQDNTemplate
+		}
+		if ssi.Namespace != nil {
+			c.Namespace = *ssi.Namespace
+		}
+		if ssi.AnnotationFilter != nil {
+			c.AnnotationFilter = *ssi.AnnotationFilter
+		}
+		if ssi.CombineFQDNAndAnnotation != nil {
+			c.CombineFQDNAndAnnotation = *ssi.CombineFQDNAndAnnotation
+		}
+		if ssi.IgnoreIngressTLSSpec != nil {
+			c.IgnoreIngressTLSSpec = *ssi.IgnoreIngressTLSSpec
+		}
+		if ssi.LabelFilter != nil {
+			c.LabelFilter = *ssi.LabelFilter
+		}
 	}
 
 	// PROVIDER
@@ -363,35 +399,35 @@ func ConvertCRDtoCfg(crd externaldnsv1alpha1.ExternalDNS) (*externaldns.Config, 
 	if s.AWS != nil {
 
 		aw := s.AWS
-		if aw.AWSZoneTagFilter != nil {
-			c.AWSZoneTagFilter = aw.AWSZoneTagFilter
+		if aw.ZoneTagFilter != nil {
+			c.AWSZoneTagFilter = aw.ZoneTagFilter
 		}
-		if aw.AWSZoneType != nil {
-			c.AWSZoneType = *aw.AWSZoneType
+		if aw.ZoneType != nil {
+			c.AWSZoneType = *aw.ZoneType
 		}
-		if aw.AWSAssumeRole != nil {
-			c.AWSAssumeRole = *aw.AWSAssumeRole
+		if aw.AssumeRole != nil {
+			c.AWSAssumeRole = *aw.AssumeRole
 		}
-		if aw.AWSBatchChangeSize != nil {
-			c.AWSBatchChangeSize = *aw.AWSBatchChangeSize
+		if aw.BatchChangeSize != nil {
+			c.AWSBatchChangeSize = *aw.BatchChangeSize
 		}
-		if aw.AWSBatchChangeInterval != nil {
-			c.AWSBatchChangeInterval = *aw.AWSBatchChangeInterval
+		if aw.BatchChangeInterval != nil {
+			c.AWSBatchChangeInterval = *aw.BatchChangeInterval
 		}
-		if aw.AWSEvaluateTargetHealth != nil {
-			c.AWSEvaluateTargetHealth = *aw.AWSEvaluateTargetHealth
+		if aw.EvaluateTargetHealth != nil {
+			c.AWSEvaluateTargetHealth = *aw.EvaluateTargetHealth
 		}
-		if aw.AWSAPIRetries != nil {
-			c.AWSAPIRetries = *aw.AWSAPIRetries
+		if aw.APIRetries != nil {
+			c.AWSAPIRetries = *aw.APIRetries
 		}
-		if aw.AWSPreferCNAME != nil {
-			c.AWSPreferCNAME = *aw.AWSPreferCNAME
+		if aw.PreferCNAME != nil {
+			c.AWSPreferCNAME = *aw.PreferCNAME
 		}
-		if aw.AWSZoneCacheDuration != nil {
-			c.AWSZoneCacheDuration = *aw.AWSZoneCacheDuration
+		if aw.ZoneCacheDuration != nil {
+			c.AWSZoneCacheDuration = *aw.ZoneCacheDuration
 		}
-		if aw.AWSSDServiceCleanup != nil {
-			c.AWSSDServiceCleanup = *aw.AWSSDServiceCleanup
+		if aw.SDServiceCleanup != nil {
+			c.AWSSDServiceCleanup = *aw.SDServiceCleanup
 		}
 	}
 
@@ -399,12 +435,12 @@ func ConvertCRDtoCfg(crd externaldnsv1alpha1.ExternalDNS) (*externaldns.Config, 
 	if s.Cloudflare != nil {
 
 		cfl := s.Cloudflare
-		if cfl.CloudflareProxied != nil {
-			c.CloudflareProxied = *cfl.CloudflareProxied
+		if cfl.Proxied != nil {
+			c.CloudflareProxied = *cfl.Proxied
 		}
 
-		if cfl.CloudflareZonesPerPage != nil {
-			c.CloudflareZonesPerPage = *cfl.CloudflareZonesPerPage
+		if cfl.ZonesPerPage != nil {
+			c.CloudflareZonesPerPage = *cfl.ZonesPerPage
 		}
 	}
 
@@ -849,10 +885,12 @@ func MakePlan(edns *externaldnsv1alpha1.ExternalDNS, ctx context.Context) error 
 	ExoscaleAPISecret                 string `secure:"yes"`
 	CRDSourceAPIVersion               string
 	CRDSourceKind                     string
-		ServiceTypeFilter                 []string
-		CFAPIEndpoint                     string
-		CFUsername                        string
-		CFPassword                        string
+	ServiceTypeFilter                 []string
+
+	CFAPIEndpoint                     string
+	CFUsername                        string
+	CFPassword                        string
+
 	RFC2136Host                       string
 	RFC2136Port                       int
 	RFC2136Zone                       string

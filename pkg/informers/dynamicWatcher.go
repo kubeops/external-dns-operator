@@ -34,8 +34,6 @@ func (o *ObjectTracker) Watch(obj runtime.Object, handler handler.EventHandler) 
 		return nil
 	}
 
-	klog.Info("Loaded in Map :>>>>>>>> ", key)
-
 	u := &unstructured.Unstructured{}
 	u.SetGroupVersionKind(gvk)
 
@@ -77,27 +75,14 @@ func RegisterWatcher(ctx context.Context, crd *externaldnsv1alpha1.ExternalDNS, 
 		objKind := object.GetObjectKind().GroupVersionKind().Kind
 
 		for _, edns := range dnsList.Items {
-			isAppendable := false
-			for _, src := range edns.Spec.Sources {
-				if src.Kind == objKind {
-					isAppendable = true
-					break
-				}
-			}
-
-			if isAppendable {
+			if edns.Spec.Source.Type.Kind == objKind {
 				reconcileReq = append(reconcileReq, reconcile.Request{NamespacedName: client.ObjectKey{Name: edns.Name, Namespace: edns.Namespace}})
 			}
 		}
 
-		return nil
+		return reconcileReq
 	}
 
-	for _, src := range crd.Spec.Sources {
-		if err := watcher.Watch(getRuntimeObject(*src.GroupVersionKind()), handler.EnqueueRequestsFromMapFunc(sourceHandler)); err != nil {
-			return err
-		}
-	}
-	return nil
+	return watcher.Watch(getRuntimeObject(*crd.Spec.Source.Type.GroupVersionKind()), handler.EnqueueRequestsFromMapFunc(sourceHandler))
 
 }

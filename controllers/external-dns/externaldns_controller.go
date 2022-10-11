@@ -92,7 +92,11 @@ func (r *ExternalDNSReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			klog.Info("failed to get provider secret. ", err.Error())
 			return ctrl.Result{}, err
 		}
-		credentials.SetCredential(secret, key, edns.Spec.Provider.String())
+
+		err = credentials.SetCredential(secret, key, edns.Spec.Provider.String())
+		if err != nil {
+			return ctrl.Result{}, err
+		}
 	}
 
 	if err := plan.MakePlan(edns, ctx); err != nil {
@@ -123,7 +127,6 @@ func (r *ExternalDNSReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 				return !reflect.DeepEqual(oldNode.Status.Addresses, newNode.Status.Addresses)
 				//klog.Infof("***********************************")
-				//klog.Infof("WithEventFilter() function working")
 				//
 				//return !thiscmp.Equal(e.ObjectNew, e.ObjectOld)
 			},
