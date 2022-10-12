@@ -55,8 +55,8 @@ import (
 
 var defaultConfig = externaldns.Config{
 	APIServerURL: "",
-	KubeConfig:   "/home/rasel/Downloads/rasel-kubeconfig.yaml",
-	//KubeConfig:                  "", // ----------------------------------------------------------------------- comment out the kubeconfig path to empty
+	//KubeConfig:   "/home/rasel/Downloads/rasel-kubeconfig.yaml",
+	KubeConfig:                  "", // ----------------------------------------------------------------------- comment out the kubeconfig path to empty
 	RequestTimeout:              time.Second * 30,
 	DefaultTargets:              []string{},
 	ContourLoadBalancerService:  "heptio-contour/contour",
@@ -185,7 +185,7 @@ var defaultConfig = externaldns.Config{
 	IBMCloudConfigFile:          "/etc/kubernetes/ibmcloud.json",
 }
 
-func CreateAndApplyPlan(ctx context.Context, cfg *externaldns.Config, r registry.Registry, endpointSource source.Source) error {
+func CreateAndApplyPlan(ctx context.Context, cfg *externaldns.Config, r registry.Registry, endpointSource source.Source) (*string, error) {
 
 	var domainFilter endpoint.DomainFilter
 	if cfg.RegexDomainFilter.String() != "" {
@@ -196,7 +196,7 @@ func CreateAndApplyPlan(ctx context.Context, cfg *externaldns.Config, r registry
 
 	records, err := r.Records(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	missingRecords := r.MissingRecords()
@@ -204,7 +204,7 @@ func CreateAndApplyPlan(ctx context.Context, cfg *externaldns.Config, r registry
 	ctx = context.WithValue(ctx, provider.RecordsContextKey, records)
 	endpoints, err := endpointSource.Endpoints(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	endpoints = r.AdjustEndpoints(endpoints)
@@ -222,7 +222,7 @@ func CreateAndApplyPlan(ctx context.Context, cfg *externaldns.Config, r registry
 		if missingRecordsPlan.Changes.HasChanges() {
 			err = r.ApplyChanges(ctx, missingRecordsPlan.Changes)
 			if err != nil {
-				return err
+				return nil, err
 			}
 			klog.Info("all missing records are created")
 		}
@@ -241,18 +241,22 @@ func CreateAndApplyPlan(ctx context.Context, cfg *externaldns.Config, r registry
 	klog.Info("Desired: ", pln.Desired)
 	klog.Info("Current: ", pln.Current)
 
+	var successMsg = ""
+
 	if pln.Changes.HasChanges() {
 		err = r.ApplyChanges(ctx, pln.Changes)
 		if err != nil {
 			klog.Info("failed to apply plan")
-			return err
+			return nil, err
 		}
 		klog.Info("plan applied")
+		successMsg = "plan applied"
 	} else {
 		klog.Info("all records are already up to date")
+		successMsg = "all records are already up to date"
 	}
 
-	return nil
+	return &successMsg, nil
 }
 
 func ConvertCRDtoCfg(crd externaldnsv1alpha1.ExternalDNS) (*externaldns.Config, error) {
@@ -739,36 +743,39 @@ func CreateRegistry(cfg *externaldns.Config, p provider.Provider) (registry.Regi
 	return r, err
 }
 
-func MakePlan(edns *externaldnsv1alpha1.ExternalDNS, ctx context.Context) error {
+func MakePlan(edns *externaldnsv1alpha1.ExternalDNS, ctx context.Context) (*string, error) {
 
 	cfg, err := ConvertCRDtoCfg(*edns)
 	if err != nil {
 		klog.Info("failed to convert crd into cfg.", err.Error())
-		return err
+		return nil, err
 	}
 	endpointsSource, err := CreateEndpointsSource(ctx, cfg)
 	if err != nil {
 		klog.Info("failed to create endpoints source.", err.Error())
-		return err
+		return nil, err
 	}
 
 	pvdr, err := CreateProviderFromCfg(ctx, cfg, endpointsSource)
 	if err != nil {
 		klog.Info("failed to create provider.", err.Error())
-		return err
+		return nil, err
 	}
 
 	reg, err := CreateRegistry(cfg, *pvdr)
 	if err != nil {
 		klog.Infof("failed to create Registry.", err.Error())
+		return nil, err
 	}
 
-	err = CreateAndApplyPlan(ctx, cfg, reg, endpointsSource)
+	var successMsg *string
+	successMsg, err = CreateAndApplyPlan(ctx, cfg, reg, endpointsSource)
 	if err != nil {
 		klog.Info("failed to create and apply plan.", err.Error())
-		return err
+		return nil, err
 	}
-	return nil
+
+	return successMsg, nil
 }
 
 /*

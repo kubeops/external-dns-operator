@@ -15,7 +15,14 @@ spec:
     singular: externaldns
   scope: Namespaced
   versions:
-  - name: v1alpha1
+  - additionalPrinterColumns:
+    - jsonPath: .status.phase
+      name: Status
+      type: string
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1alpha1
     schema:
       openAPIV3Schema:
         description: ExternalDNS is the Schema for the externaldns API
@@ -364,9 +371,6 @@ spec:
                 format: int64
                 type: integer
               phase:
-                description: 'INSERT ADDITIONAL STATUS FIELD - define observed state
-                  of cluster Important: Run "make" to regenerate code after modifying
-                  this file'
                 type: string
             type: object
         type: object

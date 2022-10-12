@@ -357,6 +357,8 @@ type ExternalDNSStatus struct {
 	Conditions []kmapi.Condition `json:"conditions,omitempty"`
 }
 
+//+kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.phase"
+//+kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
 
