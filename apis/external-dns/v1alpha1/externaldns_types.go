@@ -241,8 +241,7 @@ type ExternalDNSSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	// +optional
-	ProviderSecretRef *core.LocalObjectReference `json:"providerSecretRef,omitempty"`
+	ProviderSecretRef core.LocalObjectReference `json:"providerSecretRef,omitempty"`
 
 	// Request timeout when calling Kubernetes API. 0s means no timeout
 	// +optional

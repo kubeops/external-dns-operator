@@ -4,6 +4,7 @@ import (
 	"fmt"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/klog/v2"
 	"os"
 )
 
@@ -29,5 +30,10 @@ func setAWSCredential(secret *v1.Secret, key types.NamespacedName) error {
 		return err
 	}
 
-	return setEnvVar("AWS_SHARED_CREDENTIALS_FILE", filePath)
+	err = setEnvVar("AWS_SHARED_CREDENTIALS_FILE", filePath)
+	if err != nil {
+		klog.Info("failed to set the environment variables")
+		return err
+	}
+	return nil
 }
