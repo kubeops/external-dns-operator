@@ -60,16 +60,12 @@ func RegisterWatcher(ctx context.Context, crd *externaldnsv1alpha1.ExternalDNS, 
 	sourceHandler := func(object client.Object) []reconcile.Request {
 
 		reconcileReq := make([]reconcile.Request, 0)
-		_, found := object.GetAnnotations()["external-dns.alpha.kubernetes.io/hostname"]
-		if !found {
-			return reconcileReq
-		}
 
 		dnsList := &externaldnsv1alpha1.ExternalDNSList{}
 
 		if err := r.List(ctx, dnsList); err != nil {
-			klog.Info("failed to list the external dns resources: ", err.Error())
-			return nil
+			klog.Errorf("failed to list the external dns resources: %s", err.Error())
+			return reconcileReq
 		}
 
 		objKind := object.GetObjectKind().GroupVersionKind().Kind
@@ -83,6 +79,6 @@ func RegisterWatcher(ctx context.Context, crd *externaldnsv1alpha1.ExternalDNS, 
 		return reconcileReq
 	}
 
-	return watcher.Watch(getRuntimeObject(*crd.Spec.Source.Type.GroupVersionKind()), handler.EnqueueRequestsFromMapFunc(sourceHandler))
+	return watcher.Watch(getRuntimeObject(crd.Spec.Source.Type.GroupVersionKind()), handler.EnqueueRequestsFromMapFunc(sourceHandler))
 
 }

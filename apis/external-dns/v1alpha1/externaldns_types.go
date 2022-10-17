@@ -21,48 +21,165 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	kmapi "kmodules.xyz/client-go/api/v1"
+	"kubeops.dev/external-dns-operator/pkg/constant"
 	"time"
 )
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
+//Below are all the fields that are supported by the external dns as arguments.
+//ADDED list contain the fields that are added in the crd, and NOT ADDED are for the remaining arguments
+/*
 
-// kubebuilder:validation:Enum:=sync;upsert-only;create-only
-type Policy string
+   		ADDED
+   -------------------------------------------------------------
+   		APIServerURL                      string
+   		KubeConfig                        string
+   		RequestTimeout                    time.Duration
+		ContourLoadBalancerService        string
+   		Sources                           []string
+   		Namespace                         string
+   		AnnotationFilter                  string
+   		LabelFilter                       string
+   		FQDNTemplate                      string
+   		CombineFQDNAndAnnotation          bool
+   		IgnoreHostnameAnnotation          bool
+   		IgnoreIngressTLSSpec              bool
+   		IgnoreIngressRulesSpec            bool
+   		GatewayNamespace                  string
+   		GatewayLabelFilter                string
+   		Compatibility                     string
+   		PublishInternal                   bool
+   		PublishHostIP                     bool
+   		AlwaysPublishNotReadyAddresses    bool
+   		ConnectorSourceServer             string
+   		Provider                          string
+   		DomainFilter                      []string
+   		ExcludeDomains                    []string
+   		RegexDomainFilter                 *regexp.Regexp
+   		RegexDomainExclusion              *regexp.Regexp
+		ZoneIDFilter                      []string
+   		AWSZoneType                       string
+   		AWSZoneTagFilter                  []string
+   		AWSAssumeRole                     string
+   		AWSBatchChangeSize                int
+   		AWSBatchChangeInterval            time.Duration
+   		AWSEvaluateTargetHealth           bool
+   		AWSAPIRetries                     int
+   		AWSPreferCNAME                    bool
+   		AWSZoneCacheDuration              time.Duration
+   		AWSSDServiceCleanup               bool
+   		CloudflareProxied                 bool
+   		CloudflareZonesPerPage            int
+   		Policy                            string
+   		Registry                          string
+   		TXTOwnerID                        string
+   		TXTPrefix                         string
+   		TXTSuffix                         string
+   		TXTWildcardReplacement            string
+   		ManagedDNSRecordTypes             []string
+   		OCPRouterName                     string
 
-type ExternalDNSPhase string
-
-// kubebuilder:validation:Enum:=aws;cloudflare
-type Provider string
-
-func (p Policy) String() string {
-	return string(p)
-}
-
-func (p Provider) String() string {
-	return string(p)
-}
-
-const (
-	//Policy
-	PolicySync       Policy = "sync"
-	PolicyUpsertOnly Policy = "upsert-only"
-	PolicyCreateOnly Policy = "create-only"
-
-	//Provider
-	ProviderAWS        Provider = "aws"
-	providerCloudflare Provider = "cloudflare"
-
-	//ExternalDNSPhase
-	ExternalDNSPhaseCurrent    ExternalDNSPhase = "Current"
-	ExternalDNSPhaseFailed     ExternalDNSPhase = "Failed"
-	ExternalDNSPhaseInProgress ExternalDNSPhase = "InProgress"
-
-	//ConditionType
-	ConditionWatcher    = "CreateAndRegisterWatcher"
-	ConditionCredential = "CreateAndSetCredential"
-	ConditionPlan       = "CreateAndApplyPlan"
-)
+   	NOT ADDED
+   -------------------------------------------------------------
+   	DefaultTargets                    []string
+   	GlooNamespace                     string
+   	SkipperRouteGroupVersion          string
+   	GoogleProject                     string
+   	GoogleBatchChangeSize             int
+   	GoogleBatchChangeInterval         time.Duration
+   	GoogleZoneVisibility              string
+   	ZoneNameFilter                    []string
+   	AlibabaCloudConfigFile            string
+   	AlibabaCloudZoneType              string
+   	AzureConfigFile                   string
+   	AzureResourceGroup                string
+   	AzureSubscriptionID               string
+   	AzureUserAssignedIdentityClientID string
+   	BluecatDNSConfiguration           string
+   	BluecatConfigFile                 string
+   	BluecatDNSView                    string
+   	BluecatGatewayHost                string
+   	BluecatRootZone                   string
+   	BluecatDNSServerName              string
+   	BluecatDNSDeployType              string
+   	BluecatSkipTLSVerify              bool
+   	CoreDNSPrefix                     string
+   	RcodezeroTXTEncrypt               bool
+   	AkamaiServiceConsumerDomain       string
+   	AkamaiClientToken                 string
+   	AkamaiClientSecret                string
+   	AkamaiAccessToken                 string
+   	AkamaiEdgercPath                  string
+   	AkamaiEdgercSection               string
+   	InfobloxGridHost                  string
+   	InfobloxWapiPort                  int
+   	InfobloxWapiUsername              string
+   	InfobloxWapiPassword              string `secure:"yes"`
+   	InfobloxWapiVersion               string
+   	InfobloxSSLVerify                 bool
+   	InfobloxView                      string
+   	InfobloxMaxResults                int
+   	InfobloxFQDNRegEx                 string
+   	InfobloxCreatePTR                 bool
+   	InfobloxCacheDuration             int
+   	DynCustomerName                   string
+   	DynUsername                       string
+   	DynPassword                       string `secure:"yes"`
+   	DynMinTTLSeconds                  int
+   	OCIConfigFile                     string
+   	InMemoryZones                     []string
+   	OVHEndpoint                       string
+   	OVHApiRateLimit                   int
+   	PDNSServer                        string
+   	PDNSAPIKey                        string `secure:"yes"`
+   	PDNSTLSEnabled                    bool
+   	TLSCA                             string
+   	TLSClientCert                     string
+   	TLSClientCertKey                  string
+   	Interval                          time.Duration
+   	MinEventSyncInterval              time.Duration
+   	Once                              bool
+   	DryRun                            bool
+   	UpdateEvents                      bool
+   	LogFormat                         string
+   	MetricsAddress                    string
+   	LogLevel                          string
+   	TXTCacheInterval                  time.Duration
+   	ExoscaleEndpoint                  string
+   	ExoscaleAPIKey                    string `secure:"yes"`
+   	ExoscaleAPISecret                 string `secure:"yes"`
+   	CRDSourceAPIVersion               string
+   	CRDSourceKind                     string
+   	ServiceTypeFilter                 []string
+   	CFAPIEndpoint                     string
+   	CFUsername                        string
+   	CFPassword                        string
+   	RFC2136Host                       string
+   	RFC2136Port                       int
+   	RFC2136Zone                       string
+   	RFC2136Insecure                   bool
+   	RFC2136GSSTSIG                    bool
+   	RFC2136KerberosRealm              string
+   	RFC2136KerberosUsername           string
+   	RFC2136KerberosPassword           string `secure:"yes"`
+   	RFC2136TSIGKeyName                string
+   	RFC2136TSIGSecret                 string `secure:"yes"`
+   	RFC2136TSIGSecretAlg              string
+   	RFC2136TAXFR                      bool
+   	RFC2136MinTTL                     time.Duration
+   	RFC2136BatchChangeSize            int
+   	NS1Endpoint                       string
+   	NS1IgnoreSSL                      bool
+   	NS1MinTTLSeconds                  int
+   	TransIPAccountName                string
+   	TransIPPrivateKeyFile             string
+   	DigitalOceanAPIPageSize           int
+   	GoDaddyAPIKey                     string `secure:"yes"`
+   	GoDaddySecretKey                  string `secure:"yes"`
+   	GoDaddyTTL                        int64
+   	GoDaddyOTE                        bool
+   	IBMCloudProxied                   bool
+   	IBMCloudConfigFile                string
+*/
 
 type TypeInfo struct {
 	Group   string `json:"group"`
@@ -70,8 +187,8 @@ type TypeInfo struct {
 	Kind    string `json:"kind"`
 }
 
-func (t TypeInfo) GroupVersionKind() *schema.GroupVersionKind {
-	return &schema.GroupVersionKind{
+func (t TypeInfo) GroupVersionKind() schema.GroupVersionKind {
+	return schema.GroupVersionKind{
 		Group:   t.Group,
 		Version: t.Version,
 		Kind:    t.Kind,
@@ -238,10 +355,7 @@ type SourceConfig struct {
 
 // ExternalDNSSpec defines the desired state of ExternalDNS
 type ExternalDNSSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-
-	ProviderSecretRef core.LocalObjectReference `json:"providerSecretRef,omitempty"`
+	ProviderSecretRef core.LocalObjectReference `json:"providerSecretRef"`
 
 	// Request timeout when calling Kubernetes API. 0s means no timeout
 	// +optional
@@ -249,14 +363,11 @@ type ExternalDNSSpec struct {
 
 	// RELATED TO PROCESSING SOURCE
 	// The resource types that are queried for endpoints; List of source. ex: source, ingress, node etc.
+	// source:
+	//    group: ""
+	//    version: v1
+	//    kind: Service
 	Source SourceConfig `json:"source"`
-	// sources:
-	//    - group: ""
-	//      version: v1
-	//      kind: Service
-	//    - group: ""
-	//      version: v1
-	//      kind: Node `
 
 	// If source is openshift router then you can pass the ingress controller name. Based on this name the
 	// external dns will select the respective router from the route status and map that routeCanonicalHostname
@@ -288,7 +399,7 @@ type ExternalDNSSpec struct {
 
 	// RELATED TO PROVIDERS
 	// The DNS provider where the DNS records will be created. (AWS, Cloudflare)
-	Provider Provider `json:"provider"`
+	Provider constant.Provider `json:"provider"`
 
 	// Limit possible target zones by a domain suffix
 	// +optional
@@ -315,7 +426,7 @@ type ExternalDNSSpec struct {
 	//
 	// Modify how DNS records are synchronized between sources and providers (default: sync, options: sync, upsert-only, create-only)
 	// +optional
-	Policy *Policy `json:"policy,omitempty"`
+	Policy *constant.Policy `json:"policy,omitempty"`
 
 	//
 	// REGISTRY information
@@ -347,7 +458,7 @@ type ExternalDNSSpec struct {
 // ExternalDNSStatus defines the observed state of ExternalDNS
 type ExternalDNSStatus struct {
 	// +optional
-	Phase ExternalDNSPhase `json:"phase,omitempty"`
+	Phase constant.ExternalDNSPhase `json:"phase,omitempty"`
 
 	// +optional
 	ObservedGeneration int64 `json:"observedGeneration,omitempty"`

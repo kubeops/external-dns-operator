@@ -763,6 +763,9 @@ golang.org/x/tools/internal/typesinternal
 # gomodules.xyz/jsonpatch/v2 v2.2.0
 ## explicit; go 1.12
 gomodules.xyz/jsonpatch/v2
+# gomodules.xyz/pointer v0.1.0
+## explicit; go 1.15
+gomodules.xyz/pointer
 # google.golang.org/api v0.93.0
 ## explicit; go 1.15
 google.golang.org/api/dns/v1

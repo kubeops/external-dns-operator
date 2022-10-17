@@ -185,7 +185,7 @@ var defaultConfig = externaldns.Config{
 	IBMCloudConfigFile:          "/etc/kubernetes/ibmcloud.json",
 }
 
-func CreateAndApplyPlan(ctx context.Context, cfg *externaldns.Config, r registry.Registry, endpointSource source.Source) (*string, error) {
+func createAndApplyPlan(ctx context.Context, cfg *externaldns.Config, r registry.Registry, endpointSource source.Source) (string, error) {
 
 	var domainFilter endpoint.DomainFilter
 	if cfg.RegexDomainFilter.String() != "" {
@@ -196,7 +196,7 @@ func CreateAndApplyPlan(ctx context.Context, cfg *externaldns.Config, r registry
 
 	records, err := r.Records(ctx)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
 	missingRecords := r.MissingRecords()
@@ -204,7 +204,7 @@ func CreateAndApplyPlan(ctx context.Context, cfg *externaldns.Config, r registry
 	ctx = context.WithValue(ctx, provider.RecordsContextKey, records)
 	endpoints, err := endpointSource.Endpoints(ctx)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
 	endpoints = r.AdjustEndpoints(endpoints)
@@ -222,7 +222,7 @@ func CreateAndApplyPlan(ctx context.Context, cfg *externaldns.Config, r registry
 		if missingRecordsPlan.Changes.HasChanges() {
 			err = r.ApplyChanges(ctx, missingRecordsPlan.Changes)
 			if err != nil {
-				return nil, err
+				return "", err
 			}
 			klog.Info("all missing records are created")
 		}
@@ -246,8 +246,8 @@ func CreateAndApplyPlan(ctx context.Context, cfg *externaldns.Config, r registry
 	if pln.Changes.HasChanges() {
 		err = r.ApplyChanges(ctx, pln.Changes)
 		if err != nil {
-			klog.Info("failed to apply plan")
-			return nil, err
+			klog.Error("failed to apply plan")
+			return "", err
 		}
 		klog.Info("plan applied")
 		successMsg = "plan applied"
@@ -256,10 +256,10 @@ func CreateAndApplyPlan(ctx context.Context, cfg *externaldns.Config, r registry
 		successMsg = "all records are already up to date"
 	}
 
-	return &successMsg, nil
+	return successMsg, nil
 }
 
-func ConvertCRDtoCfg(crd externaldnsv1alpha1.ExternalDNS) (*externaldns.Config, error) {
+func convertEDNSObjectToCfg(crd externaldnsv1alpha1.ExternalDNS) (*externaldns.Config, error) {
 
 	// Create a config file for single record
 	c := defaultConfig
@@ -275,18 +275,6 @@ func ConvertCRDtoCfg(crd externaldnsv1alpha1.ExternalDNS) (*externaldns.Config, 
 	s := crd.Spec
 
 	//SOURCE
-
-	//knd := s.Source.Type.Kind
-	//if knd == "Node" && s.Source.Node == nil {
-	//	return nil, errors.New("missing source info")
-	//}
-	//if knd == "Ingress" && s.Source.Ingress == nil {
-	//	return nil, errors.New("missing source info")
-	//}
-	//if knd == "Service" && s.Source.Service == nil {
-	//	return nil, errors.New("missing source info")
-	//}
-
 	var sources []string
 	sources = append(sources, strings.ToLower(s.Source.Type.Kind))
 	// sources[] must contain strings that are lower cased
@@ -474,7 +462,7 @@ func ConvertCRDtoCfg(crd externaldnsv1alpha1.ExternalDNS) (*externaldns.Config, 
 	return &c, nil
 }
 
-func CreateEndpointsSource(ctx context.Context, cfg *externaldns.Config) (source.Source, error) {
+func createEndpointsSource(ctx context.Context, cfg *externaldns.Config) (source.Source, error) {
 
 	labelSelector, err := labels.Parse(cfg.LabelFilter)
 	if err != nil {
@@ -527,7 +515,7 @@ func CreateEndpointsSource(ctx context.Context, cfg *externaldns.Config) (source
 		}(),
 	}, cfg.Sources, sourceCfg)
 	if err != nil {
-		klog.Info(err.Error())
+		klog.Error("failed to get the source")
 		return nil, err
 	}
 
@@ -537,7 +525,7 @@ func CreateEndpointsSource(ctx context.Context, cfg *externaldns.Config) (source
 	return endpointsSource, nil
 }
 
-func CreateProviderFromCfg(ctx context.Context, cfg *externaldns.Config, endpointsSource source.Source) (*provider.Provider, error) {
+func createProviderFromCfg(ctx context.Context, cfg *externaldns.Config, endpointsSource source.Source) (*provider.Provider, error) {
 	var p provider.Provider
 	var err error
 
@@ -724,7 +712,7 @@ func CreateProviderFromCfg(ctx context.Context, cfg *externaldns.Config, endpoin
 	return &p, err
 }
 
-func CreateRegistry(cfg *externaldns.Config, p provider.Provider) (registry.Registry, error) {
+func createRegistry(cfg *externaldns.Config, p provider.Provider) (registry.Registry, error) {
 
 	var r registry.Registry
 	var err error
@@ -743,191 +731,37 @@ func CreateRegistry(cfg *externaldns.Config, p provider.Provider) (registry.Regi
 	return r, err
 }
 
-func MakePlan(edns *externaldnsv1alpha1.ExternalDNS, ctx context.Context) (*string, error) {
+func SetDNSRecords(edns *externaldnsv1alpha1.ExternalDNS, ctx context.Context) (string, error) {
 
-	cfg, err := ConvertCRDtoCfg(*edns)
+	cfg, err := convertEDNSObjectToCfg(*edns)
 	if err != nil {
-		klog.Info("failed to convert crd into cfg.", err.Error())
-		return nil, err
+		klog.Error("failed to convert crd into cfg.", err.Error())
+		return "", err
 	}
-	endpointsSource, err := CreateEndpointsSource(ctx, cfg)
+	endpointsSource, err := createEndpointsSource(ctx, cfg)
 	if err != nil {
-		klog.Info("failed to create endpoints source.", err.Error())
-		return nil, err
-	}
-
-	pvdr, err := CreateProviderFromCfg(ctx, cfg, endpointsSource)
-	if err != nil {
-		klog.Info("failed to create provider.", err.Error())
-		return nil, err
+		klog.Error("failed to create endpoints source.", err.Error())
+		return "", err
 	}
 
-	reg, err := CreateRegistry(cfg, *pvdr)
+	pvdr, err := createProviderFromCfg(ctx, cfg, endpointsSource)
 	if err != nil {
-		klog.Infof("failed to create Registry.", err.Error())
-		return nil, err
+		klog.Error("failed to create provider.", err.Error())
+		return "", err
 	}
 
-	var successMsg *string
-	successMsg, err = CreateAndApplyPlan(ctx, cfg, reg, endpointsSource)
+	reg, err := createRegistry(cfg, *pvdr)
 	if err != nil {
-		klog.Info("failed to create and apply plan.", err.Error())
-		return nil, err
+		klog.Errorf("failed to create Registry.", err.Error())
+		return "", err
+	}
+
+	var successMsg string
+	successMsg, err = createAndApplyPlan(ctx, cfg, reg, endpointsSource)
+	if err != nil {
+		klog.Errorf("failed to create and apply plan.", err.Error())
+		return "", err
 	}
 
 	return successMsg, nil
 }
-
-/*
-		APIServerURL                      string
-		KubeConfig                        string
-		RequestTimeout                    time.Duration
-	DefaultTargets                    []string
-		ContourLoadBalancerService        string
-	GlooNamespace                     string
-	SkipperRouteGroupVersion          string
-		Sources                           []string
-		Namespace                         string
-		AnnotationFilter                  string
-		LabelFilter                       string
-		FQDNTemplate                      string
-		CombineFQDNAndAnnotation          bool
-		IgnoreHostnameAnnotation          bool
-		IgnoreIngressTLSSpec              bool
-		IgnoreIngressRulesSpec            bool
-		GatewayNamespace                  string
-		GatewayLabelFilter                string
-		Compatibility                     string
-		PublishInternal                   bool
-		PublishHostIP                     bool
-		AlwaysPublishNotReadyAddresses    bool
-		ConnectorSourceServer             string
-		Provider                          string
-	GoogleProject                     string
-	GoogleBatchChangeSize             int
-	GoogleBatchChangeInterval         time.Duration
-	GoogleZoneVisibility              string
-		DomainFilter                      []string
-		ExcludeDomains                    []string
-		RegexDomainFilter                 *regexp.Regexp
-		RegexDomainExclusion              *regexp.Regexp
-	ZoneNameFilter                    []string
-		ZoneIDFilter                      []string
-	AlibabaCloudConfigFile            string
-	AlibabaCloudZoneType              string
-		AWSZoneType                       string
-		AWSZoneTagFilter                  []string
-		AWSAssumeRole                     string
-		AWSBatchChangeSize                int
-		AWSBatchChangeInterval            time.Duration
-		AWSEvaluateTargetHealth           bool
-		AWSAPIRetries                     int
-		AWSPreferCNAME                    bool
-		AWSZoneCacheDuration              time.Duration
-		AWSSDServiceCleanup               bool
-	AzureConfigFile                   string
-	AzureResourceGroup                string
-	AzureSubscriptionID               string
-	AzureUserAssignedIdentityClientID string
-	BluecatDNSConfiguration           string
-	BluecatConfigFile                 string
-	BluecatDNSView                    string
-	BluecatGatewayHost                string
-	BluecatRootZone                   string
-	BluecatDNSServerName              string
-	BluecatDNSDeployType              string
-	BluecatSkipTLSVerify              bool
-		CloudflareProxied                 bool
-		CloudflareZonesPerPage            int
-	CoreDNSPrefix                     string
-	RcodezeroTXTEncrypt               bool
-	AkamaiServiceConsumerDomain       string
-	AkamaiClientToken                 string
-	AkamaiClientSecret                string
-	AkamaiAccessToken                 string
-	AkamaiEdgercPath                  string
-	AkamaiEdgercSection               string
-	InfobloxGridHost                  string
-	InfobloxWapiPort                  int
-	InfobloxWapiUsername              string
-	InfobloxWapiPassword              string `secure:"yes"`
-	InfobloxWapiVersion               string
-	InfobloxSSLVerify                 bool
-	InfobloxView                      string
-	InfobloxMaxResults                int
-	InfobloxFQDNRegEx                 string
-	InfobloxCreatePTR                 bool
-	InfobloxCacheDuration             int
-	DynCustomerName                   string
-	DynUsername                       string
-	DynPassword                       string `secure:"yes"`
-	DynMinTTLSeconds                  int
-	OCIConfigFile                     string
-	InMemoryZones                     []string
-	OVHEndpoint                       string
-	OVHApiRateLimit                   int
-	PDNSServer                        string
-	PDNSAPIKey                        string `secure:"yes"`
-	PDNSTLSEnabled                    bool
-	TLSCA                             string
-	TLSClientCert                     string
-	TLSClientCertKey                  string
-		Policy                            string
-		Registry                          string
-		TXTOwnerID                        string
-		TXTPrefix                         string
-		TXTSuffix                         string
-	Interval                          time.Duration
-	MinEventSyncInterval              time.Duration
-	Once                              bool
-	DryRun                            bool
-	UpdateEvents                      bool
-	LogFormat                         string
-	MetricsAddress                    string
-	LogLevel                          string
-	TXTCacheInterval                  time.Duration
-		TXTWildcardReplacement            string
-	ExoscaleEndpoint                  string
-	ExoscaleAPIKey                    string `secure:"yes"`
-	ExoscaleAPISecret                 string `secure:"yes"`
-	CRDSourceAPIVersion               string
-	CRDSourceKind                     string
-	ServiceTypeFilter                 []string
-
-	CFAPIEndpoint                     string
-	CFUsername                        string
-	CFPassword                        string
-
-	RFC2136Host                       string
-	RFC2136Port                       int
-	RFC2136Zone                       string
-	RFC2136Insecure                   bool
-	RFC2136GSSTSIG                    bool
-	RFC2136KerberosRealm              string
-	RFC2136KerberosUsername           string
-	RFC2136KerberosPassword           string `secure:"yes"`
-	RFC2136TSIGKeyName                string
-	RFC2136TSIGSecret                 string `secure:"yes"`
-	RFC2136TSIGSecretAlg              string
-	RFC2136TAXFR                      bool
-	RFC2136MinTTL                     time.Duration
-	RFC2136BatchChangeSize            int
-	NS1Endpoint                       string
-	NS1IgnoreSSL                      bool
-	NS1MinTTLSeconds                  int
-	TransIPAccountName                string
-	TransIPPrivateKeyFile             string
-	DigitalOceanAPIPageSize           int
-		ManagedDNSRecordTypes             []string
-	GoDaddyAPIKey                     string `secure:"yes"`
-	GoDaddySecretKey                  string `secure:"yes"`
-	GoDaddyTTL                        int64
-	GoDaddyOTE                        bool
-		OCPRouterName                     string
-	IBMCloudProxied                   bool
-	IBMCloudConfigFile                string
-
-cfg.Registry -> spec.Registry.TypeInfo
-cfg.Provider -> spec.Provider.Name
-cfg.Sources -> ... SourceInfo.Names
-*/

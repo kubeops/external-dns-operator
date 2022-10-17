@@ -2,22 +2,18 @@ package credentials
 
 import (
 	"fmt"
-	v1 "k8s.io/api/core/v1"
+	core "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog/v2"
 	"os"
 )
 
-func setEnvVar(envVarName string, value string) error {
-	return os.Setenv(envVarName, value)
-}
+func setAWSCredential(secret *core.Secret, endsKey types.NamespacedName) error {
+	fileName := fmt.Sprintf("%s-%s-credential", endsKey.Namespace, endsKey.Name)
 
-func setAWSCredential(secret *v1.Secret, key types.NamespacedName) error {
-	fileName := fmt.Sprintf(key.Namespace + "-" + key.Name + "-credential")
-
-	////-------------------------------------------------------------------- Remove before deploy
+	////------------------------------------------------------------------------------------------------ Remove before deploy
 	//filePath := fmt.Sprintf("/home/rasel/Desktop/" + fileName)
-	filePath := fmt.Sprintf("/tmp/" + fileName)
+	filePath := fmt.Sprintf("/tmp/%s", fileName)
 	file, err := os.Create(filePath)
 	if err != nil {
 		return err
@@ -30,9 +26,9 @@ func setAWSCredential(secret *v1.Secret, key types.NamespacedName) error {
 		return err
 	}
 
-	err = setEnvVar("AWS_SHARED_CREDENTIALS_FILE", filePath)
+	err = os.Setenv("AWS_SHARED_CREDENTIALS_FILE", filePath)
 	if err != nil {
-		klog.Info("failed to set the environment variables")
+		klog.Error("failed to set the environment variables")
 		return err
 	}
 	return nil
