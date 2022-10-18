@@ -174,7 +174,7 @@ spec:
               source:
                 description: 'RELATED TO PROCESSING SOURCE The resource types that
                   are queried for endpoints; List of source. ex: source, ingress,
-                  node etc.'
+                  node etc. source: group: "" version: v1 kind: Service'
                 properties:
                   ingress:
                     properties:
@@ -316,6 +316,7 @@ spec:
                 type: array
             required:
             - provider
+            - providerSecretRef
             - source
             type: object
           status:

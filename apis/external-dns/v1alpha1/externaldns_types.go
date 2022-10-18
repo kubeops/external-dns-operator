@@ -21,14 +21,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	kmapi "kmodules.xyz/client-go/api/v1"
-	"kubeops.dev/external-dns-operator/pkg/constant"
 	"time"
 )
 
 //Below are all the fields that are supported by the external dns as arguments.
 //ADDED list contain the fields that are added in the crd, and NOT ADDED are for the remaining arguments
 /*
-
    		ADDED
    -------------------------------------------------------------
    		APIServerURL                      string
@@ -399,7 +397,7 @@ type ExternalDNSSpec struct {
 
 	// RELATED TO PROVIDERS
 	// The DNS provider where the DNS records will be created. (AWS, Cloudflare)
-	Provider constant.Provider `json:"provider"`
+	Provider Provider `json:"provider"`
 
 	// Limit possible target zones by a domain suffix
 	// +optional
@@ -426,7 +424,7 @@ type ExternalDNSSpec struct {
 	//
 	// Modify how DNS records are synchronized between sources and providers (default: sync, options: sync, upsert-only, create-only)
 	// +optional
-	Policy *constant.Policy `json:"policy,omitempty"`
+	Policy *Policy `json:"policy,omitempty"`
 
 	//
 	// REGISTRY information
@@ -458,7 +456,7 @@ type ExternalDNSSpec struct {
 // ExternalDNSStatus defines the observed state of ExternalDNS
 type ExternalDNSStatus struct {
 	// +optional
-	Phase constant.ExternalDNSPhase `json:"phase,omitempty"`
+	Phase ExternalDNSPhase `json:"phase,omitempty"`
 
 	// +optional
 	ObservedGeneration int64 `json:"observedGeneration,omitempty"`

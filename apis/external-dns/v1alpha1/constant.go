@@ -1,4 +1,4 @@
-package constant
+package v1alpha1
 
 // kubebuilder:validation:Enum:=sync;upsert-only;create-only
 type Policy string
@@ -39,6 +39,6 @@ func (p Provider) String() string {
 const (
 	//ConditionType
 	CreateAndRegisterWatcher = "CreateAndRegisterWatcher"
-	CreateAndSetCredential   = "CreateAndSetCredential"
+	GetProviderSecret        = "GetProviderSecret"
 	CreateAndApplyPlan       = "CreateAndApplyPlan"
 )

@@ -11,8 +11,6 @@ import (
 func setAWSCredential(secret *core.Secret, endsKey types.NamespacedName) error {
 	fileName := fmt.Sprintf("%s-%s-credential", endsKey.Namespace, endsKey.Name)
 
-	////------------------------------------------------------------------------------------------------ Remove before deploy
-	//filePath := fmt.Sprintf("/home/rasel/Desktop/" + fileName)
 	filePath := fmt.Sprintf("/tmp/%s", fileName)
 	file, err := os.Create(filePath)
 	if err != nil {
