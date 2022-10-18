@@ -26,6 +26,7 @@ import (
 
 //Below are all the fields that are supported by the external dns as arguments.
 //ADDED list contain the fields that are added in the crd, and NOT ADDED are for the remaining arguments
+//Ref: https://github.com/kubernetes-sigs/external-dns/blob/master/pkg/apis/externaldns/types.go
 /*
    		ADDED
    -------------------------------------------------------------
@@ -179,6 +180,7 @@ import (
    	IBMCloudConfigFile                string
 */
 
+// TypeInfo is for source type, contains the group,version,kind information of the source
 type TypeInfo struct {
 	Group   string `json:"group"`
 	Version string `json:"version"`
@@ -339,20 +341,35 @@ type NodeConfig struct {
 }
 
 type SourceConfig struct {
+	// TypeInfo contains the source type of the external dns
+	// example:
+	// type:
+	//	 group:
+	//	 version:
+	// 	 kind:
 	Type TypeInfo `json:"type"`
 
+	// one of the below field is mandatory, according to the kind given in type info
+
+	// For source type Node
 	// +optional
 	Node *NodeConfig `json:"node"`
 
+	// For source type Service
 	// +optional
 	Service *ServiceConfig `json:"service"`
 
+	// For source type Ingress
 	// +optional
 	Ingress *IngressConfig `json:"ingress"`
 }
 
 // ExternalDNSSpec defines the desired state of ExternalDNS
 type ExternalDNSSpec struct {
+	// ProviderSecretRef contains the name of the provider secret. The secret information may differ with respect to provide
+	// example:
+	// providerSecretRef:
+	//		name: my-secret
 	ProviderSecretRef core.LocalObjectReference `json:"providerSecretRef"`
 
 	// Request timeout when calling Kubernetes API. 0s means no timeout
@@ -455,12 +472,15 @@ type ExternalDNSSpec struct {
 
 // ExternalDNSStatus defines the observed state of ExternalDNS
 type ExternalDNSStatus struct {
+	// Phase indicates the current state of the controller (ex: Failed,InProgress,Current)
 	// +optional
 	Phase ExternalDNSPhase `json:"phase,omitempty"`
 
+	// ObservedGeneration indicates the latest generation that successfully reconciled
 	// +optional
 	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
 
+	// Conditions describe the current condition of the CRD
 	// +optional
 	Conditions []kmapi.Condition `json:"conditions,omitempty"`
 }

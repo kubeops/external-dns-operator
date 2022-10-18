@@ -44,12 +44,16 @@ type ExternalDNSReconciler struct {
 	watcher *informers.ObjectTracker
 }
 
-func (r *ExternalDNSReconciler) GetSecret(ctx context.Context, key types.NamespacedName) (*core.Secret, error) {
+func (r *ExternalDNSReconciler) getSecret(ctx context.Context, key types.NamespacedName) (*core.Secret, error) {
 	secret := &core.Secret{}
 	if err := r.Get(ctx, key, secret); err != nil {
 		return nil, err
 	}
 	return secret, nil
+}
+
+func (r *ExternalDNSReconciler) updateEdnsStatus(ctx context.Context, err error, conditionType string, conditionState bool, phase externaldnsv1alpha1.ExternalDNSPhase) error {
+
 }
 
 func (r *ExternalDNSReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
@@ -72,7 +76,7 @@ func (r *ExternalDNSReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		})
 		if patchErr != nil {
 			klog.Error("failed to patch status")
-			return ctrl.Result{}, nil
+			return ctrl.Result{}, patchErr
 		}
 	}
 
@@ -85,10 +89,6 @@ func (r *ExternalDNSReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			in.Status.Conditions = kmapi.SetCondition(in.Status.Conditions, kmapi.NewCondition(externaldnsv1alpha1.CreateAndRegisterWatcher, err.Error(), in.Generation, false))
 			return in
 		})
-		if patchErr != nil {
-			klog.Error("failed to patch status")
-			return ctrl.Result{}, patchErr
-		}
 		return ctrl.Result{}, patchErr
 	}
 
@@ -104,7 +104,7 @@ func (r *ExternalDNSReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	klog.Info("watcher registered")
 
 	// create and set provider secret credentials and environment variables
-	secret, err := r.GetSecret(ctx, types.NamespacedName{
+	secret, err := r.getSecret(ctx, types.NamespacedName{
 		Namespace: edns.Namespace,
 		Name:      edns.Spec.ProviderSecretRef.Name})
 	if err != nil {
@@ -166,14 +166,15 @@ func (r *ExternalDNSReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		return ctrl.Result{}, patchErr
 	}
 
-	if _, _, e := kmc.PatchStatus(ctx, r.Client, edns, func(obj client.Object) client.Object {
+	if _, _, patchErr := kmc.PatchStatus(ctx, r.Client, edns, func(obj client.Object) client.Object {
 		in := obj.(*externaldnsv1alpha1.ExternalDNS)
 		in.Status.Phase = externaldnsv1alpha1.ExternalDNSPhaseCurrent
 		in.Status.Conditions = kmapi.SetCondition(in.Status.Conditions, kmapi.NewCondition(externaldnsv1alpha1.CreateAndApplyPlan, successMsg, in.Generation, true))
 		in.Status.ObservedGeneration = in.Generation
 		return in
-	}); e != nil {
+	}); patchErr != nil {
 		klog.Error("failed to patch status")
+		return ctrl.Result{}, patchErr
 	}
 
 	return ctrl.Result{}, nil
