@@ -152,8 +152,9 @@ spec:
                   will be created. (AWS, Cloudflare)
                 type: string
               providerSecretRef:
-                description: LocalObjectReference contains enough information to let
-                  you locate the referenced object inside the same namespace.
+                description: 'ProviderSecretRef contains the name of the provider
+                  secret. The secret information may differ with respect to provide
+                  example: providerSecretRef: name: my-secret'
                 properties:
                   name:
                     description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
@@ -177,6 +178,7 @@ spec:
                   node etc. source: group: "" version: v1 kind: Service'
                 properties:
                   ingress:
+                    description: For source type Ingress
                     properties:
                       annotationFilter:
                         description: Filter sources managed by external-dns via label
@@ -213,6 +215,7 @@ spec:
                         type: string
                     type: object
                   node:
+                    description: For source type Node
                     properties:
                       annotationFilter:
                         description: Filter sources managed by external-dns via label
@@ -225,6 +228,7 @@ spec:
                         type: string
                     type: object
                   service:
+                    description: For source type Service
                     properties:
                       alwaysPublishNotReadyAddresses:
                         description: Always publish also not ready addresses for headless
@@ -274,6 +278,8 @@ spec:
                         type: array
                     type: object
                   type:
+                    description: 'TypeInfo contains the source type of the external
+                      dns example: type: group: version: kind:'
                     properties:
                       group:
                         type: string
@@ -323,6 +329,7 @@ spec:
             description: ExternalDNSStatus defines the observed state of ExternalDNS
             properties:
               conditions:
+                description: Conditions describe the current condition of the CRD
                 items:
                   properties:
                     lastTransitionTime:
@@ -369,9 +376,13 @@ spec:
                   type: object
                 type: array
               observedGeneration:
+                description: ObservedGeneration indicates the latest generation that
+                  successfully reconciled
                 format: int64
                 type: integer
               phase:
+                description: 'Phase indicates the current state of the controller
+                  (ex: Failed,InProgress,Current)'
                 type: string
             type: object
         type: object

@@ -52,14 +52,21 @@ func (r *ExternalDNSReconciler) getSecret(ctx context.Context, key types.Namespa
 	return secret, nil
 }
 
-func (r *ExternalDNSReconciler) updateEdnsStatus(ctx context.Context, err error, conditionType string, conditionState bool, phase externaldnsv1alpha1.ExternalDNSPhase) error {
-
+//update the status of the crd, conditionType is the reason of the condition
+func (r *ExternalDNSReconciler) updateEdnsStatus(ctx context.Context, edns *externaldnsv1alpha1.ExternalDNS, conditionType string, conditionMessage string, phase externaldnsv1alpha1.ExternalDNSPhase, conditionStatus bool) error {
+	_, _, patchErr := kmc.PatchStatus(ctx, r.Client, edns, func(obj client.Object) client.Object {
+		in := obj.(*externaldnsv1alpha1.ExternalDNS)
+		in.Status.Phase = phase
+		in.Status.Conditions = kmapi.SetCondition(in.Status.Conditions, kmapi.NewCondition(conditionType, conditionMessage, in.Generation, conditionStatus))
+		return in
+	})
+	return patchErr
 }
 
 func (r *ExternalDNSReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	_ = log.FromContext(ctx)
 
-	//get external dns
+	// GET EXTERNAL DNS
 	ednsKey := req.NamespacedName
 	edns := &externaldnsv1alpha1.ExternalDNS{}
 
@@ -69,124 +76,55 @@ func (r *ExternalDNSReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	edns = edns.DeepCopy()
 
 	if edns.Status.Phase != externaldnsv1alpha1.ExternalDNSPhaseFailed {
-		_, _, patchErr := kmc.PatchStatus(ctx, r.Client, edns, func(obj client.Object) client.Object {
-			in := obj.(*externaldnsv1alpha1.ExternalDNS)
-			in.Status.Phase = externaldnsv1alpha1.ExternalDNSPhaseInProgress
-			return in
-		})
-		if patchErr != nil {
-			klog.Error("failed to patch status")
+		if patchErr := r.updateEdnsStatus(ctx, edns, externaldnsv1alpha1.CreateAndRegisterWatcher, "", externaldnsv1alpha1.ExternalDNSPhaseInProgress, false); patchErr != nil {
 			return ctrl.Result{}, patchErr
 		}
 	}
 
-	// dynamic watcher
+	// REGISTER WATCHER
 	if err := informers.RegisterWatcher(ctx, edns, r.watcher, r.Client); err != nil {
-		klog.Error("failed to register watcher.", err.Error())
-		_, _, patchErr := kmc.PatchStatus(ctx, r.Client, edns, func(obj client.Object) client.Object {
-			in := obj.(*externaldnsv1alpha1.ExternalDNS)
-			in.Status.Phase = externaldnsv1alpha1.ExternalDNSPhaseFailed
-			in.Status.Conditions = kmapi.SetCondition(in.Status.Conditions, kmapi.NewCondition(externaldnsv1alpha1.CreateAndRegisterWatcher, err.Error(), in.Generation, false))
-			return in
-		})
+		return ctrl.Result{}, r.updateEdnsStatus(ctx, edns, externaldnsv1alpha1.CreateAndRegisterWatcher, err.Error(), externaldnsv1alpha1.ExternalDNSPhaseFailed, false)
+	}
+
+	if patchErr := r.updateEdnsStatus(ctx, edns, externaldnsv1alpha1.CreateAndRegisterWatcher, "Watcher Registered", edns.Status.Phase, true); patchErr != nil {
 		return ctrl.Result{}, patchErr
 	}
 
-	_, _, patchEr := kmc.PatchStatus(ctx, r.Client, edns, func(obj client.Object) client.Object {
-		in := obj.(*externaldnsv1alpha1.ExternalDNS)
-		in.Status.Conditions = kmapi.SetCondition(in.Status.Conditions, kmapi.NewCondition(externaldnsv1alpha1.CreateAndRegisterWatcher, "watcher registered", in.Generation, true))
-		return in
-	})
-	if patchEr != nil {
-		klog.Error("failed to patch status")
-		return ctrl.Result{}, patchEr
-	}
-	klog.Info("watcher registered")
-
+	// SECRET AND CREDENTIALS
 	// create and set provider secret credentials and environment variables
 	secret, err := r.getSecret(ctx, types.NamespacedName{
 		Namespace: edns.Namespace,
 		Name:      edns.Spec.ProviderSecretRef.Name})
 	if err != nil {
-		_, _, patchErr := kmc.PatchStatus(ctx, r.Client, edns, func(obj client.Object) client.Object {
-			in := obj.(*externaldnsv1alpha1.ExternalDNS)
-			in.Status.Phase = externaldnsv1alpha1.ExternalDNSPhaseFailed
-			in.Status.Conditions = kmapi.SetCondition(in.Status.Conditions, kmapi.NewCondition(externaldnsv1alpha1.GetProviderSecret, err.Error(), in.Generation, false))
-			return in
-		})
-		klog.Errorf("failed to get secret( %s ) ref , ", edns.Spec.ProviderSecretRef.Name, err.Error())
-		return ctrl.Result{}, patchErr
+		return ctrl.Result{}, r.updateEdnsStatus(ctx, edns, externaldnsv1alpha1.GetProviderSecret, err.Error(), externaldnsv1alpha1.ExternalDNSPhaseFailed, false)
 	}
 
 	err = credentials.SetCredential(secret, ednsKey, edns.Spec.Provider.String())
 	if err != nil {
+		return ctrl.Result{}, r.updateEdnsStatus(ctx, edns, externaldnsv1alpha1.GetProviderSecret, err.Error(), externaldnsv1alpha1.ExternalDNSPhaseFailed, false)
+	}
 
-		klog.Error("failed to create credentials. ")
-
-		_, _, patchErr := kmc.PatchStatus(ctx, r.Client, edns, func(obj client.Object) client.Object {
-			in := obj.(*externaldnsv1alpha1.ExternalDNS)
-			in.Status.Phase = externaldnsv1alpha1.ExternalDNSPhaseFailed
-			in.Status.Conditions = kmapi.SetCondition(in.Status.Conditions, kmapi.NewCondition(externaldnsv1alpha1.GetProviderSecret, err.Error(), in.Generation, false))
-			return in
-		})
-		if patchErr != nil {
-			klog.Error("failed to patch status")
-		}
-
+	if patchErr := r.updateEdnsStatus(ctx, edns, externaldnsv1alpha1.GetProviderSecret, "provider credential configured", edns.Status.Phase, true); patchErr != nil {
 		return ctrl.Result{}, patchErr
 	}
 
-	_, _, patchErr := kmc.PatchStatus(ctx, r.Client, edns, func(obj client.Object) client.Object {
-		in := obj.(*externaldnsv1alpha1.ExternalDNS)
-		in.Status.Conditions = kmapi.SetCondition(in.Status.Conditions, kmapi.NewCondition(externaldnsv1alpha1.GetProviderSecret, "provider credential configured", in.Generation, true))
-		return in
-	})
-	if patchErr != nil {
-		klog.Error("failed to patch status")
-		return ctrl.Result{}, patchErr
-	}
-
+	// DNS RECORD
 	//SetDNSRecords creates the dns record according to user information
 	//successMsg is used to identify whether the 'plan applied' or 'already up to date'
 	successMsg, err := plan.SetDNSRecords(edns, ctx)
 
 	if err != nil {
-		klog.Error("failed to create plan. ", err.Error())
-
-		_, _, patchErr = kmc.PatchStatus(ctx, r.Client, edns, func(obj client.Object) client.Object {
-			in := obj.(*externaldnsv1alpha1.ExternalDNS)
-			in.Status.Phase = externaldnsv1alpha1.ExternalDNSPhaseFailed
-			in.Status.Conditions = kmapi.SetCondition(in.Status.Conditions, kmapi.NewCondition(externaldnsv1alpha1.CreateAndApplyPlan, err.Error(), in.Generation, false))
-			return in
-		})
-		if patchErr != nil {
-			klog.Error("failed to create plan")
-		}
-
-		return ctrl.Result{}, patchErr
+		return ctrl.Result{}, r.updateEdnsStatus(ctx, edns, externaldnsv1alpha1.CreateAndApplyPlan, err.Error(), externaldnsv1alpha1.ExternalDNSPhaseFailed, false)
 	}
 
-	if _, _, patchErr := kmc.PatchStatus(ctx, r.Client, edns, func(obj client.Object) client.Object {
-		in := obj.(*externaldnsv1alpha1.ExternalDNS)
-		in.Status.Phase = externaldnsv1alpha1.ExternalDNSPhaseCurrent
-		in.Status.Conditions = kmapi.SetCondition(in.Status.Conditions, kmapi.NewCondition(externaldnsv1alpha1.CreateAndApplyPlan, successMsg, in.Generation, true))
-		in.Status.ObservedGeneration = in.Generation
-		return in
-	}); patchErr != nil {
-		klog.Error("failed to patch status")
-		return ctrl.Result{}, patchErr
-	}
-
-	return ctrl.Result{}, nil
+	return ctrl.Result{}, r.updateEdnsStatus(ctx, edns, externaldnsv1alpha1.CreateAndApplyPlan, successMsg, externaldnsv1alpha1.ExternalDNSPhaseCurrent, true)
 }
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *ExternalDNSReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	secretToEdns := handler.EnqueueRequestsFromMapFunc(func(object client.Object) []reconcile.Request {
 		reconcileReq := make([]reconcile.Request, 0)
-
 		ctx := context.TODO()
-
 		ednsList := &externaldnsv1alpha1.ExternalDNSList{}
 
 		if err := mgr.GetClient().List(ctx, ednsList); err != nil {

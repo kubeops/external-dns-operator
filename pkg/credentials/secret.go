@@ -14,7 +14,6 @@ func SetCredential(secret *v1.Secret, ednsKey types.NamespacedName, provider str
 		return setAWSCredential(secret, ednsKey)
 
 	case externaldnsv1alpha1.ProviderCloudflare.String():
-		// set environment variable
 		return setCloudflareCredentials(secret)
 
 	default:
