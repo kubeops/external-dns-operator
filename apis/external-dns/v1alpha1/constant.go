@@ -30,6 +30,7 @@ const (
 	//Provider
 	ProviderAWS        Provider = "aws"
 	ProviderCloudflare Provider = "cloudflare"
+	ProviderAzure      Provider = "azure"
 )
 
 func (p Provider) String() string {

@@ -8,6 +8,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/klog/v2"
 	externaldnsv1alpha1 "kubeops.dev/external-dns-operator/apis/external-dns/v1alpha1"
+	"kubeops.dev/external-dns-operator/pkg/credentials"
 	"log"
 	"regexp"
 	"sigs.k8s.io/external-dns/endpoint"
@@ -432,6 +433,24 @@ func convertEDNSObjectToCfg(crd externaldnsv1alpha1.ExternalDNS) (*externaldns.C
 
 		if cfl.ZonesPerPage != nil {
 			c.CloudflareZonesPerPage = *cfl.ZonesPerPage
+		}
+	}
+
+	// for azure provide
+	if s.Azure != nil {
+		az := s.Azure
+
+		// AzureConfigFile is only for Azure provider, not for Azure-Private-DNS
+		c.AzureConfigFile = credentials.AzureConfigPath
+
+		if az.SubscriptionId != nil {
+			c.AzureSubscriptionID = *az.SubscriptionId
+		}
+		if az.ResourceGroup != nil {
+			c.AzureResourceGroup = *az.ResourceGroup
+		}
+		if az.UserAssignedIdentityClientID != nil {
+			c.AzureUserAssignedIdentityClientID = *az.UserAssignedIdentityClientID
 		}
 	}
 

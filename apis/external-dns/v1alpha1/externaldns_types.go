@@ -248,6 +248,21 @@ type CloudflareProvider struct {
 	ZonesPerPage *int `json:"zonesPerPage,omitempty"`
 }
 
+type AzureProvider struct {
+
+	// When using the Azure provider, override the Azure resource group to use (required for azure-private-dns)
+	// +optional
+	ResourceGroup *string `json:"resourceGroup,omitempty"`
+
+	// When using the Azure provider, specify the Azure configuration file. (required for azure-private-dns)
+	// +optional
+	SubscriptionId *string `json:"subscriptionId,omitempty"`
+
+	// When using the Azure provider, override the client id of user assigned identity in config file
+	// +optional
+	UserAssignedIdentityClientID *string `json:"userAssignedIdentityClientID,omitempty"`
+}
+
 type ServiceConfig struct {
 	// Limit sources of endpoints to a specific namespace (default: all namespaces)
 	// +optional
@@ -435,6 +450,10 @@ type ExternalDNSSpec struct {
 	// Cloudflare provider information
 	// +optional
 	Cloudflare *CloudflareProvider `json:"cloudflare,omitempty"`
+
+	// Azure provider infomation
+	// +optional
+	Azure *AzureProvider `json:"azure,omitempty"`
 
 	//
 	//POLICY INFORMATION

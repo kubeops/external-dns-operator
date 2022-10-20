@@ -16,6 +16,9 @@ func SetCredential(secret *v1.Secret, ednsKey types.NamespacedName, provider str
 	case externaldnsv1alpha1.ProviderCloudflare.String():
 		return setCloudflareCredentials(secret)
 
+	case externaldnsv1alpha1.ProviderAzure.String():
+		return setAzureCredential(secret, ednsKey)
+
 	default:
 		return errors.New("unknown provider name")
 	}
