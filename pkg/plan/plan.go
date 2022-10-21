@@ -54,8 +54,9 @@ import (
 )
 
 var defaultConfig = externaldns.Config{
-	APIServerURL:                "",
-	KubeConfig:                  "",
+	APIServerURL: "",
+	//KubeConfig:                  "",
+	KubeConfig:                  "/home/rasel/Downloads/rasel-kubeconfig.yaml",
 	RequestTimeout:              time.Second * 30,
 	DefaultTargets:              []string{},
 	ContourLoadBalancerService:  "heptio-contour/contour",
@@ -260,7 +261,6 @@ func createAndApplyPlan(ctx context.Context, cfg *externaldns.Config, r registry
 
 func convertEDNSObjectToCfg(crd *externaldnsv1alpha1.ExternalDNS) (*externaldns.Config, error) {
 
-	// Create a config file for single record
 	c := defaultConfig
 
 	if crd.Namespace != "" {
@@ -436,11 +436,12 @@ func convertEDNSObjectToCfg(crd *externaldnsv1alpha1.ExternalDNS) (*externaldns.
 	}
 
 	// for azure provide
+	if s.Provider.String() == externaldnsv1alpha1.ProviderAzure.String() {
+		// hard-code assignment of AzureConfigFile path
+		c.AzureConfigFile = fmt.Sprintf("/tmp/%s-%s-credential", crd.Namespace, crd.Name)
+	}
 	if s.Azure != nil {
 		az := s.Azure
-
-		// AzureConfigFile is only for Azure provider, not for Azure-Private-DNS
-		c.AzureConfigFile = fmt.Sprintf("/tmp/%s-%s-credential")
 
 		if az.SubscriptionId != nil {
 			c.AzureSubscriptionID = *az.SubscriptionId
@@ -723,7 +724,7 @@ func createProviderFromCfg(ctx context.Context, cfg *externaldns.Config, endpoin
 		log.Fatalf("unknown dns provider: %s", cfg.Provider)
 	}
 	if err != nil {
-		err = errors.New(fmt.Sprintf("unknown dns provider: %s", cfg.Provider))
+		err = errors.New(fmt.Sprintf("fialed to create %s provider:", cfg.Provider))
 	}
 
 	return &p, err
@@ -776,7 +777,7 @@ func SetDNSRecords(edns *externaldnsv1alpha1.ExternalDNS, ctx context.Context) (
 	var successMsg string
 	successMsg, err = createAndApplyPlan(ctx, cfg, reg, endpointsSource)
 	if err != nil {
-		klog.Errorf("failed to create and apply plan.", err.Error())
+		klog.Errorf("failed to create and apply plan: %s", err.Error())
 		return "", err
 	}
 

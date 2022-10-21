@@ -92,6 +92,22 @@ spec:
                       this type. (support: public, private)'
                     type: string
                 type: object
+              azure:
+                description: Azure provider infomation
+                properties:
+                  resourceGroup:
+                    description: When using the Azure provider, override the Azure
+                      resource group to use (required for azure-private-dns)
+                    type: string
+                  subscriptionId:
+                    description: When using the Azure provider, specify the Azure
+                      configuration file. (required for azure-private-dns)
+                    type: string
+                  userAssignedIdentityClientID:
+                    description: When using the Azure provider, override the client
+                      id of user assigned identity in config file
+                    type: string
+                type: object
               cloudflare:
                 description: Cloudflare provider information
                 properties:
