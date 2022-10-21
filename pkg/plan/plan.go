@@ -8,7 +8,6 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/klog/v2"
 	externaldnsv1alpha1 "kubeops.dev/external-dns-operator/apis/external-dns/v1alpha1"
-	"kubeops.dev/external-dns-operator/pkg/credentials"
 	"log"
 	"regexp"
 	"sigs.k8s.io/external-dns/endpoint"
@@ -259,7 +258,7 @@ func createAndApplyPlan(ctx context.Context, cfg *externaldns.Config, r registry
 	return successMsg, nil
 }
 
-func convertEDNSObjectToCfg(crd externaldnsv1alpha1.ExternalDNS) (*externaldns.Config, error) {
+func convertEDNSObjectToCfg(crd *externaldnsv1alpha1.ExternalDNS) (*externaldns.Config, error) {
 
 	// Create a config file for single record
 	c := defaultConfig
@@ -441,7 +440,7 @@ func convertEDNSObjectToCfg(crd externaldnsv1alpha1.ExternalDNS) (*externaldns.C
 		az := s.Azure
 
 		// AzureConfigFile is only for Azure provider, not for Azure-Private-DNS
-		c.AzureConfigFile = credentials.AzureConfigPath
+		c.AzureConfigFile = fmt.Sprintf("/tmp/%s-%s-credential")
 
 		if az.SubscriptionId != nil {
 			c.AzureSubscriptionID = *az.SubscriptionId
@@ -751,7 +750,7 @@ func createRegistry(cfg *externaldns.Config, p provider.Provider) (registry.Regi
 
 func SetDNSRecords(edns *externaldnsv1alpha1.ExternalDNS, ctx context.Context) (string, error) {
 
-	cfg, err := convertEDNSObjectToCfg(*edns)
+	cfg, err := convertEDNSObjectToCfg(edns)
 	if err != nil {
 		klog.Error("failed to convert crd into cfg.", err.Error())
 		return "", err

@@ -52,12 +52,25 @@ func (r *ExternalDNSReconciler) getSecret(ctx context.Context, key types.Namespa
 	return secret, nil
 }
 
+func newConditionPtr(reason string, message string, generation int64, conditionStatus bool) *kmapi.Condition {
+	newCondition := kmapi.NewCondition(reason, message, generation, conditionStatus)
+	return &newCondition
+}
+
+func phasePointer(phase externaldnsv1alpha1.ExternalDNSPhase) *externaldnsv1alpha1.ExternalDNSPhase {
+	return &phase
+}
+
 //update the status of the crd, conditionType is the reason of the condition
-func (r *ExternalDNSReconciler) updateEdnsStatus(ctx context.Context, edns *externaldnsv1alpha1.ExternalDNS, conditionType string, conditionMessage string, phase externaldnsv1alpha1.ExternalDNSPhase, conditionStatus bool) error {
+func (r *ExternalDNSReconciler) updateEdnsStatus(ctx context.Context, edns *externaldnsv1alpha1.ExternalDNS, newCondition *kmapi.Condition, phase *externaldnsv1alpha1.ExternalDNSPhase) error {
 	_, _, patchErr := kmc.PatchStatus(ctx, r.Client, edns, func(obj client.Object) client.Object {
 		in := obj.(*externaldnsv1alpha1.ExternalDNS)
-		in.Status.Phase = phase
-		in.Status.Conditions = kmapi.SetCondition(in.Status.Conditions, kmapi.NewCondition(conditionType, conditionMessage, in.Generation, conditionStatus))
+		if phase != nil {
+			in.Status.Phase = *phase
+		}
+		if newCondition != nil {
+			in.Status.Conditions = kmapi.SetCondition(in.Status.Conditions, *newCondition)
+		}
 		return in
 	})
 	return patchErr
@@ -76,17 +89,17 @@ func (r *ExternalDNSReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	edns = edns.DeepCopy()
 
 	if edns.Status.Phase != externaldnsv1alpha1.ExternalDNSPhaseFailed {
-		if patchErr := r.updateEdnsStatus(ctx, edns, externaldnsv1alpha1.CreateAndRegisterWatcher, "", externaldnsv1alpha1.ExternalDNSPhaseInProgress, false); patchErr != nil {
+		if patchErr := r.updateEdnsStatus(ctx, edns, nil, phasePointer(externaldnsv1alpha1.ExternalDNSPhaseInProgress)); patchErr != nil {
 			return ctrl.Result{}, patchErr
 		}
 	}
 
 	// REGISTER WATCHER
 	if err := informers.RegisterWatcher(ctx, edns, r.watcher, r.Client); err != nil {
-		return ctrl.Result{}, r.updateEdnsStatus(ctx, edns, externaldnsv1alpha1.CreateAndRegisterWatcher, err.Error(), externaldnsv1alpha1.ExternalDNSPhaseFailed, false)
+		return ctrl.Result{}, r.updateEdnsStatus(ctx, edns, newConditionPtr(externaldnsv1alpha1.CreateAndRegisterWatcher, err.Error(), edns.Generation, false), phasePointer(externaldnsv1alpha1.ExternalDNSPhaseFailed))
 	}
 
-	if patchErr := r.updateEdnsStatus(ctx, edns, externaldnsv1alpha1.CreateAndRegisterWatcher, "Watcher Registered", edns.Status.Phase, true); patchErr != nil {
+	if patchErr := r.updateEdnsStatus(ctx, edns, newConditionPtr(externaldnsv1alpha1.CreateAndRegisterWatcher, "Watcher registered", edns.Generation, true), nil); patchErr != nil {
 		return ctrl.Result{}, patchErr
 	}
 
@@ -96,15 +109,15 @@ func (r *ExternalDNSReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		Namespace: edns.Namespace,
 		Name:      edns.Spec.ProviderSecretRef.Name})
 	if err != nil {
-		return ctrl.Result{}, r.updateEdnsStatus(ctx, edns, externaldnsv1alpha1.GetProviderSecret, err.Error(), externaldnsv1alpha1.ExternalDNSPhaseFailed, false)
+		return ctrl.Result{}, r.updateEdnsStatus(ctx, edns, newConditionPtr(externaldnsv1alpha1.GetProviderSecret, err.Error(), edns.Generation, false), phasePointer(externaldnsv1alpha1.ExternalDNSPhaseFailed))
 	}
 
 	err = credentials.SetCredential(secret, ednsKey, edns.Spec.Provider.String())
 	if err != nil {
-		return ctrl.Result{}, r.updateEdnsStatus(ctx, edns, externaldnsv1alpha1.GetProviderSecret, err.Error(), externaldnsv1alpha1.ExternalDNSPhaseFailed, false)
+		return ctrl.Result{}, r.updateEdnsStatus(ctx, edns, newConditionPtr(externaldnsv1alpha1.GetProviderSecret, err.Error(), edns.Generation, false), phasePointer(externaldnsv1alpha1.ExternalDNSPhaseFailed))
 	}
 
-	if patchErr := r.updateEdnsStatus(ctx, edns, externaldnsv1alpha1.GetProviderSecret, "provider credential configured", edns.Status.Phase, true); patchErr != nil {
+	if patchErr := r.updateEdnsStatus(ctx, edns, newConditionPtr(externaldnsv1alpha1.GetProviderSecret, "Provider credential configured", edns.Generation, true), nil); patchErr != nil {
 		return ctrl.Result{}, patchErr
 	}
 
@@ -114,10 +127,10 @@ func (r *ExternalDNSReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	successMsg, err := plan.SetDNSRecords(edns, ctx)
 
 	if err != nil {
-		return ctrl.Result{}, r.updateEdnsStatus(ctx, edns, externaldnsv1alpha1.CreateAndApplyPlan, err.Error(), externaldnsv1alpha1.ExternalDNSPhaseFailed, false)
+		return ctrl.Result{}, r.updateEdnsStatus(ctx, edns, newConditionPtr(externaldnsv1alpha1.CreateAndApplyPlan, err.Error(), edns.Generation, false), phasePointer(externaldnsv1alpha1.ExternalDNSPhaseFailed))
 	}
 
-	return ctrl.Result{}, r.updateEdnsStatus(ctx, edns, externaldnsv1alpha1.CreateAndApplyPlan, successMsg, externaldnsv1alpha1.ExternalDNSPhaseCurrent, true)
+	return ctrl.Result{}, r.updateEdnsStatus(ctx, edns, newConditionPtr(externaldnsv1alpha1.CreateAndApplyPlan, successMsg, edns.Generation, true), phasePointer(externaldnsv1alpha1.ExternalDNSPhaseCurrent))
 }
 
 // SetupWithManager sets up the controller with the Manager.
@@ -127,15 +140,14 @@ func (r *ExternalDNSReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		ctx := context.TODO()
 		ednsList := &externaldnsv1alpha1.ExternalDNSList{}
 
-		if err := mgr.GetClient().List(ctx, ednsList); err != nil {
+		if err := mgr.GetClient().List(ctx, ednsList, client.InNamespace(object.GetNamespace())); err != nil {
 			return reconcileReq
 		}
 
 		for _, edns := range ednsList.Items {
-			if edns.Namespace != object.GetNamespace() || edns.Spec.ProviderSecretRef.Name != object.GetName() {
-				continue
+			if edns.Spec.ProviderSecretRef.Name == object.GetName() {
+				reconcileReq = append(reconcileReq, reconcile.Request{NamespacedName: client.ObjectKey{Name: edns.Name, Namespace: edns.Namespace}})
 			}
-			reconcileReq = append(reconcileReq, reconcile.Request{NamespacedName: client.ObjectKey{Name: edns.Name, Namespace: edns.Namespace}})
 		}
 
 		return reconcileReq

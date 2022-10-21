@@ -7,8 +7,6 @@ import (
 	"os"
 )
 
-var AzureConfigPath string
-
 func setAzureCredential(secret *core.Secret, ednsKey types.NamespacedName) error {
 	fileName := fmt.Sprintf("%s-%s-credential", ednsKey.Namespace, ednsKey.Name)
 	filepath := fmt.Sprintf("/tmp/%s", fileName)
@@ -19,13 +17,11 @@ func setAzureCredential(secret *core.Secret, ednsKey types.NamespacedName) error
 	}
 	defer file.Close()
 
-	b := secret.Data["credentials"]
+	b := secret.Data["azure.json"]
 	_, err = file.Write(b)
 	if err != nil {
 		return err
 	}
-
-	AzureConfigPath = filepath
 
 	return nil
 }
