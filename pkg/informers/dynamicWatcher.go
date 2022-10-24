@@ -8,9 +8,12 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/klog/v2"
 	externaldnsv1alpha1 "kubeops.dev/external-dns-operator/apis/external-dns/v1alpha1"
+	"reflect"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 	"sync"
@@ -41,6 +44,38 @@ func (o *ObjectTracker) Watch(obj runtime.Object, handler handler.EventHandler) 
 	err := o.Controller.Watch(
 		&source.Kind{Type: u},
 		handler,
+		predicate.Funcs{UpdateFunc: func(e event.UpdateEvent) bool {
+			if e.ObjectOld.GetObjectKind().GroupVersionKind().Kind != "Node" {
+				return true
+			}
+
+			oldNode := e.ObjectOld.(*unstructured.Unstructured).DeepCopy()
+			newNode := e.ObjectNew.(*unstructured.Unstructured).DeepCopy()
+
+			oldAddr, found, err := unstructured.NestedSlice(oldNode.Object, "status", "addresses")
+			if err != nil {
+				klog.Error(err.Error())
+				return false
+			}
+
+			if !found {
+				klog.Error("can't found node addresses")
+				return false
+			}
+
+			newAddr, found, err := unstructured.NestedSlice(newNode.Object, "status", "addresses")
+			if err != nil {
+				klog.Error(err.Error())
+				return false
+			}
+
+			if !found {
+				klog.Error("can't found node addresses")
+				return false
+			}
+
+			return !reflect.DeepEqual(oldAddr, newAddr)
+		}},
 	)
 	if err != nil {
 		o.m.Delete(key)

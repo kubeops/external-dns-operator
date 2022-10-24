@@ -1,6 +1,7 @@
 package credentials
 
 import (
+	"errors"
 	"fmt"
 	core "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -8,7 +9,20 @@ import (
 	"os"
 )
 
+func validateAWSSecret(secret *core.Secret) error {
+	if secret.Data["credentials"] != nil {
+		return nil
+	} else {
+		return errors.New("invalid secret format(s)")
+	}
+}
+
 func setAWSCredential(secret *core.Secret, endsKey types.NamespacedName) error {
+
+	if err := validateAWSSecret(secret); err != nil {
+		return err
+	}
+
 	fileName := fmt.Sprintf("%s-%s-credential", endsKey.Namespace, endsKey.Name)
 
 	filePath := fmt.Sprintf("/tmp/%s", fileName)

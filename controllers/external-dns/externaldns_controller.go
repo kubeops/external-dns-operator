@@ -88,7 +88,7 @@ func (r *ExternalDNSReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	}
 	edns = edns.DeepCopy()
 
-	if edns.Status.Phase != externaldnsv1alpha1.ExternalDNSPhaseFailed {
+	if edns.Status.Phase == "" {
 		if patchErr := r.updateEdnsStatus(ctx, edns, nil, phasePointer(externaldnsv1alpha1.ExternalDNSPhaseInProgress)); patchErr != nil {
 			return ctrl.Result{}, patchErr
 		}
@@ -121,7 +121,7 @@ func (r *ExternalDNSReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		return ctrl.Result{}, patchErr
 	}
 
-	// DNS RECORD
+	// APPLY DNS RECORD
 	//SetDNSRecords creates the dns record according to user information
 	//successMsg is used to identify whether the 'plan applied' or 'already up to date'
 	successMsg, err := plan.SetDNSRecords(edns, ctx)
