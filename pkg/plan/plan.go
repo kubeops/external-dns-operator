@@ -54,9 +54,8 @@ import (
 )
 
 var defaultConfig = externaldns.Config{
-	APIServerURL: "",
-	//KubeConfig:                  "",
-	KubeConfig:                  "/home/rasel/Downloads/rasel-kubeconfig.yaml",
+	APIServerURL:                "",
+	KubeConfig:                  "",
 	RequestTimeout:              time.Second * 30,
 	DefaultTargets:              []string{},
 	ContourLoadBalancerService:  "heptio-contour/contour",
