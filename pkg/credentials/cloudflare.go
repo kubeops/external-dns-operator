@@ -6,20 +6,22 @@ import (
 	"os"
 )
 
-func validateCFSecret(secret *core.Secret) error {
-	if secret.Data["CF_API_TOKEN"] != nil {
-		return nil
-	} else if secret.Data["CF_API_KEY"] != nil && secret.Data["CF_API_EMAIL"] != nil {
-		return nil
+func validCFSecret(secret *core.Secret) bool {
+
+	if _, foundToken := secret.Data["CF_API_TOKEN"]; foundToken {
+		return true
 	} else {
-		return errors.New("invalid secret format(s)")
+		_, foundKey := secret.Data["CF_API_KEY"]
+		_, foundEmail := secret.Data["CF_API_EMAIL"]
+
+		return foundKey && foundEmail
 	}
 }
 
 func setCloudflareCredentials(secret *core.Secret) error {
 
-	if err := validateCFSecret(secret); err != nil {
-		return err
+	if !validCFSecret(secret) {
+		return errors.New("invalid cloudflare provider secret")
 	}
 
 	if string(secret.Data["CF_API_TOKEN"][:]) != "" {

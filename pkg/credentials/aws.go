@@ -9,18 +9,15 @@ import (
 	"os"
 )
 
-func validateAWSSecret(secret *core.Secret) error {
-	if secret.Data["credentials"] != nil {
-		return nil
-	} else {
-		return errors.New("invalid secret format(s)")
-	}
+func validAWSSecret(secret *core.Secret) bool {
+	_, found := secret.Data["credentials"]
+	return found
 }
 
 func setAWSCredential(secret *core.Secret, endsKey types.NamespacedName) error {
 
-	if err := validateAWSSecret(secret); err != nil {
-		return err
+	if !validAWSSecret(secret) {
+		return errors.New("invalid aws provider secret")
 	}
 
 	fileName := fmt.Sprintf("%s-%s-credential", endsKey.Namespace, endsKey.Name)
