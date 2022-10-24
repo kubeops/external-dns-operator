@@ -18,45 +18,160 @@ package externaldns
 
 import (
 	"context"
-
+	core "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/klog/v2"
+	kmapi "kmodules.xyz/client-go/api/v1"
+	kmc "kmodules.xyz/client-go/client"
+	externaldnsv1alpha1 "kubeops.dev/external-dns-operator/apis/external-dns/v1alpha1"
+	"kubeops.dev/external-dns-operator/pkg/credentials"
+	"kubeops.dev/external-dns-operator/pkg/informers"
+	"kubeops.dev/external-dns-operator/pkg/plan"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
-
-	externaldnsv1alpha1 "kubeops.dev/external-dns-operator/apis/external-dns/v1alpha1"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"sigs.k8s.io/controller-runtime/pkg/source"
+	"sync"
 )
+
+var mutex sync.Mutex
 
 // ExternalDNSReconciler reconciles a ExternalDNS object
 type ExternalDNSReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
+
+	watcher *informers.ObjectTracker
 }
 
-//+kubebuilder:rbac:groups=external-dns.appscode.com,resources=externaldns,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=external-dns.appscode.com,resources=externaldns/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=external-dns.appscode.com,resources=externaldns/finalizers,verbs=update
+func (r *ExternalDNSReconciler) getSecret(ctx context.Context, key types.NamespacedName) (*core.Secret, error) {
+	secret := &core.Secret{}
+	if err := r.Get(ctx, key, secret); err != nil {
+		return nil, err
+	}
+	return secret, nil
+}
 
-// Reconcile is part of the main kubernetes reconciliation loop which aims to
-// move the current state of the cluster closer to the desired state.
-// TODO(user): Modify the Reconcile function to compare the state specified by
-// the ExternalDNS object against the actual cluster state, and then
-// perform operations to make the cluster state reflect the state specified by
-// the user.
-//
-// For more details, check Reconcile and its Result here:
-// - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.12.2/pkg/reconcile
+func newConditionPtr(reason string, message string, generation int64, conditionStatus bool) *kmapi.Condition {
+	newCondition := kmapi.NewCondition(reason, message, generation, conditionStatus)
+	return &newCondition
+}
+
+func phasePointer(phase externaldnsv1alpha1.ExternalDNSPhase) *externaldnsv1alpha1.ExternalDNSPhase {
+	return &phase
+}
+
+//update the status of the crd, conditionType is the reason of the condition
+func (r *ExternalDNSReconciler) updateEdnsStatus(ctx context.Context, edns *externaldnsv1alpha1.ExternalDNS, newCondition *kmapi.Condition, phase *externaldnsv1alpha1.ExternalDNSPhase) error {
+	_, _, patchErr := kmc.PatchStatus(ctx, r.Client, edns, func(obj client.Object) client.Object {
+		in := obj.(*externaldnsv1alpha1.ExternalDNS)
+		if phase != nil {
+			in.Status.Phase = *phase
+		}
+		if newCondition != nil {
+			in.Status.Conditions = kmapi.SetCondition(in.Status.Conditions, *newCondition)
+		}
+		return in
+	})
+	return patchErr
+}
+
 func (r *ExternalDNSReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	_ = log.FromContext(ctx)
 
-	// TODO(user): your logic here
+	// GET EXTERNAL DNS
+	ednsKey := req.NamespacedName
+	edns := &externaldnsv1alpha1.ExternalDNS{}
 
-	return ctrl.Result{}, nil
+	if err := r.Get(ctx, ednsKey, edns); err != nil {
+		return ctrl.Result{}, client.IgnoreNotFound(err)
+	}
+	edns = edns.DeepCopy()
+
+	if edns.Status.Phase == "" {
+		if patchErr := r.updateEdnsStatus(ctx, edns, nil, phasePointer(externaldnsv1alpha1.ExternalDNSPhaseInProgress)); patchErr != nil {
+			return ctrl.Result{}, patchErr
+		}
+	}
+
+	// REGISTER WATCHER
+	if err := informers.RegisterWatcher(ctx, edns, r.watcher, r.Client); err != nil {
+		return ctrl.Result{}, r.updateEdnsStatus(ctx, edns, newConditionPtr(externaldnsv1alpha1.CreateAndRegisterWatcher, err.Error(), edns.Generation, false), phasePointer(externaldnsv1alpha1.ExternalDNSPhaseFailed))
+	}
+
+	if patchErr := r.updateEdnsStatus(ctx, edns, newConditionPtr(externaldnsv1alpha1.CreateAndRegisterWatcher, "Watcher registered", edns.Generation, true), nil); patchErr != nil {
+		return ctrl.Result{}, patchErr
+	}
+
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	// SECRET AND CREDENTIALS
+	// create and set provider secret credentials and environment variables
+	secret, err := r.getSecret(ctx, types.NamespacedName{
+		Namespace: edns.Namespace,
+		Name:      edns.Spec.ProviderSecretRef.Name})
+	if err != nil {
+		return ctrl.Result{}, r.updateEdnsStatus(ctx, edns, newConditionPtr(externaldnsv1alpha1.GetProviderSecret, err.Error(), edns.Generation, false), phasePointer(externaldnsv1alpha1.ExternalDNSPhaseFailed))
+	}
+
+	err = credentials.SetCredential(secret, ednsKey, edns.Spec.Provider.String())
+	if err != nil {
+		return ctrl.Result{}, r.updateEdnsStatus(ctx, edns, newConditionPtr(externaldnsv1alpha1.GetProviderSecret, err.Error(), edns.Generation, false), phasePointer(externaldnsv1alpha1.ExternalDNSPhaseFailed))
+	}
+
+	if patchErr := r.updateEdnsStatus(ctx, edns, newConditionPtr(externaldnsv1alpha1.GetProviderSecret, "Provider credential configured", edns.Generation, true), nil); patchErr != nil {
+		return ctrl.Result{}, patchErr
+	}
+
+	// APPLY DNS RECORD
+	//SetDNSRecords creates the dns record according to user information
+	//successMsg is used to identify whether the 'plan applied' or 'already up to date'
+	successMsg, err := plan.SetDNSRecords(edns, ctx)
+
+	if err != nil {
+		return ctrl.Result{}, r.updateEdnsStatus(ctx, edns, newConditionPtr(externaldnsv1alpha1.CreateAndApplyPlan, err.Error(), edns.Generation, false), phasePointer(externaldnsv1alpha1.ExternalDNSPhaseFailed))
+	}
+
+	return ctrl.Result{}, r.updateEdnsStatus(ctx, edns, newConditionPtr(externaldnsv1alpha1.CreateAndApplyPlan, successMsg, edns.Generation, true), phasePointer(externaldnsv1alpha1.ExternalDNSPhaseCurrent))
 }
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *ExternalDNSReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewControllerManagedBy(mgr).
+	secretToEdns := handler.EnqueueRequestsFromMapFunc(func(object client.Object) []reconcile.Request {
+		reconcileReq := make([]reconcile.Request, 0)
+		ctx := context.TODO()
+		ednsList := &externaldnsv1alpha1.ExternalDNSList{}
+
+		if err := mgr.GetClient().List(ctx, ednsList, client.InNamespace(object.GetNamespace())); err != nil {
+			return reconcileReq
+		}
+
+		for _, edns := range ednsList.Items {
+			if edns.Spec.ProviderSecretRef.Name == object.GetName() {
+				reconcileReq = append(reconcileReq, reconcile.Request{NamespacedName: client.ObjectKey{Name: edns.Name, Namespace: edns.Namespace}})
+			}
+		}
+
+		return reconcileReq
+	})
+
+	// for dynamic watcher
+	controller, err := ctrl.NewControllerManagedBy(mgr).
 		For(&externaldnsv1alpha1.ExternalDNS{}).
-		Complete(r)
+		Watches(&source.Kind{Type: &core.Secret{}}, secretToEdns).
+		Build(r)
+	if err != nil {
+		klog.Error("failed to build controller.", err.Error())
+		return err
+	}
+
+	r.watcher = &informers.ObjectTracker{
+		Controller: controller,
+	}
+
+	return nil
 }
