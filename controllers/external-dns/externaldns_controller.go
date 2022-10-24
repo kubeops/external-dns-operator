@@ -34,7 +34,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
+	"sync"
 )
+
+var mutex sync.Mutex
 
 // ExternalDNSReconciler reconciles a ExternalDNS object
 type ExternalDNSReconciler struct {
@@ -102,6 +105,9 @@ func (r *ExternalDNSReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	if patchErr := r.updateEdnsStatus(ctx, edns, newConditionPtr(externaldnsv1alpha1.CreateAndRegisterWatcher, "Watcher registered", edns.Generation, true), nil); patchErr != nil {
 		return ctrl.Result{}, patchErr
 	}
+
+	mutex.Lock()
+	defer mutex.Unlock()
 
 	// SECRET AND CREDENTIALS
 	// create and set provider secret credentials and environment variables
