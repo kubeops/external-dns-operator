@@ -76,23 +76,26 @@ import (
    		TXTWildcardReplacement            string
    		ManagedDNSRecordTypes             []string
    		OCPRouterName                     string
+		AzureResourceGroup                string
+		AzureSubscriptionID               string
+		AzureUserAssignedIdentityClientID string
+
+		GoogleProject                     string
+		GoogleBatchChangeSize             int
+		GoogleBatchChangeInterval         time.Duration
+		GoogleZoneVisibility              string
 
    	NOT ADDED
    -------------------------------------------------------------
    	DefaultTargets                    []string
    	GlooNamespace                     string
    	SkipperRouteGroupVersion          string
-   	GoogleProject                     string
-   	GoogleBatchChangeSize             int
-   	GoogleBatchChangeInterval         time.Duration
-   	GoogleZoneVisibility              string
+
    	ZoneNameFilter                    []string
    	AlibabaCloudConfigFile            string
    	AlibabaCloudZoneType              string
-   	AzureConfigFile                   string
-   	AzureResourceGroup                string
-   	AzureSubscriptionID               string
-   	AzureUserAssignedIdentityClientID string
+   		*AzureConfigFile                   string
+
    	BluecatDNSConfiguration           string
    	BluecatConfigFile                 string
    	BluecatDNSView                    string
@@ -261,6 +264,24 @@ type AzureProvider struct {
 	// When using the Azure provider, override the client id of user assigned identity in config file
 	// +optional
 	UserAssignedIdentityClientID *string `json:"userAssignedIdentityClientID,omitempty"`
+}
+
+type GoogleProvider struct {
+	// When using the Google provider, current project is auto-detected, when running on GCP. Specify other project with this. Must be specified when running outside GCP.
+	// +optional
+	Project *string `json:"project,omitempty"`
+
+	// When using the Google provider, set the maximum number of changes that will be applied in each batch
+	// +optional
+	BatchChangeSize *int `json:"batchChangeSize,omitempty"`
+
+	// When using the Google provider, set the interval between batch changes
+	// +optional
+	BatchChangeInterval *time.Duration `json:"batchChangeInterval,omitempty"`
+
+	// When using the Google provider, filter for zones with this visibility (optional, options: public, private)
+	// +optional
+	ZoneVisibility *string `json:"zoneVisibility,omitempty"`
 }
 
 type ServiceConfig struct {
@@ -443,6 +464,8 @@ type ExternalDNSSpec struct {
 	// +optional
 	ZoneIDFilter []string `json:"zoneIDFilter,omitempty"`
 
+	// One of below provider is required
+
 	// AWS provider information
 	// +optional
 	AWS *AWSProvider `json:"aws,omitempty"`
@@ -454,6 +477,10 @@ type ExternalDNSSpec struct {
 	// Azure provider infomation
 	// +optional
 	Azure *AzureProvider `json:"azure,omitempty"`
+
+	// Google provider
+	// +optional
+	Google *GoogleProvider `json:"google"`
 
 	//
 	//POLICY INFORMATION

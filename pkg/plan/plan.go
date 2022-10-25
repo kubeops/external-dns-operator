@@ -456,6 +456,26 @@ func convertEDNSObjectToCfg(crd *externaldnsv1alpha1.ExternalDNS) (*externaldns.
 		}
 	}
 
+	// for google dns provider
+	if s.Google != nil {
+		g := s.Google
+		if g.Project != nil {
+			c.GoogleProject = *g.Project
+		}
+
+		if g.BatchChangeSize != nil {
+			c.GoogleBatchChangeSize = *g.BatchChangeSize
+		}
+
+		if g.BatchChangeInterval != nil {
+			c.GoogleBatchChangeInterval = *g.BatchChangeInterval
+		}
+
+		if g.ZoneVisibility != nil {
+			c.GoogleZoneVisibility = *g.ZoneVisibility
+		}
+	}
+
 	// POLICY
 
 	if s.Policy != nil {
