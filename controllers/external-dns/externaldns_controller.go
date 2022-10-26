@@ -79,6 +79,16 @@ func (r *ExternalDNSReconciler) updateEdnsStatus(ctx context.Context, edns *exte
 	return patchErr
 }
 
+func (r ExternalDNSReconciler) patchDNSRecords(ctx context.Context, edns *externaldnsv1alpha1.ExternalDNS, dnsRecs []externaldnsv1alpha1.DNSRecord) error {
+	_, _, patchErr := kmc.PatchStatus(ctx, r.Client, edns, func(obj client.Object) client.Object {
+		in := obj.(*externaldnsv1alpha1.ExternalDNS)
+		in.Status.DNSRecords = dnsRecs
+		return in
+	})
+
+	return patchErr
+}
+
 func (r *ExternalDNSReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	_ = log.FromContext(ctx)
 
@@ -130,13 +140,17 @@ func (r *ExternalDNSReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	// APPLY DNS RECORD
 	//SetDNSRecords creates the dns record according to user information
 	//successMsg is used to identify whether the 'plan applied' or 'already up to date'
-	successMsg, err := plan.SetDNSRecords(edns, ctx)
-
+	dnsRecs, err := plan.SetDNSRecords(ctx, edns)
 	if err != nil {
 		return ctrl.Result{}, r.updateEdnsStatus(ctx, edns, newConditionPtr(externaldnsv1alpha1.CreateAndApplyPlan, err.Error(), edns.Generation, false), phasePointer(externaldnsv1alpha1.ExternalDNSPhaseFailed))
 	}
 
-	return ctrl.Result{}, r.updateEdnsStatus(ctx, edns, newConditionPtr(externaldnsv1alpha1.CreateAndApplyPlan, successMsg, edns.Generation, true), phasePointer(externaldnsv1alpha1.ExternalDNSPhaseCurrent))
+	err = r.patchDNSRecords(ctx, edns, dnsRecs)
+	if err != nil {
+		return ctrl.Result{}, r.updateEdnsStatus(ctx, edns, nil, phasePointer(externaldnsv1alpha1.ExternalDNSPhaseFailed))
+	}
+
+	return ctrl.Result{}, r.updateEdnsStatus(ctx, edns, newConditionPtr(externaldnsv1alpha1.CreateAndApplyPlan, "plan applied", edns.Generation, true), phasePointer(externaldnsv1alpha1.ExternalDNSPhaseCurrent))
 }
 
 // SetupWithManager sets up the controller with the Manager.

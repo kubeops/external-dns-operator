@@ -391,6 +391,19 @@ spec:
                   - type
                   type: object
                 type: array
+              dnsRecords:
+                description: DNSRecord is the list of records that this external dns
+                  operator registered
+                items:
+                  properties:
+                    name:
+                      description: dns name is the domain name for this record
+                      type: string
+                    target:
+                      description: target is the list of target address
+                      type: string
+                  type: object
+                type: array
               observedGeneration:
                 description: ObservedGeneration indicates the latest generation that
                   successfully reconciled
