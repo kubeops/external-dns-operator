@@ -489,6 +489,17 @@ type ExternalDNSSpec struct {
 	TXTWildcardReplacement *string `json:"txtWildcardReplacement,omitempty"`
 }
 
+// DNSRecord hold the DNS name and target address, if there are multiple target address then the addresses are joint by separator ';' between them (ex: 1:2:3:4;6:7:8:9)
+type DNSRecord struct {
+	// target is the list of target address
+	// +optional
+	Target string `json:"target,omitempty"`
+
+	// dns name is the domain name for this record
+	// +optional
+	Name string `json:"name,omitempty"`
+}
+
 // ExternalDNSStatus defines the observed state of ExternalDNS
 type ExternalDNSStatus struct {
 	// Phase indicates the current state of the controller (ex: Failed,InProgress,Current)
@@ -502,6 +513,10 @@ type ExternalDNSStatus struct {
 	// Conditions describe the current condition of the CRD
 	// +optional
 	Conditions []kmapi.Condition `json:"conditions,omitempty"`
+
+	// DNSRecord is the list of records that this external dns operator registered
+	// +optional
+	DNSRecords []DNSRecord `json:"dnsRecords,omitempty"`
 }
 
 //+kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.phase"
