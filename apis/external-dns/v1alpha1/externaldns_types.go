@@ -489,6 +489,7 @@ type ExternalDNSSpec struct {
 	TXTWildcardReplacement *string `json:"txtWildcardReplacement,omitempty"`
 }
 
+// DNSRecord hold the DNS name and target address, if there are multiple target address then the addresses are joint by separator ';' between them (ex: 1:2:3:4;6:7:8:9)
 type DNSRecord struct {
 	// target is the list of target address
 	// +optional
