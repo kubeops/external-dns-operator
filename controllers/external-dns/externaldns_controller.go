@@ -147,7 +147,7 @@ func (r *ExternalDNSReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 
 	err = r.patchDNSRecords(ctx, edns, dnsRecs)
 	if err != nil {
-		return ctrl.Result{}, r.updateEdnsStatus(ctx, edns, nil, phasePointer(externaldnsv1alpha1.ExternalDNSPhaseFailed))
+		return ctrl.Result{}, err
 	}
 
 	return ctrl.Result{}, r.updateEdnsStatus(ctx, edns, newConditionPtr(externaldnsv1alpha1.CreateAndApplyPlan, "plan applied", edns.Generation, true), phasePointer(externaldnsv1alpha1.ExternalDNSPhaseCurrent))
