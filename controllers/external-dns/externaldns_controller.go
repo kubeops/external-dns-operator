@@ -28,7 +28,6 @@ import (
 	"kubeops.dev/external-dns-operator/pkg/credentials"
 	"kubeops.dev/external-dns-operator/pkg/informers"
 	"kubeops.dev/external-dns-operator/pkg/plan"
-	"os"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -122,28 +121,14 @@ func (r *ExternalDNSReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 
 	// SECRET AND CREDENTIALS
 	// create and set provider secret credentials and environment variables
-	if edns.Spec.ProviderSecretRef != nil {
-
-		klog.Infof("provider secret reference: %s", edns.Spec.ProviderSecretRef)
-
-		secret, err := r.getSecret(ctx, types.NamespacedName{
-			Namespace: edns.Namespace,
-			Name:      edns.Spec.ProviderSecretRef.Name})
-		if err != nil {
-			return ctrl.Result{}, r.updateEdnsStatus(ctx, edns, newConditionPtr(externaldnsv1alpha1.GetProviderSecret, err.Error(), edns.Generation, false), phasePointer(externaldnsv1alpha1.ExternalDNSPhaseFailed))
-		}
-
-		err = credentials.SetCredential(secret, ednsKey, edns.Spec.Provider.String())
-		if err != nil {
-			return ctrl.Result{}, r.updateEdnsStatus(ctx, edns, newConditionPtr(externaldnsv1alpha1.GetProviderSecret, err.Error(), edns.Generation, false), phasePointer(externaldnsv1alpha1.ExternalDNSPhaseFailed))
-		}
-
-		if patchErr := r.updateEdnsStatus(ctx, edns, newConditionPtr(externaldnsv1alpha1.GetProviderSecret, "Provider credential configured", edns.Generation, true), nil); patchErr != nil {
-			return ctrl.Result{}, patchErr
-		}
+	err := credentials.SetCredential(ctx, r.Client, edns)
+	if err != nil {
+		return ctrl.Result{}, r.updateEdnsStatus(ctx, edns, newConditionPtr(externaldnsv1alpha1.GetProviderSecret, err.Error(), edns.Generation, false), phasePointer(externaldnsv1alpha1.ExternalDNSPhaseFailed))
 	}
 
-	klog.Infof("environment variable CF_API_TOKEN: %s", os.Getenv("CF_API_TOKEN"))
+	if patchErr := r.updateEdnsStatus(ctx, edns, newConditionPtr(externaldnsv1alpha1.GetProviderSecret, "Provider credential configured", edns.Generation, true), nil); patchErr != nil {
+		return ctrl.Result{}, patchErr
+	}
 
 	// APPLY DNS RECORD
 	//SetDNSRecords creates the dns record according to user information

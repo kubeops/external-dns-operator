@@ -1,11 +1,14 @@
 package credentials
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	core "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
+	externaldnsv1alpha1 "kubeops.dev/external-dns-operator/apis/external-dns/v1alpha1"
 	"os"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func validGoogleSecret(secret *core.Secret) bool {
@@ -13,14 +16,31 @@ func validGoogleSecret(secret *core.Secret) bool {
 	return found
 }
 
-func setGoogleCredential(secret *core.Secret, ednsKey types.NamespacedName) error {
+func setGoogleCredential(ctx context.Context, kc client.Client, edns *externaldnsv1alpha1.ExternalDNS) error {
+
+	if err := resetEnvVariables("GOOGLE_APPLICATION_CREDENTIALS"); err != nil {
+		return err
+	}
+
+	// if ProviderSecretRef is nil then user is intended to use IRSA (IAM Role for Service Account)
+	if edns.Spec.ProviderSecretRef == nil {
+		// handle for not providing the providerSecretRef
+		// probably clear the environment variables
+		return nil
+	}
+
+	secret, err := getSecret(ctx, kc, types.NamespacedName{Namespace: edns.Namespace, Name: edns.Spec.ProviderSecretRef.Name})
+	if err != nil {
+		return err
+	}
+
 	if !validGoogleSecret(secret) {
 		return errors.New("invalid Google provider secret")
 	}
-	fileName := fmt.Sprintf("%s-%s-credential", ednsKey.Namespace, ednsKey.Name)
-	filepath := fmt.Sprintf("/tmp/%s", fileName)
+	fileName := fmt.Sprintf("%s-%s-credential", edns.Namespace, edns.Name)
+	filePath := fmt.Sprintf("/tmp/%s", fileName)
 
-	file, err := os.Create(filepath)
+	file, err := os.Create(filePath)
 	if err != nil {
 		return err
 	}
@@ -28,6 +48,11 @@ func setGoogleCredential(secret *core.Secret, ednsKey types.NamespacedName) erro
 
 	b := secret.Data["credentials.json"]
 	_, err = file.Write(b)
+	if err != nil {
+		return err
+	}
+
+	err = os.Setenv("GOOGLE_APPLICATION_CREDENTIALS", filePath)
 	if err != nil {
 		return err
 	}

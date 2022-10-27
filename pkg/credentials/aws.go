@@ -1,12 +1,14 @@
 package credentials
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	core "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/klog/v2"
+	externaldnsv1alpha1 "kubeops.dev/external-dns-operator/apis/external-dns/v1alpha1"
 	"os"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func validAWSSecret(secret *core.Secret) bool {
@@ -14,13 +16,29 @@ func validAWSSecret(secret *core.Secret) bool {
 	return found
 }
 
-func setAWSCredential(secret *core.Secret, endsKey types.NamespacedName) error {
+func setAWSCredential(ctx context.Context, kc client.Client, edns *externaldnsv1alpha1.ExternalDNS) error {
+
+	if err := resetEnvVariables("AWS_SHARED_CREDENTIALS_FILE"); err != nil {
+		return err
+	}
+
+	// if ProviderSecretRef is nil then user is intended to use IRSA (IAM Role for Service Account)
+	if edns.Spec.ProviderSecretRef == nil {
+		// handle for not providing the providerSecretRef
+		// probably clear the environment variables
+		return nil
+	}
+
+	secret, err := getSecret(ctx, kc, types.NamespacedName{Namespace: edns.Namespace, Name: edns.Spec.ProviderSecretRef.Name})
+	if err != nil {
+		return err
+	}
 
 	if !validAWSSecret(secret) {
 		return errors.New("invalid aws provider secret")
 	}
 
-	fileName := fmt.Sprintf("%s-%s-credential", endsKey.Namespace, endsKey.Name)
+	fileName := fmt.Sprintf("%s-%s-credential", edns.Namespace, edns.Name)
 
 	filePath := fmt.Sprintf("/tmp/%s", fileName)
 	file, err := os.Create(filePath)
@@ -37,7 +55,6 @@ func setAWSCredential(secret *core.Secret, endsKey types.NamespacedName) error {
 
 	err = os.Setenv("AWS_SHARED_CREDENTIALS_FILE", filePath)
 	if err != nil {
-		klog.Error("failed to set the environment variables")
 		return err
 	}
 	return nil
