@@ -247,7 +247,8 @@ type ExternalDNSSpec struct {
 	// example:
 	// providerSecretRef:
 	//		name: my-secret
-	ProviderSecretRef core.LocalObjectReference `json:"providerSecretRef"`
+	// +optional
+	ProviderSecretRef *core.LocalObjectReference `json:"providerSecretRef"`
 
 	// Request timeout when calling Kubernetes API. 0s means no timeout
 	// +optional

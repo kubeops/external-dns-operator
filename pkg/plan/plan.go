@@ -185,6 +185,40 @@ var defaultConfig = externaldns.Config{
 	IBMCloudConfigFile:          "/etc/kubernetes/ibmcloud.json",
 }
 
+func SetDNSRecords(ctx context.Context, edns *externaldnsv1alpha1.ExternalDNS) ([]externaldnsv1alpha1.DNSRecord, error) {
+
+	cfg, err := convertEDNSObjectToCfg(edns)
+	if err != nil {
+		klog.Error("failed to convert crd into cfg.", err.Error())
+		return nil, err
+	}
+	endpointsSource, err := createEndpointsSource(ctx, cfg)
+	if err != nil {
+		klog.Error("failed to create endpoints source.", err.Error())
+		return nil, err
+	}
+
+	pvdr, err := createProviderFromCfg(ctx, cfg, endpointsSource)
+	if err != nil {
+		klog.Error("failed to create provider.", err.Error())
+		return nil, err
+	}
+
+	reg, err := createRegistry(cfg, *pvdr)
+	if err != nil {
+		klog.Errorf("failed to create Registry.", err.Error())
+		return nil, err
+	}
+
+	dnsRecs, e := createAndApplyPlan(ctx, cfg, reg, endpointsSource)
+	if e != nil {
+		klog.Errorf("failed to create and apply plan: %s", err.Error())
+		return nil, e
+	}
+
+	return dnsRecs, nil
+}
+
 //create and apply dns plan, If plan is successfully applied then returns dns record, which defines the desired records of the plan
 func createAndApplyPlan(ctx context.Context, cfg *externaldns.Config, r registry.Registry, endpointSource source.Source) ([]externaldnsv1alpha1.DNSRecord, error) {
 
@@ -770,38 +804,4 @@ func createRegistry(cfg *externaldns.Config, p provider.Provider) (registry.Regi
 	}
 
 	return r, err
-}
-
-func SetDNSRecords(ctx context.Context, edns *externaldnsv1alpha1.ExternalDNS) ([]externaldnsv1alpha1.DNSRecord, error) {
-
-	cfg, err := convertEDNSObjectToCfg(edns)
-	if err != nil {
-		klog.Error("failed to convert crd into cfg.", err.Error())
-		return nil, err
-	}
-	endpointsSource, err := createEndpointsSource(ctx, cfg)
-	if err != nil {
-		klog.Error("failed to create endpoints source.", err.Error())
-		return nil, err
-	}
-
-	pvdr, err := createProviderFromCfg(ctx, cfg, endpointsSource)
-	if err != nil {
-		klog.Error("failed to create provider.", err.Error())
-		return nil, err
-	}
-
-	reg, err := createRegistry(cfg, *pvdr)
-	if err != nil {
-		klog.Errorf("failed to create Registry.", err.Error())
-		return nil, err
-	}
-
-	dnsRecs, e := createAndApplyPlan(ctx, cfg, reg, endpointsSource)
-	if e != nil {
-		klog.Errorf("failed to create and apply plan: %s", err.Error())
-		return nil, e
-	}
-
-	return dnsRecs, nil
 }

@@ -360,7 +360,6 @@ spec:
                 type: array
             required:
             - provider
-            - providerSecretRef
             - source
             type: object
           status:
