@@ -30,8 +30,6 @@ func setCloudflareCredentials(ctx context.Context, kc client.Client, edns *exter
 
 	// if ProviderSecretRef is nil then user is intended to use IRSA (IAM Role for Service Account)
 	if edns.Spec.ProviderSecretRef == nil {
-		// handle for not providing the providerSecretRef
-		// probably clear the environment variables
 		return nil
 	}
 
