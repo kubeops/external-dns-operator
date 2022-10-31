@@ -18,15 +18,12 @@ func validAzureSecret(secret *core.Secret) bool {
 
 func setAzureCredential(ctx context.Context, kc client.Client, edns *externaldnsv1alpha1.ExternalDNS) error {
 
-	namespace := edns.Namespace
-	name := edns.Name
-
 	// for azure, user must have to provide ProviderSecretRef
 	if edns.Spec.ProviderSecretRef == nil {
-		return errors.New("invalid ProviderSecretRef for azure provider")
+		return errors.New("invalid providerSecretRef for azure provider")
 	}
 
-	secret, err := getSecret(ctx, kc, types.NamespacedName{Namespace: namespace, Name: edns.Spec.ProviderSecretRef.Name})
+	secret, err := getSecret(ctx, kc, types.NamespacedName{Namespace: edns.Namespace, Name: edns.Spec.ProviderSecretRef.Name})
 	if err != nil {
 		return err
 	}
@@ -34,7 +31,7 @@ func setAzureCredential(ctx context.Context, kc client.Client, edns *externaldns
 	if !validAzureSecret(secret) {
 		return errors.New("invalid Azure provider secret")
 	}
-	fileName := fmt.Sprintf("%s-%s-credential", namespace, name)
+	fileName := fmt.Sprintf("%s-%s-credential", edns.Namespace, edns.Name)
 	filepath := fmt.Sprintf("/tmp/%s", fileName)
 
 	file, err := os.Create(filepath)
