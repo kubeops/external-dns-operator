@@ -306,8 +306,6 @@ type ExternalDNSSpec struct {
 	// +optional
 	ZoneIDFilter []string `json:"zoneIDFilter,omitempty"`
 
-	// One of below provider is required
-
 	// AWS provider information
 	// +optional
 	AWS *AWSProvider `json:"aws,omitempty"`

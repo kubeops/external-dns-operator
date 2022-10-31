@@ -200,7 +200,7 @@ func SetDNSRecords(ctx context.Context, edns *externaldnsv1alpha1.ExternalDNS) (
 
 	pvdr, err := createProviderFromCfg(ctx, cfg, endpointsSource)
 	if err != nil {
-		klog.Error("failed to create provider.", err.Error())
+		klog.Error("failed to create provider: ", err.Error())
 		return nil, err
 	}
 
@@ -779,9 +779,6 @@ func createProviderFromCfg(ctx context.Context, cfg *externaldns.Config, endpoin
 		p, err = safedns.NewSafeDNSProvider(domainFilter, cfg.DryRun)
 	default:
 		log.Fatalf("unknown dns provider: %s", cfg.Provider)
-	}
-	if err != nil {
-		err = errors.New(fmt.Sprintf("fialed to create %s provider:", cfg.Provider))
 	}
 
 	return &p, err
