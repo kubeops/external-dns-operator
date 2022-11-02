@@ -20,7 +20,7 @@ func setAzureCredential(ctx context.Context, kc client.Client, edns *externaldns
 
 	// for azure, user must have to provide ProviderSecretRef
 	if edns.Spec.ProviderSecretRef == nil {
-		return errors.New("invalid providerSecretRef for azure provider")
+		return errors.New("providerSecretRef is not given for azure provider")
 	}
 
 	secret, err := getSecret(ctx, kc, types.NamespacedName{Namespace: edns.Namespace, Name: edns.Spec.ProviderSecretRef.Name})

@@ -10,13 +10,19 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+const (
+	CFApiToken = "CF_API_TOKEN"
+	CFApiKey   = "CF_API_KEY"
+	CFApiEmail = "CF_API_EMAIL"
+)
+
 func validCFSecret(secret *core.Secret) bool {
 
-	if _, foundToken := secret.Data["CF_API_TOKEN"]; foundToken {
+	if _, foundToken := secret.Data[CFApiToken]; foundToken {
 		return true
 	} else {
-		_, foundKey := secret.Data["CF_API_KEY"]
-		_, foundEmail := secret.Data["CF_API_EMAIL"]
+		_, foundKey := secret.Data[CFApiKey]
+		_, foundEmail := secret.Data[CFApiEmail]
 
 		return foundKey && foundEmail
 	}
@@ -24,13 +30,13 @@ func validCFSecret(secret *core.Secret) bool {
 
 func setCloudflareCredentials(ctx context.Context, kc client.Client, edns *externaldnsv1alpha1.ExternalDNS) error {
 
-	if err := resetEnvVariables("CF_API_TOKEN", "CF_API_KEY", "CF_API_EMAIL"); err != nil {
+	if err := resetEnvVariables(CFApiToken, CFApiKey, CFApiEmail); err != nil {
 		return err
 	}
 
-	// if ProviderSecretRef is nil then user is intended to use IRSA (IAM Role for Service Account)
+	// ProviderSecretRef is required for cloudflare
 	if edns.Spec.ProviderSecretRef == nil {
-		return nil
+		return errors.New("providerSecretRef is not given for cloudflare provider")
 	}
 
 	secret, err := getSecret(ctx, kc, types.NamespacedName{Namespace: edns.Namespace, Name: edns.Spec.ProviderSecretRef.Name})
@@ -42,13 +48,13 @@ func setCloudflareCredentials(ctx context.Context, kc client.Client, edns *exter
 		return errors.New("invalid cloudflare provider secret")
 	}
 
-	if string(secret.Data["CF_API_TOKEN"][:]) != "" {
+	if string(secret.Data[CFApiToken][:]) != "" {
 		return os.Setenv("CF_API_TOKEN", string(secret.Data["CF_API_TOKEN"][:]))
 	} else {
-		if err := os.Setenv("CF_API_KEY", string(secret.Data["CF_API_KEY"][:])); err != nil {
+		if err := os.Setenv(CFApiKey, string(secret.Data[CFApiKey][:])); err != nil {
 			return err
 		}
-		if err := os.Setenv("CF_API_EMAIL", string(secret.Data["CF_API_EMAIL"][:])); err != nil {
+		if err := os.Setenv(CFApiEmail, string(secret.Data[CFApiEmail][:])); err != nil {
 			return err
 		}
 	}

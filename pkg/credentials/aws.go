@@ -11,6 +11,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+const AWSSharedCredentialsFile = "AWS_SHARED_CREDENTIALS_FILE"
+
 func validAWSSecret(secret *core.Secret) bool {
 	_, found := secret.Data["credentials"]
 	return found
@@ -18,7 +20,7 @@ func validAWSSecret(secret *core.Secret) bool {
 
 func setAWSCredential(ctx context.Context, kc client.Client, edns *externaldnsv1alpha1.ExternalDNS) error {
 
-	if err := resetEnvVariables("AWS_SHARED_CREDENTIALS_FILE"); err != nil {
+	if err := resetEnvVariables(AWSSharedCredentialsFile); err != nil {
 		return err
 	}
 
@@ -51,7 +53,7 @@ func setAWSCredential(ctx context.Context, kc client.Client, edns *externaldnsv1
 		return err
 	}
 
-	err = os.Setenv("AWS_SHARED_CREDENTIALS_FILE", filePath)
+	err = os.Setenv(AWSSharedCredentialsFile, filePath)
 	if err != nil {
 		return err
 	}

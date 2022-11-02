@@ -243,7 +243,8 @@ type SourceConfig struct {
 
 // ExternalDNSSpec defines the desired state of ExternalDNS
 type ExternalDNSSpec struct {
-	// ProviderSecretRef contains the name of the provider secret. The secret information may differ with respect to provide
+	// ProviderSecretRef contains the name of the provider secret. The secret information may differ with respect to provide.
+	// It is considered optional where workload identity or IRSA (IAM Role for Service Account) is used, otherwise it is mandatory
 	// example:
 	// providerSecretRef:
 	//		name: my-secret

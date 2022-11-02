@@ -11,6 +11,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+const GoogleApplicationCredentials = "GOOGLE_APPLICATION_CREDENTIALS"
+
 func validGoogleSecret(secret *core.Secret) bool {
 	_, found := secret.Data["credentials.json"]
 	return found
@@ -18,11 +20,11 @@ func validGoogleSecret(secret *core.Secret) bool {
 
 func setGoogleCredential(ctx context.Context, kc client.Client, edns *externaldnsv1alpha1.ExternalDNS) error {
 
-	if err := resetEnvVariables("GOOGLE_APPLICATION_CREDENTIALS"); err != nil {
+	if err := resetEnvVariables(GoogleApplicationCredentials); err != nil {
 		return err
 	}
 
-	// if ProviderSecretRef is nil then user is intended to use IRSA (IAM Role for Service Account)
+	// if ProviderSecretRef is nil then user is intended to use Workload Identity
 	if edns.Spec.ProviderSecretRef == nil {
 		return nil
 	}
@@ -50,7 +52,7 @@ func setGoogleCredential(ctx context.Context, kc client.Client, edns *externaldn
 		return err
 	}
 
-	err = os.Setenv("GOOGLE_APPLICATION_CREDENTIALS", filePath)
+	err = os.Setenv(GoogleApplicationCredentials, filePath)
 	if err != nil {
 		return err
 	}
