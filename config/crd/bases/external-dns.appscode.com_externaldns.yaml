@@ -191,8 +191,10 @@ spec:
                 type: string
               providerSecretRef:
                 description: 'ProviderSecretRef contains the name of the provider
-                  secret. The secret information may differ with respect to provide
-                  example: providerSecretRef: name: my-secret'
+                  secret. The secret information may differ with respect to provider.
+                  It is considered optional where workload identity or IRSA (IAM Role
+                  for Service Account) is used, otherwise it is mandatory example:
+                  providerSecretRef: name: my-secret'
                 properties:
                   name:
                     description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
