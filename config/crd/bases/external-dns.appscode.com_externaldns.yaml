@@ -146,6 +146,28 @@ spec:
               gatewayNamespace:
                 description: Limit Gateways of route endpoints to a specific namespace
                 type: string
+              google:
+                description: Google provider
+                properties:
+                  batchChangeInterval:
+                    description: When using the Google provider, set the interval
+                      between batch changes
+                    format: int64
+                    type: integer
+                  batchChangeSize:
+                    description: When using the Google provider, set the maximum number
+                      of changes that will be applied in each batch
+                    type: integer
+                  project:
+                    description: When using the Google provider, current project is
+                      auto-detected, when running on GCP. Specify other project with
+                      this. Must be specified when running outside GCP.
+                    type: string
+                  zoneVisibility:
+                    description: 'When using the Google provider, filter for zones
+                      with this visibility (optional, options: public, private)'
+                    type: string
+                type: object
               manageDNSRecordTypes:
                 description: 'Comma separated list of record types to manage (default:
                   A, CNAME; supported: A,CNAME,NS)'
@@ -169,8 +191,10 @@ spec:
                 type: string
               providerSecretRef:
                 description: 'ProviderSecretRef contains the name of the provider
-                  secret. The secret information may differ with respect to provide
-                  example: providerSecretRef: name: my-secret'
+                  secret. The secret information may differ with respect to provider.
+                  It is considered optional where workload identity or IRSA (IAM Role
+                  for Service Account) is used, otherwise it is mandatory example:
+                  providerSecretRef: name: my-secret'
                 properties:
                   name:
                     description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
@@ -338,7 +362,6 @@ spec:
                 type: array
             required:
             - provider
-            - providerSecretRef
             - source
             type: object
           status:
@@ -395,6 +418,9 @@ spec:
                 description: DNSRecord is the list of records that this external dns
                   operator registered
                 items:
+                  description: 'DNSRecord hold the DNS name and target address, if
+                    there are multiple target address then the addresses are joint
+                    by separator '';'' between them (ex: 1:2:3:4;6:7:8:9)'
                   properties:
                     name:
                       description: dns name is the domain name for this record

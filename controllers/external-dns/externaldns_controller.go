@@ -121,14 +121,7 @@ func (r *ExternalDNSReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 
 	// SECRET AND CREDENTIALS
 	// create and set provider secret credentials and environment variables
-	secret, err := r.getSecret(ctx, types.NamespacedName{
-		Namespace: edns.Namespace,
-		Name:      edns.Spec.ProviderSecretRef.Name})
-	if err != nil {
-		return ctrl.Result{}, r.updateEdnsStatus(ctx, edns, newConditionPtr(externaldnsv1alpha1.GetProviderSecret, err.Error(), edns.Generation, false), phasePointer(externaldnsv1alpha1.ExternalDNSPhaseFailed))
-	}
-
-	err = credentials.SetCredential(secret, ednsKey, edns.Spec.Provider.String())
+	err := credentials.SetCredential(ctx, r.Client, edns)
 	if err != nil {
 		return ctrl.Result{}, r.updateEdnsStatus(ctx, edns, newConditionPtr(externaldnsv1alpha1.GetProviderSecret, err.Error(), edns.Generation, false), phasePointer(externaldnsv1alpha1.ExternalDNSPhaseFailed))
 	}
@@ -165,7 +158,7 @@ func (r *ExternalDNSReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		}
 
 		for _, edns := range ednsList.Items {
-			if edns.Spec.ProviderSecretRef.Name == object.GetName() {
+			if edns.Spec.ProviderSecretRef != nil && edns.Spec.ProviderSecretRef.Name == object.GetName() {
 				reconcileReq = append(reconcileReq, reconcile.Request{NamespacedName: client.ObjectKey{Name: edns.Name, Namespace: edns.Namespace}})
 			}
 		}

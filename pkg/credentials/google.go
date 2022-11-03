@@ -11,20 +11,20 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-const AWSSharedCredentialsFile = "AWS_SHARED_CREDENTIALS_FILE"
+const GoogleApplicationCredentials = "GOOGLE_APPLICATION_CREDENTIALS"
 
-func validAWSSecret(secret *core.Secret) bool {
-	_, found := secret.Data["credentials"]
+func validGoogleSecret(secret *core.Secret) bool {
+	_, found := secret.Data["credentials.json"]
 	return found
 }
 
-func setAWSCredential(ctx context.Context, kc client.Client, edns *externaldnsv1alpha1.ExternalDNS) error {
+func setGoogleCredential(ctx context.Context, kc client.Client, edns *externaldnsv1alpha1.ExternalDNS) error {
 
-	if err := resetEnvVariables(AWSSharedCredentialsFile); err != nil {
+	if err := resetEnvVariables(GoogleApplicationCredentials); err != nil {
 		return err
 	}
 
-	// if ProviderSecretRef is nil then user is intended to use IRSA (IAM Role for Service Account)
+	// if ProviderSecretRef is nil then user is intended to use Workload Identity
 	if edns.Spec.ProviderSecretRef == nil {
 		return nil
 	}
@@ -34,28 +34,28 @@ func setAWSCredential(ctx context.Context, kc client.Client, edns *externaldnsv1
 		return err
 	}
 
-	if !validAWSSecret(secret) {
-		return errors.New("invalid aws provider secret")
+	if !validGoogleSecret(secret) {
+		return errors.New("invalid Google provider secret")
 	}
-
 	fileName := fmt.Sprintf("%s-%s-credential", edns.Namespace, edns.Name)
-
 	filePath := fmt.Sprintf("/tmp/%s", fileName)
+
 	file, err := os.Create(filePath)
 	if err != nil {
 		return err
 	}
 	defer file.Close()
 
-	b := secret.Data["credentials"]
+	b := secret.Data["credentials.json"]
 	_, err = file.Write(b)
 	if err != nil {
 		return err
 	}
 
-	err = os.Setenv(AWSSharedCredentialsFile, filePath)
+	err = os.Setenv(GoogleApplicationCredentials, filePath)
 	if err != nil {
 		return err
 	}
+
 	return nil
 }
