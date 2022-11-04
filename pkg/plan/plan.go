@@ -1,15 +1,35 @@
+/*
+Copyright AppsCode Inc. and Contributors.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package plan
 
 import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
+	"regexp"
+	"strings"
+	"time"
+
+	externaldnsv1alpha1 "kubeops.dev/external-dns-operator/apis/external/v1alpha1"
+
 	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/klog/v2"
-	externaldnsv1alpha1 "kubeops.dev/external-dns-operator/apis/external-dns/v1alpha1"
-	"log"
-	"regexp"
 	"sigs.k8s.io/external-dns/endpoint"
 	"sigs.k8s.io/external-dns/pkg/apis/externaldns"
 	"sigs.k8s.io/external-dns/plan"
@@ -49,8 +69,6 @@ import (
 	"sigs.k8s.io/external-dns/provider/vultr"
 	"sigs.k8s.io/external-dns/registry"
 	"sigs.k8s.io/external-dns/source"
-	"strings"
-	"time"
 )
 
 var defaultConfig = externaldns.Config{
@@ -185,7 +203,6 @@ var defaultConfig = externaldns.Config{
 }
 
 func SetDNSRecords(ctx context.Context, edns *externaldnsv1alpha1.ExternalDNS) ([]externaldnsv1alpha1.DNSRecord, error) {
-
 	cfg, err := convertEDNSObjectToCfg(edns)
 	if err != nil {
 		klog.Error("failed to convert crd into cfg.", err.Error())
@@ -220,7 +237,6 @@ func SetDNSRecords(ctx context.Context, edns *externaldnsv1alpha1.ExternalDNS) (
 
 // create and apply dns plan, If plan is successfully applied then returns dns record, which defines the desired records of the plan
 func createAndApplyPlan(ctx context.Context, cfg *externaldns.Config, r registry.Registry, endpointSource source.Source) ([]externaldnsv1alpha1.DNSRecord, error) {
-
 	var domainFilter endpoint.DomainFilter
 	if cfg.RegexDomainFilter.String() != "" {
 		domainFilter = endpoint.NewRegexDomainFilter(cfg.RegexDomainFilter, cfg.RegexDomainExclusion)
@@ -296,7 +312,6 @@ func createAndApplyPlan(ctx context.Context, cfg *externaldns.Config, r registry
 }
 
 func convertEDNSObjectToCfg(edns *externaldnsv1alpha1.ExternalDNS) (*externaldns.Config, error) {
-
 	config := defaultConfig
 
 	if edns.Namespace != "" {
@@ -307,7 +322,7 @@ func convertEDNSObjectToCfg(edns *externaldnsv1alpha1.ExternalDNS) (*externaldns
 		config.RequestTimeout = *edns.Spec.RequestTimeout
 	}
 
-	//SOURCE
+	// SOURCE
 	var sources []string
 	sources = append(sources, strings.ToLower(edns.Spec.Source.Type.Kind))
 	// sources[] must contain strings that are lower cased
@@ -526,7 +541,6 @@ func convertEDNSObjectToCfg(edns *externaldnsv1alpha1.ExternalDNS) (*externaldns
 }
 
 func createEndpointsSource(ctx context.Context, cfg *externaldns.Config) (source.Source, error) {
-
 	labelSelector, err := labels.Parse(cfg.LabelFilter)
 	if err != nil {
 		return nil, err
@@ -641,10 +655,10 @@ func createProviderFromCfg(ctx context.Context, cfg *externaldns.Config, endpoin
 		// Check that only compatible Registry is used with AWS-SD
 		if cfg.Registry != "noop" && cfg.Registry != "aws-sd" {
 			// removed the log notification
-			//log.Infof("Registry \"%s\" cannot be used with AWS Cloud Map. Switching to \"aws-sd\".", cfg.Registry)
+			// log.Infof("Registry \"%s\" cannot be used with AWS Cloud Map. Switching to \"aws-sd\".", cfg.Registry)
 			cfg.Registry = "aws-sd"
 		}
-		p, err = awssd.NewAWSSDProvider(domainFilter, cfg.AWSZoneType, cfg.AWSAssumeRole, cfg.DryRun, cfg.AWSSDServiceCleanup, cfg.TXTOwnerID)
+		p, err = awssd.NewAWSSDProvider(domainFilter, cfg.AWSZoneType, cfg.AWSAssumeRole, cfg.AWSAssumeRoleExternalID, cfg.DryRun, cfg.AWSSDServiceCleanup, cfg.TXTOwnerID)
 	case "azure-dns", "azure":
 		p, err = azure.NewAzureProvider(cfg.AzureConfigFile, domainFilter, zoneNameFilter, zoneIDFilter, cfg.AzureResourceGroup, cfg.AzureUserAssignedIdentityClientID, cfg.DryRun)
 	case "azure-private-dns":
@@ -773,7 +787,6 @@ func createProviderFromCfg(ctx context.Context, cfg *externaldns.Config, endpoin
 }
 
 func createRegistry(cfg *externaldns.Config, p provider.Provider) (registry.Registry, error) {
-
 	var r registry.Registry
 	var err error
 
