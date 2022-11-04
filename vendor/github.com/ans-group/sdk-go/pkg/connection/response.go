@@ -2,7 +2,6 @@ package connection
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -12,7 +11,7 @@ import (
 )
 
 type ResponseBody interface {
-	ErrorString() string
+	Error() error
 	Pagination() APIResponseMetadataPagination
 }
 
@@ -23,17 +22,41 @@ type APIResponse struct {
 
 // APIResponseBody represents the base API response body
 type APIResponseBody struct {
+	APIResponseBodyError
+
 	Metadata APIResponseMetadata `json:"meta"`
-	Errors   []APIResponseError  `json:"errors"`
-	Message  string              `json:"message"`
 }
 
-// APIResponseError represents an API response error
-type APIResponseError struct {
+type APIResponseBodyError struct {
+	Errors  []APIResponseBodyErrorItem `json:"errors"`
+	Message string                     `json:"message"`
+}
+
+func (e *APIResponseBodyError) Error() string {
+	var errArr []string
+
+	// Message will be populated in certain circumstances, populate error array if exists
+	if e.Message != "" {
+		errArr = append(errArr, fmt.Sprintf("message=\"%s\"", e.Message))
+	}
+
+	for _, err := range e.Errors {
+		errArr = append(errArr, err.Error())
+	}
+
+	return strings.Join(errArr, "; ")
+}
+
+// APIResponseBodyErrorItem represents an API response error
+type APIResponseBodyErrorItem struct {
 	Title  string `json:"title"`
 	Detail string `json:"detail"`
 	Status int    `json:"status"`
 	Source string `json:"source"`
+}
+
+func (a *APIResponseBodyErrorItem) Error() string {
+	return fmt.Sprintf("title=\"%s\", detail=\"%s\", status=\"%d\", source=\"%s\"", a.Title, a.Detail, a.Status, a.Source)
 }
 
 // APIResponseMetadata represents the API response metadata
@@ -90,10 +113,24 @@ func (r *APIResponse) ValidateStatusCode(codes []int, respBody ResponseBody) err
 		}
 	}
 
-	return fmt.Errorf("unexpected status code (%d): %s", r.StatusCode, respBody.ErrorString())
+	return fmt.Errorf("unexpected status code (%d): %w", r.StatusCode, respBody.Error())
 }
 
 type ResponseHandler func(resp *APIResponse) error
+
+func StatusCodeResponseHandler(code int, err error) ResponseHandler {
+	return func(resp *APIResponse) error {
+		if resp.StatusCode == code {
+			return err
+		}
+
+		return nil
+	}
+}
+
+func NotFoundResponseHandler(err error) ResponseHandler {
+	return StatusCodeResponseHandler(404, err)
+}
 
 // HandleResponse deserializes the response body into provided respBody, and validates
 // the response using the optionally provided ResponseHandler handler
@@ -115,29 +152,12 @@ func (r *APIResponse) HandleResponse(respBody ResponseBody, handlers ...Response
 	return r.ValidateStatusCode([]int{}, respBody)
 }
 
-func (a *APIResponseError) String() string {
-	return fmt.Sprintf("title=\"%s\", detail=\"%s\", status=\"%d\", source=\"%s\"", a.Title, a.Detail, a.Status, a.Source)
-}
-
-func (a *APIResponseError) Error() error {
-	return errors.New(a.String())
-}
-
-// ErrorString returns a formatted error string for API response
-func (a *APIResponseBody) ErrorString() string {
-	var errArr []string
-
-	// Message will be populated in certain circumstances, populate error array if exists
-	if a.Message != "" {
-		errArr = append(errArr, fmt.Sprintf("message=\"%s\"", a.Message))
+// Error returns an error struct with embedded errors from body
+func (a *APIResponseBody) Error() error {
+	return &APIResponseBodyError{
+		Message: a.Message,
+		Errors:  a.Errors,
 	}
-
-	// Now loop through errors and add to error array
-	for _, err := range a.Errors {
-		errArr = append(errArr, err.String())
-	}
-
-	return strings.Join(errArr, "; ")
 }
 
 // TotalPages returns amount of pages for API response

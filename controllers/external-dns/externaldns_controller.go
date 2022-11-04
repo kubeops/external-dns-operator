@@ -64,7 +64,7 @@ func phasePointer(phase externaldnsv1alpha1.ExternalDNSPhase) *externaldnsv1alph
 	return &phase
 }
 
-//update the status of the crd, conditionType is the reason of the condition
+// update the status of the crd, conditionType is the reason of the condition
 func (r *ExternalDNSReconciler) updateEdnsStatus(ctx context.Context, edns *externaldnsv1alpha1.ExternalDNS, newCondition *kmapi.Condition, phase *externaldnsv1alpha1.ExternalDNSPhase) error {
 	_, _, patchErr := kmc.PatchStatus(ctx, r.Client, edns, func(obj client.Object) client.Object {
 		in := obj.(*externaldnsv1alpha1.ExternalDNS)

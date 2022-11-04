@@ -4,22 +4,23 @@ import "github.com/ans-group/sdk-go/pkg/connection"
 
 // Target represents a target
 type Target struct {
-	ID            int                  `json:"id"`
-	TargetGroupID int                  `json:"target_group_id"`
-	Name          string               `json:"name"`
-	IP            connection.IPAddress `json:"ip"`
-	Port          int                  `json:"port"`
-	Weight        int                  `json:"weight"`
-	Backup        bool                 `json:"backup"`
-	CheckInterval int                  `json:"check_interval"`
-	CheckSSL      bool                 `json:"check_ssl"`
-	CheckRise     int                  `json:"check_rise"`
-	CheckFall     int                  `json:"check_fall"`
-	DisableHTTP2  bool                 `json:"disable_http2"`
-	HTTP2Only     bool                 `json:"http2_only"`
-	Active        bool                 `json:"active"`
-	CreatedAt     connection.DateTime  `json:"created_at"`
-	UpdatedAt     connection.DateTime  `json:"updated_at"`
+	ID                 int                  `json:"id"`
+	TargetGroupID      int                  `json:"target_group_id"`
+	Name               string               `json:"name"`
+	IP                 connection.IPAddress `json:"ip"`
+	Port               int                  `json:"port"`
+	Weight             int                  `json:"weight"`
+	Backup             bool                 `json:"backup"`
+	CheckInterval      int                  `json:"check_interval"`
+	CheckSSL           bool                 `json:"check_ssl"`
+	CheckRise          int                  `json:"check_rise"`
+	CheckFall          int                  `json:"check_fall"`
+	DisableHTTP2       bool                 `json:"disable_http2"`
+	HTTP2Only          bool                 `json:"http2_only"`
+	Active             bool                 `json:"active"`
+	SessionCookieValue string               `json:"session_cookie_value"`
+	CreatedAt          connection.DateTime  `json:"created_at"`
+	UpdatedAt          connection.DateTime  `json:"updated_at"`
 }
 
 type TargetGroupBalance string
@@ -92,32 +93,34 @@ func (s TargetGroupMonitorMethod) String() string {
 
 // TargetGroup represents a target group
 type TargetGroup struct {
-	ID                   int                      `json:"id"`
-	ClusterID            int                      `json:"cluster_id"`
-	Name                 string                   `json:"name"`
-	Balance              TargetGroupBalance       `json:"balance"`
-	Mode                 Mode                     `json:"mode"`
-	Close                bool                     `json:"close"`
-	Sticky               bool                     `json:"sticky"`
-	CookieOpts           string                   `json:"cookie_opts"`
-	Source               string                   `json:"source"`
-	TimeoutsConnect      int                      `json:"timeouts_connect"`
-	TimeoutsServer       int                      `json:"timeouts_server"`
-	CustomOptions        string                   `json:"custom_options"`
-	MonitorURL           string                   `json:"monitor_url"`
-	MonitorMethod        TargetGroupMonitorMethod `json:"monitor_method"`
-	MonitorHost          string                   `json:"monitor_host"`
-	MonitorHTTPVersion   string                   `json:"monitor_http_version"`
-	MonitorExpect        string                   `json:"monitor_expect"`
-	MonitorTCPMonitoring bool                     `json:"monitor_tcp_monitoring"`
-	CheckPort            int                      `json:"check_port"`
-	SendProxy            bool                     `json:"send_proxy"`
-	SendProxyV2          bool                     `json:"send_proxy_v2"`
-	SSL                  bool                     `json:"ssl"`
-	SSLVerify            bool                     `json:"ssl_verify"`
-	SNI                  bool                     `json:"sni"`
-	CreatedAt            connection.DateTime      `json:"created_at"`
-	UpdatedAt            connection.DateTime      `json:"updated_at"`
+	ID                       int                      `json:"id"`
+	ClusterID                int                      `json:"cluster_id"`
+	Name                     string                   `json:"name"`
+	Balance                  TargetGroupBalance       `json:"balance"`
+	Mode                     Mode                     `json:"mode"`
+	Close                    bool                     `json:"close"`
+	Sticky                   bool                     `json:"sticky"`
+	CookieOpts               string                   `json:"cookie_opts"`
+	Source                   string                   `json:"source"`
+	TimeoutsConnect          int                      `json:"timeouts_connect"`
+	TimeoutsServer           int                      `json:"timeouts_server"`
+	CustomOptions            string                   `json:"custom_options"`
+	MonitorURL               string                   `json:"monitor_url"`
+	MonitorMethod            TargetGroupMonitorMethod `json:"monitor_method"`
+	MonitorHost              string                   `json:"monitor_host"`
+	MonitorHTTPVersion       string                   `json:"monitor_http_version"`
+	MonitorExpect            string                   `json:"monitor_expect"`
+	MonitorExpectString      string                   `json:"monitor_expect_string"`
+	MonitorExpectStringRegex bool                     `json:"monitor_expect_string_regex"`
+	MonitorTCPMonitoring     bool                     `json:"monitor_tcp_monitoring"`
+	CheckPort                int                      `json:"check_port"`
+	SendProxy                bool                     `json:"send_proxy"`
+	SendProxyV2              bool                     `json:"send_proxy_v2"`
+	SSL                      bool                     `json:"ssl"`
+	SSLVerify                bool                     `json:"ssl_verify"`
+	SNI                      bool                     `json:"sni"`
+	CreatedAt                connection.DateTime      `json:"created_at"`
+	UpdatedAt                connection.DateTime      `json:"updated_at"`
 }
 
 // Cluster represents a cluster
@@ -233,8 +236,8 @@ type ACL struct {
 
 // ACLArgument represents an ACL condition/action argument
 type ACLArgument struct {
-	Name  string `json:"name"`
-	Value string `json:"value"`
+	Name  string      `json:"name"`
+	Value interface{} `json:"value"`
 }
 
 // ACLCondition represents an ACL condition
@@ -257,29 +260,22 @@ type ACLTemplates struct {
 }
 
 type ACLTemplateCondition struct {
-	Name         string                         `json:"name"`
-	FriendlyName string                         `json:"friendly_name"`
-	Description  string                         `json:"description"`
-	Arguments    []ACLTemplateConditionArgument `json:"arguments"`
-}
-
-type ACLTemplateConditionArgument struct {
-	Name        string   `json:"name"`
-	Description string   `json:"description"`
-	Example     string   `json:"example"`
-	Values      []string `json:"values"`
+	Name         string                `json:"name"`
+	FriendlyName string                `json:"friendly_name"`
+	Description  string                `json:"description"`
+	Arguments    []ACLTemplateArgument `json:"arguments"`
 }
 
 type ACLTemplateAction struct {
-	Name         string                      `json:"name"`
-	FriendlyName string                      `json:"friendly_name"`
-	Description  string                      `json:"description"`
-	Arguments    []ACLTemplateActionArgument `json:"arguments"`
+	Name         string                `json:"name"`
+	FriendlyName string                `json:"friendly_name"`
+	Description  string                `json:"description"`
+	Arguments    []ACLTemplateArgument `json:"arguments"`
 }
 
-type ACLTemplateActionArgument struct {
-	Name        string   `json:"name"`
-	Description string   `json:"description"`
-	Example     string   `json:"example"`
-	Values      []string `json:"values"`
+type ACLTemplateArgument struct {
+	Name        string      `json:"name"`
+	Description string      `json:"description"`
+	Example     interface{} `json:"example"`
+	Values      []string    `json:"values"`
 }

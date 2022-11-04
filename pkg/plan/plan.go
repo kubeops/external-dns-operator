@@ -218,7 +218,7 @@ func SetDNSRecords(ctx context.Context, edns *externaldnsv1alpha1.ExternalDNS) (
 	return dnsRecs, nil
 }
 
-//create and apply dns plan, If plan is successfully applied then returns dns record, which defines the desired records of the plan
+// create and apply dns plan, If plan is successfully applied then returns dns record, which defines the desired records of the plan
 func createAndApplyPlan(ctx context.Context, cfg *externaldns.Config, r registry.Registry, endpointSource source.Source) ([]externaldnsv1alpha1.DNSRecord, error) {
 
 	var domainFilter endpoint.DomainFilter

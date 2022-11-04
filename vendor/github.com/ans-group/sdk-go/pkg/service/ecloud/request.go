@@ -602,3 +602,16 @@ type CreateAffinityRuleMemberRequest struct {
 type UpdateVPNSessionPreSharedKeyRequest struct {
 	PSK string `json:"psk"`
 }
+
+// CreateInstanceImageRequest represents a request to create an instance image
+type CreateInstanceImageRequest struct {
+	Name string `json:"name,omitempty"`
+}
+
+// UpdateImageRequest represents a request to update an image
+type UpdateImageRequest struct {
+	Name             string `json:"name,omitempty"`
+	LogoURI          string `json:"logo_uri,omitempty"`
+	DocumentationURI string `json:"documentation_uri,omitempty"`
+	Description      string `json:"description,omitempty"`
+}

@@ -56,6 +56,36 @@ func (s *Service) getImageResponseBody(imageID string) (*connection.APIResponseB
 	})
 }
 
+// UpdateImage removes a single Image by ID
+func (s *Service) UpdateImage(imageID string, req UpdateImageRequest) (TaskReference, error) {
+	body, err := s.updateImageResponseBody(imageID, req)
+
+	return body.Data, err
+}
+
+func (s *Service) updateImageResponseBody(imageID string, req UpdateImageRequest) (*connection.APIResponseBodyData[TaskReference], error) {
+	if imageID == "" {
+		return &connection.APIResponseBodyData[TaskReference]{}, fmt.Errorf("invalid image id")
+	}
+
+	return connection.Patch[TaskReference](s.connection, fmt.Sprintf("/ecloud/v2/images/%s", imageID), &req, connection.NotFoundResponseHandler(&ImageNotFoundError{ID: imageID}))
+}
+
+// DeleteImage removes a single Image by ID
+func (s *Service) DeleteImage(imageID string) (string, error) {
+	body, err := s.deleteImageResponseBody(imageID)
+
+	return body.Data.TaskID, err
+}
+
+func (s *Service) deleteImageResponseBody(imageID string) (*connection.APIResponseBodyData[TaskReference], error) {
+	if imageID == "" {
+		return &connection.APIResponseBodyData[TaskReference]{}, fmt.Errorf("invalid image id")
+	}
+
+	return connection.Delete[TaskReference](s.connection, fmt.Sprintf("/ecloud/v2/images/%s", imageID), nil, connection.NotFoundResponseHandler(&ImageNotFoundError{ID: imageID}))
+}
+
 // GetImageParameters retrieves a list of parameters
 func (s *Service) GetImageParameters(imageID string, parameters connection.APIRequestParameters) ([]ImageParameter, error) {
 	return connection.InvokeRequestAll(func(p connection.APIRequestParameters) (*connection.Paginated[ImageParameter], error) {
