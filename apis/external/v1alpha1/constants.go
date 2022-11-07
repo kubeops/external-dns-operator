@@ -39,7 +39,6 @@ const (
 	ExternalDNSPhaseInProgress ExternalDNSPhase = "InProgress"
 )
 
-// kubebuilder:validation:Enum:=aws;cloudflare
 type Provider string
 
 const (
