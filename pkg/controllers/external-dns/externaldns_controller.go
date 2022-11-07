@@ -27,7 +27,6 @@ import (
 
 	core "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog/v2"
 	kmapi "kmodules.xyz/client-go/api/v1"
 	kmc "kmodules.xyz/client-go/client"
@@ -47,14 +46,6 @@ type ExternalDNSReconciler struct {
 	Scheme *runtime.Scheme
 
 	watcher *informers.ObjectTracker
-}
-
-func (r *ExternalDNSReconciler) getSecret(ctx context.Context, key types.NamespacedName) (*core.Secret, error) {
-	secret := &core.Secret{}
-	if err := r.Get(ctx, key, secret); err != nil {
-		return nil, err
-	}
-	return secret, nil
 }
 
 func newConditionPtr(reason string, message string, generation int64, conditionStatus bool) *kmapi.Condition {

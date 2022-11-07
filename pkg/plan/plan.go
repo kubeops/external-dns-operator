@@ -18,7 +18,6 @@ package plan
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log"
 	"regexp"
@@ -203,11 +202,8 @@ var defaultConfig = externaldns.Config{
 }
 
 func SetDNSRecords(ctx context.Context, edns *externaldnsv1alpha1.ExternalDNS) ([]externaldnsv1alpha1.DNSRecord, error) {
-	cfg, err := convertEDNSObjectToCfg(edns)
-	if err != nil {
-		klog.Error("failed to convert crd into cfg.", err.Error())
-		return nil, err
-	}
+	cfg := convertEDNSObjectToCfg(edns)
+
 	endpointsSource, err := createEndpointsSource(ctx, cfg)
 	if err != nil {
 		klog.Error("failed to create endpoints source.", err.Error())
@@ -311,7 +307,7 @@ func createAndApplyPlan(ctx context.Context, cfg *externaldns.Config, r registry
 	return dnsRecs, nil
 }
 
-func convertEDNSObjectToCfg(edns *externaldnsv1alpha1.ExternalDNS) (*externaldns.Config, error) {
+func convertEDNSObjectToCfg(edns *externaldnsv1alpha1.ExternalDNS) *externaldns.Config {
 	config := defaultConfig
 
 	if edns.Namespace != "" {
@@ -537,7 +533,7 @@ func convertEDNSObjectToCfg(edns *externaldnsv1alpha1.ExternalDNS) (*externaldns
 		config.TXTWildcardReplacement = *edns.Spec.TXTWildcardReplacement
 	}
 
-	return &config, nil
+	return &config
 }
 
 func createEndpointsSource(ctx context.Context, cfg *externaldns.Config) (source.Source, error) {
@@ -651,12 +647,12 @@ func createProviderFromCfg(ctx context.Context, cfg *externaldns.Config, endpoin
 				ZoneCacheDuration:    cfg.AWSZoneCacheDuration,
 			},
 		)
-	case "aws-sd":
+	case externaldnsv1alpha1.ProviderAWSSD.String():
 		// Check that only compatible Registry is used with AWS-SD
-		if cfg.Registry != "noop" && cfg.Registry != "aws-sd" {
+		if cfg.Registry != "noop" && cfg.Registry != externaldnsv1alpha1.ProviderAWSSD.String() {
 			// removed the log notification
 			// log.Infof("Registry \"%s\" cannot be used with AWS Cloud Map. Switching to \"aws-sd\".", cfg.Registry)
-			cfg.Registry = "aws-sd"
+			cfg.Registry = externaldnsv1alpha1.ProviderAWSSD.String()
 		}
 		p, err = awssd.NewAWSSDProvider(domainFilter, cfg.AWSZoneType, cfg.AWSAssumeRole, cfg.AWSAssumeRoleExternalID, cfg.DryRun, cfg.AWSSDServiceCleanup, cfg.TXTOwnerID)
 	case "azure-dns", "azure":
@@ -798,7 +794,7 @@ func createRegistry(cfg *externaldns.Config, p provider.Provider) (registry.Regi
 	case "aws-sd":
 		r, err = registry.NewAWSSDRegistry(p.(*awssd.AWSSDProvider), cfg.TXTOwnerID)
 	default:
-		err = errors.New(fmt.Sprintf("unknown registry: %s", cfg.Registry))
+		err = fmt.Errorf("unknown registry: %s", cfg.Registry)
 	}
 
 	return r, err
