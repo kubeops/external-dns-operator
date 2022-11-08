@@ -70,6 +70,10 @@ import (
 	"sigs.k8s.io/external-dns/source"
 )
 
+const (
+	providerAWSSD = "aws-sd"
+)
+
 var defaultConfig = externaldns.Config{
 	APIServerURL:                "",
 	KubeConfig:                  "",
@@ -647,12 +651,9 @@ func createProviderFromCfg(ctx context.Context, cfg *externaldns.Config, endpoin
 				ZoneCacheDuration:    cfg.AWSZoneCacheDuration,
 			},
 		)
-	case externaldnsv1alpha1.ProviderAWSSD.String():
-		// Check that only compatible Registry is used with AWS-SD
-		if cfg.Registry != "noop" && cfg.Registry != externaldnsv1alpha1.ProviderAWSSD.String() {
-			// removed the log notification
-			// log.Infof("Registry \"%s\" cannot be used with AWS Cloud Map. Switching to \"aws-sd\".", cfg.Registry)
-			cfg.Registry = externaldnsv1alpha1.ProviderAWSSD.String()
+	case providerAWSSD:
+		if cfg.Registry != "noop" && cfg.Registry != providerAWSSD {
+			cfg.Registry = providerAWSSD
 		}
 		p, err = awssd.NewAWSSDProvider(domainFilter, cfg.AWSZoneType, cfg.AWSAssumeRole, cfg.AWSAssumeRoleExternalID, cfg.DryRun, cfg.AWSSDServiceCleanup, cfg.TXTOwnerID)
 	case "azure-dns", "azure":
