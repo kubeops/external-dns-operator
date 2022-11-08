@@ -39,12 +39,12 @@ const (
 	ExternalDNSPhaseInProgress ExternalDNSPhase = "InProgress"
 )
 
+// kubebuilder:validation:Enum:=aws;cloudflare;azure;google
 type Provider string
 
 const (
 	// Provider
 	ProviderAWS        Provider = "aws"
-	ProviderAWSSD      Provider = "aws-sd"
 	ProviderCloudflare Provider = "cloudflare"
 	ProviderAzure      Provider = "azure"
 	ProviderGoogle     Provider = "google"
