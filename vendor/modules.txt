@@ -1488,7 +1488,7 @@ sigs.k8s.io/controller-runtime/pkg/webhook
 sigs.k8s.io/controller-runtime/pkg/webhook/admission
 sigs.k8s.io/controller-runtime/pkg/webhook/conversion
 sigs.k8s.io/controller-runtime/pkg/webhook/internal/metrics
-# sigs.k8s.io/external-dns v0.13.1
+# sigs.k8s.io/external-dns v0.13.1 => github.com/kubeops/external-dns v0.11.2-0.20221109000240-41ce234ffc5e
 ## explicit; go 1.18
 sigs.k8s.io/external-dns/endpoint
 sigs.k8s.io/external-dns/pkg/apis/externaldns
@@ -1560,3 +1560,4 @@ sigs.k8s.io/structured-merge-diff/v4/value
 # sigs.k8s.io/yaml v1.3.0
 ## explicit; go 1.12
 sigs.k8s.io/yaml
+# sigs.k8s.io/external-dns => github.com/kubeops/external-dns v0.11.2-0.20221109000240-41ce234ffc5e
