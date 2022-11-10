@@ -479,6 +479,11 @@ func (in *NodeConfig) DeepCopyInto(out *NodeConfig) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.LabelFilter != nil {
+		in, out := &in.LabelFilter, &out.LabelFilter
+		*out = new(string)
+		**out = **in
+	}
 	return
 }
 

@@ -18158,6 +18158,13 @@ func schema_external_dns_operator_apis_external_v1alpha1_NodeConfig(ref common.R
 							Format:      "",
 						},
 					},
+					"labelFilter": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Filter sources managed by external-dns via annotation using label selector semantics",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 				},
 			},
 		},
