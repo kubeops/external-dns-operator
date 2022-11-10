@@ -265,6 +265,10 @@ spec:
                           names from source that don't define a hostname themselves,
                           or to add a hostname suffix when paired with the fake source
                         type: string
+                      labelFilter:
+                        description: Filter sources managed by external-dns via annotation
+                          using label selector semantics
+                        type: string
                     type: object
                   service:
                     description: For source type Service

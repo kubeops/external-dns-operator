@@ -952,6 +952,8 @@ github.com/kr/pty v1.1.5/go.mod h1:9r2w37qlBe7rQ6e1fg1S/9xpWHSnaqNdHD3WcMdbPDA=
 github.com/kr/text v0.1.0/go.mod h1:4Jbv+DJW3UT/LiOwJeYQe1efqtUx/iVham/4vfdArNI=
 github.com/kr/text v0.2.0 h1:5Nx0Ya0ZqY2ygV366QzturHI13Jq95ApcVaJBhpS+AY=
 github.com/kr/text v0.2.0/go.mod h1:eLer722TekiGuMkidMxC/pM04lWEeraHUUmBw8l2grE=
+github.com/kubeops/external-dns v0.11.2-0.20221109000240-41ce234ffc5e h1:NmR3K6ugP7SoXyG/iQz9jun659vwuWLlMocgNVCFo9A=
+github.com/kubeops/external-dns v0.11.2-0.20221109000240-41ce234ffc5e/go.mod h1:PxwL2DeB0bSamqe7WYWBGVMc+cgwJJEHf2uo3nkR4tg=
 github.com/lann/builder v0.0.0-20180802200727-47ae307949d0/go.mod h1:dXGbAdH5GtBTC4WfIxhKZfyBF/HBFgRZSWwZ9g/He9o=
 github.com/lann/ps v0.0.0-20150810152359-62de8c46ede0/go.mod h1:vmVJ0l/dxyfGW6FmdpVm2joNMFikkuWg0EoCKLGUMNw=
 github.com/leodido/go-urn v1.2.0 h1:hpXL4XnriNwQ/ABnpepYM/1vCLWNDfUNts8dX3xTG6Y=
@@ -2462,8 +2464,6 @@ sigs.k8s.io/controller-tools v0.3.1-0.20200517180335-820a4a27ea84/go.mod h1:enht
 sigs.k8s.io/controller-tools v0.5.0/go.mod h1:JTsstrMpxs+9BUj6eGuAaEb6SDSPTeVtUyp0jmnAM/I=
 sigs.k8s.io/controller-tools v0.6.0/go.mod h1:baRMVPrctU77F+rfAuH2uPqW93k6yQnZA2dhUOr7ihc=
 sigs.k8s.io/controller-tools v0.6.2/go.mod h1:oaeGpjXn6+ZSEIQkUe/+3I40PNiDYp9aeawbt3xTgJ8=
-sigs.k8s.io/external-dns v0.13.1 h1:0R81muRcY0LMG4LAQN9o+Fr5zcenEDmQSefNtd83SYE=
-sigs.k8s.io/external-dns v0.13.1/go.mod h1:PxwL2DeB0bSamqe7WYWBGVMc+cgwJJEHf2uo3nkR4tg=
 sigs.k8s.io/gateway-api v0.3.0/go.mod h1:Wb8bx7QhGVZxOSEU3i9vw/JqTB5Nlai9MLMYVZeDmRQ=
 sigs.k8s.io/gateway-api v0.4.3/go.mod h1:r3eiNP+0el+NTLwaTfOrCNXy8TukC+dIM3ggc+fbNWk=
 sigs.k8s.io/gateway-api v0.5.0 h1:ze+k9fJqvmL8s1t3e4q1ST8RnN+f09dEv+gfacahlAE=

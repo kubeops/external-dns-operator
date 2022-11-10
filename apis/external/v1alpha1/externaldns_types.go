@@ -215,6 +215,10 @@ type NodeConfig struct {
 	// Filter sources managed by external-dns via label selector when listing all resources
 	// +optional
 	AnnotationFilter *string `json:"annotationFilter,omitempty"`
+
+	// Filter sources managed by external-dns via annotation using label selector semantics
+	// +optional
+	LabelFilter *string `json:"labelFilter,omitempty"`
 }
 
 type SourceConfig struct {

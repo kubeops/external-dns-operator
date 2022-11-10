@@ -350,6 +350,9 @@ func convertEDNSObjectToCfg(edns *externaldnsv1alpha1.ExternalDNS) *externaldns.
 		if edns.Spec.Source.Node.AnnotationFilter != nil {
 			config.AnnotationFilter = *edns.Spec.Source.Node.AnnotationFilter
 		}
+		if edns.Spec.Source.Node.LabelFilter != nil {
+			config.LabelFilter = *edns.Spec.Source.Node.LabelFilter
+		}
 	}
 
 	// For Service

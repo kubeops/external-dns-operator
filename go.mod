@@ -200,3 +200,5 @@ require (
 	sigs.k8s.io/json v0.0.0-20220713155537-f223a00ba0e2 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
 )
+
+replace sigs.k8s.io/external-dns => github.com/kubeops/external-dns v0.11.2-0.20221109000240-41ce234ffc5e
