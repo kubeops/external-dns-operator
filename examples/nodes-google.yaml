@@ -1,0 +1,28 @@
+
+apiVersion: external-dns.appscode.com/v1alpha1
+kind: ExternalDNS
+metadata:
+  name: google-nodes
+  namespace: demo
+spec:
+  providerSecretRef:
+    name: credential-secret-name
+  source:
+    type:
+      group: ""
+      version: v1
+      kind: Node
+    node:
+      #multiple label filter, comma separated
+      labelFilter: "node-pool-id=123xyz,beta.kubernetes.io/arch=amd64"
+      annotationFilter: lke.linode.com/wgip=0.0.0.1
+      fqdnTemplate: node.example.com
+  registry: txt
+  txtOwnerID: external-dns
+  txtPrefix: xyz
+  provider: google
+  google:
+    project: project-name
+  domainFilter:
+    - example.com
+  policy: upsert-only

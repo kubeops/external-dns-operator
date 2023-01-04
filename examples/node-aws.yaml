@@ -1,0 +1,27 @@
+
+apiVersion: external-dns.appscode.com/v1alpha1
+kind: ExternalDNS
+metadata:
+  name: aws-edns-node
+  namespace: demo
+spec:
+  providerSecretRef:
+    name: aws-cred
+  source:
+    type:
+      group: ""
+      version: v1
+      kind: Node
+    node:
+      #labelFilter: app=demo-node
+      #annotationFilter: lke.linode.com/wgip=0.0.0.0
+      fqdnTemplate: node.example.com
+  registry: txt
+  txtOwnerID: external-dns
+  txtPrefix: xyz
+  provider: aws
+  domainFilter:
+    - example.com
+  policy: upsert-only
+  aws:
+    zoneType: public

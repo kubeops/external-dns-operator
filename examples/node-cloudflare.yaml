@@ -1,0 +1,23 @@
+apiVersion: external-dns.appscode.com/v1alpha1
+kind: ExternalDNS
+metadata:
+  name: cloudflare-nodes
+  namespace: demo
+spec:
+  providerSecretRef:
+    name: credential-secret-name
+  source:
+    type:
+      group: ""
+      version: v1
+      kind: Node
+    node:
+      labelFilter: app=demo-node
+      annotationFilter: lke.linode.com/wgip=0.0.0.0
+      fqdnTemplate: "{{.Name}}.example.com"
+  registry: txt
+  txtOwnerID: external-dns
+  txtPrefix: xyz
+  provider: cloudflare
+  domainFilter:
+    - example.com
