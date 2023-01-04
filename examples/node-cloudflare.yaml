@@ -5,7 +5,7 @@ metadata:
   namespace: demo
 spec:
   providerSecretRef:
-    name: credential-secret-name
+    name: cloudflare-credential
   source:
     type:
       group: ""

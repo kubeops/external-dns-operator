@@ -5,7 +5,7 @@ metadata:
   namespace: demo
 spec:
   providerSecretRef:
-    name: aws-cred
+    name: aws-credential
   source:
     type:
       group: ""

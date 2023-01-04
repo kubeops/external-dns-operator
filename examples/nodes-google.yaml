@@ -5,7 +5,7 @@ metadata:
   namespace: demo
 spec:
   providerSecretRef:
-    name: credential-secret-name
+    name: google-credential
   source:
     type:
       group: ""
