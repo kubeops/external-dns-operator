@@ -12,8 +12,10 @@ EOF
 ```
 
 ### Create secret from file
-Use the `azure.json` file to create Kubernetes secret:<br>
-`kubectl create secret generic azure-credential --namespace demo --from-file /local/path/to/azure.json`
-<br>
+Use the `azure.json` file to create Kubernetes secret:
+
+```shell
+kubectl create secret generic azure-credential --namespace demo --from-file /local/path/to/azure.json
+```
 
 The secret must be in the same namespace as the External-DNS
