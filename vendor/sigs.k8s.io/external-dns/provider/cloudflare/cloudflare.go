@@ -137,11 +137,15 @@ func NewCloudFlareProvider(domainFilter endpoint.DomainFilter, zoneIDFilter prov
 	var (
 		config *cloudflare.API
 		err    error
+		opts   []cloudflare.Option
 	)
+	if os.Getenv("CF_BASE_URL") != "" {
+		opts = append(opts, cloudflare.BaseURL(os.Getenv("CF_BASE_URL")))
+	}
 	if os.Getenv("CF_API_TOKEN") != "" {
-		config, err = cloudflare.NewWithAPIToken(os.Getenv("CF_API_TOKEN"))
+		config, err = cloudflare.NewWithAPIToken(os.Getenv("CF_API_TOKEN"), opts...)
 	} else {
-		config, err = cloudflare.New(os.Getenv("CF_API_KEY"), os.Getenv("CF_API_EMAIL"))
+		config, err = cloudflare.New(os.Getenv("CF_API_KEY"), os.Getenv("CF_API_EMAIL"), opts...)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize cloudflare provider: %v", err)

@@ -29,6 +29,7 @@ import (
 )
 
 const (
+	CFBaseURL  = "CF_BASE_URL"
 	CFApiToken = "CF_API_TOKEN"
 	CFApiKey   = "CF_API_KEY"
 	CFApiEmail = "CF_API_EMAIL"
@@ -64,13 +65,16 @@ func setCloudflareCredentials(ctx context.Context, kc client.Client, edns *exter
 		return errors.New("invalid cloudflare provider secret")
 	}
 
-	if string(secret.Data[CFApiToken][:]) != "" {
-		return os.Setenv("CF_API_TOKEN", string(secret.Data["CF_API_TOKEN"][:]))
+	if string(secret.Data[CFBaseURL]) != "" {
+		return os.Setenv(CFBaseURL, string(secret.Data[CFBaseURL]))
+	}
+	if string(secret.Data[CFApiToken]) != "" {
+		return os.Setenv(CFApiToken, string(secret.Data[CFApiToken]))
 	} else {
-		if err := os.Setenv(CFApiKey, string(secret.Data[CFApiKey][:])); err != nil {
+		if err := os.Setenv(CFApiKey, string(secret.Data[CFApiKey])); err != nil {
 			return err
 		}
-		if err := os.Setenv(CFApiEmail, string(secret.Data[CFApiEmail][:])); err != nil {
+		if err := os.Setenv(CFApiEmail, string(secret.Data[CFApiEmail])); err != nil {
 			return err
 		}
 	}
