@@ -43,7 +43,7 @@ func (t TypeInfo) GroupVersionKind() schema.GroupVersionKind {
 type AWSProvider struct {
 	// When using the AWS provider, filter for zones of this type. (support: public, private)
 	// +optional
-	ZoneType *string `json:"zoneType,omitempty"`
+	ZoneType string `json:"zoneType,omitempty"`
 
 	// When using the AWS provider, filter for zones with these tags
 	// +optional
@@ -52,7 +52,7 @@ type AWSProvider struct {
 	// When using the AWS provider, assume this IAM role. Useful for hosted zones in another AWS account. Specify the
 	// full ARN, e.g. `arn:aws:iam::123455567:role/external-dns`
 	// +optional
-	AssumeRole *string `json:"assumeRole,omitempty"`
+	AssumeRole string `json:"assumeRole,omitempty"`
 
 	// When using AWS provide, set the maximum number of changes that will be applied in each batch
 	// +optional
@@ -64,7 +64,7 @@ type AWSProvider struct {
 
 	// When using the AWS provider, set whether to evaluate the health of the DNS target (default: enable, disable with --no-aws-evaluate-target-health)
 	// +optional
-	EvaluateTargetHealth *bool `json:"evaluateTargetHealth,omitempty"`
+	EvaluateTargetHealth bool `json:"evaluateTargetHealth,omitempty"`
 
 	// When using the AWS provider, set the maximum number of retries for API calls before giving up.
 	// +optional
@@ -72,7 +72,7 @@ type AWSProvider struct {
 
 	// When using the AWS provider, prefer using CNAME instead of ALIAS (default: disabled)
 	// +optional
-	PreferCNAME *bool `json:"preferCNAME,omitempty"`
+	PreferCNAME bool `json:"preferCNAME,omitempty"`
 
 	// When using the AWS provider, set the zones list cache TTL (0s to disable).
 	// +optional
@@ -80,13 +80,13 @@ type AWSProvider struct {
 
 	// When using the AWS CloudMap provider, delete empty Services without endpoints (default: disabled)
 	// +optional
-	SDServiceCleanup *bool `json:"sdServiceCleanup,omitempty"`
+	SDServiceCleanup bool `json:"sdServiceCleanup,omitempty"`
 }
 
 type CloudflareProvider struct {
 	// When using the Cloudflare provider, specify if the proxy mode must be enabled (default: disabled)
 	// +optional
-	Proxied *bool `json:"proxied,omitempty"`
+	Proxied bool `json:"proxied,omitempty"`
 
 	// When using the Cloudflare provider, specify how many zones per page listed, max. possible 50 (default: 50)
 	// +optional
@@ -96,21 +96,21 @@ type CloudflareProvider struct {
 type AzureProvider struct {
 	// When using the Azure provider, override the Azure resource group to use (required for azure-private-dns)
 	// +optional
-	ResourceGroup *string `json:"resourceGroup,omitempty"`
+	ResourceGroup string `json:"resourceGroup,omitempty"`
 
 	// When using the Azure provider, specify the Azure configuration file. (required for azure-private-dns)
 	// +optional
-	SubscriptionId *string `json:"subscriptionId,omitempty"`
+	SubscriptionId string `json:"subscriptionId,omitempty"`
 
 	// When using the Azure provider, override the client id of user assigned identity in config file
 	// +optional
-	UserAssignedIdentityClientID *string `json:"userAssignedIdentityClientID,omitempty"`
+	UserAssignedIdentityClientID string `json:"userAssignedIdentityClientID,omitempty"`
 }
 
 type GoogleProvider struct {
 	// When using the Google provider, current project is auto-detected, when running on GCP. Specify other project with this. Must be specified when running outside GCP.
 	// +optional
-	Project *string `json:"project,omitempty"`
+	Project string `json:"project,omitempty"`
 
 	// When using the Google provider, set the maximum number of changes that will be applied in each batch
 	// +optional
@@ -122,50 +122,50 @@ type GoogleProvider struct {
 
 	// When using the Google provider, filter for zones with this visibility (optional, options: public, private)
 	// +optional
-	ZoneVisibility *string `json:"zoneVisibility,omitempty"`
+	ZoneVisibility string `json:"zoneVisibility,omitempty"`
 }
 
 type ServiceConfig struct {
 	// Limit sources of endpoints to a specific namespace (default: all namespaces)
 	// +optional
-	Namespace *string `json:"namespace,omitempty"`
+	Namespace string `json:"namespace,omitempty"`
 
 	// Ignore hostname annotation when generating DNS names, valid only when using fqdn-template is set
 	// +optional
-	IgnoreHostnameAnnotation *bool `json:"ignoreHostnameAnnotation,omitempty"`
+	IgnoreHostnameAnnotation bool `json:"ignoreHostnameAnnotation,omitempty"`
 
 	// Combine FQDN template and Annotations instead of overwriting
 	// +optional
-	CombineFQDNAndAnnotation *bool `json:"combineFQDNAndAnnotation,omitempty"`
+	CombineFQDNAndAnnotation bool `json:"combineFQDNAndAnnotation,omitempty"`
 
 	// Filter sources managed by external-dns via label selector when listing all resources
 	// +optional
-	AnnotationFilter *string `json:"annotationFilter,omitempty"`
+	AnnotationFilter string `json:"annotationFilter,omitempty"`
 
 	// Filter sources managed by external-dns via annotation using label selector semantics
 	// +optional
-	LabelFilter *string `json:"labelFilter,omitempty"`
+	LabelFilter string `json:"labelFilter,omitempty"`
 
 	// A templated string that's used to generate DNS names from source that don't define a hostname themselves, or to
 	// add a hostname suffix when paired with the fake source
 	// +optional
-	FQDNTemplate *string `json:"fqdnTemplate,omitempty"`
+	FQDNTemplate string `json:"fqdnTemplate,omitempty"`
 
 	// Process  annotation semantics from legacy implementations
 	// +optional
-	Compatibility *string `json:"compatibility,omitempty"`
+	Compatibility string `json:"compatibility,omitempty"`
 
 	// Allow  externals-dns to publish DNS records for ClusterIP services
 	// +optional
-	PublishInternal *bool `json:"publishInternal,omitempty"`
+	PublishInternal bool `json:"publishInternal,omitempty"`
 
 	// Allow external-dns to publish host-ip for headless services
 	// +optional
-	PublishHostIP *bool `json:"publishHostIP,omitempty"`
+	PublishHostIP bool `json:"publishHostIP,omitempty"`
 
 	// Always publish also not ready addresses for headless services
 	// +optional
-	AlwaysPublishNotReadyAddresses *bool `json:"alwaysPublishNotReadyAddresses"`
+	AlwaysPublishNotReadyAddresses bool `json:"alwaysPublishNotReadyAddresses"`
 
 	// The service types to take care about (default all, expected: ClusterIP, NodePort, LoadBalancer or ExternalName)
 	// +optional
@@ -175,36 +175,36 @@ type ServiceConfig struct {
 type IngressConfig struct {
 	// Limit sources of endpoints to a specific namespace (default: all namespaces)
 	// +optional
-	Namespace *string `json:"namespace,omitempty"`
+	Namespace string `json:"namespace,omitempty"`
 
 	// Ignore hostname annotation when generating DNS names, valid only when using fqdn-template is set
 	// +optional
-	IgnoreHostnameAnnotation *bool `json:"ignoreHostnameAnnotation,omitempty"`
+	IgnoreHostnameAnnotation bool `json:"ignoreHostnameAnnotation,omitempty"`
 
 	// Combine FQDN template and Annotations instead of overwriting
 	// +optional
-	CombineFQDNAndAnnotation *bool `json:"combineFQDNAndAnnotation,omitempty"`
+	CombineFQDNAndAnnotation bool `json:"combineFQDNAndAnnotation,omitempty"`
 
 	// Filter sources managed by external-dns via label selector when listing all resources
 	// +optional
-	AnnotationFilter *string `json:"annotationFilter,omitempty"`
+	AnnotationFilter string `json:"annotationFilter,omitempty"`
 
 	// Filter sources managed by external-dns via annotation using label selector semantics
 	// +optional
-	LabelFilter *string `json:"labelFilter,omitempty"`
+	LabelFilter string `json:"labelFilter,omitempty"`
 
 	// A templated string that's used to generate DNS names from source that don't define a hostname themselves, or to
 	// add a hostname suffix when paired with the fake source
 	// +optional
-	FQDNTemplate *string `json:"fqdnTemplate,omitempty"`
+	FQDNTemplate string `json:"fqdnTemplate,omitempty"`
 
 	// Ignore TLS Spec section in ingresses resources, applicable only for ingress source
 	// +optional
-	IgnoreIngressTLSSpec *bool `json:"ignoreIngressTLSSpec,omitempty"`
+	IgnoreIngressTLSSpec bool `json:"ignoreIngressTLSSpec,omitempty"`
 
 	// Ignore rules spec section in ingresses resources, applicable only for ingress sources
 	// +optional
-	IgnoreIngressRulesSpec *bool `json:"ignoreIngressRulesSpec,omitempty"`
+	IgnoreIngressRulesSpec bool `json:"ignoreIngressRulesSpec,omitempty"`
 }
 
 type NodeConfig struct {
@@ -214,11 +214,11 @@ type NodeConfig struct {
 
 	// Filter sources managed by external-dns via label selector when listing all resources
 	// +optional
-	AnnotationFilter *string `json:"annotationFilter,omitempty"`
+	AnnotationFilter string `json:"annotationFilter,omitempty"`
 
 	// Filter sources managed by external-dns via annotation using label selector semantics
 	// +optional
-	LabelFilter *string `json:"labelFilter,omitempty"`
+	LabelFilter string `json:"labelFilter,omitempty"`
 }
 
 type SourceConfig struct {
@@ -271,19 +271,19 @@ type ExternalDNSSpec struct {
 	// external dns will select the respective router from the route status and map that routeCanonicalHostname
 	// to the route host while creating a CNAME record.
 	// +optional
-	OCRouterName *string `json:"ocRouterName,omitempty"`
+	OCRouterName string `json:"ocRouterName,omitempty"`
 
 	// Limit Gateways of route endpoints to a specific namespace
 	// +optional
-	GatewayNamespace *string `json:"gatewayNamespace,omitempty"`
+	GatewayNamespace string `json:"gatewayNamespace,omitempty"`
 
 	// Filter Gateways of Route endpoints via label selector
 	// +optional
-	GatewayLabelFilter *string `json:"gatewayLabelFilter,omitempty"`
+	GatewayLabelFilter string `json:"gatewayLabelFilter,omitempty"`
 
 	// The server to connect for connector source, valid only when using connector source
 	// +optional
-	ConnectorSourceServer *string `json:"connectorSourceServer,omitempty"`
+	ConnectorSourceServer string `json:"connectorSourceServer,omitempty"`
 
 	// Comma separated list of record types to manage (default: A, CNAME; supported: A,CNAME,NS)
 	// +optional
@@ -292,8 +292,6 @@ type ExternalDNSSpec struct {
 	// Set globally a list of default IP address that will apply as a target instead of source addresses.
 	// +optional
 	DefaultTargets []string `json:"defaultTargets,omitempty"`
-
-	//
 
 	// RELATED TO PROVIDERS
 	// The DNS provider where the DNS records will be created. (AWS, Cloudflare)
@@ -332,33 +330,34 @@ type ExternalDNSSpec struct {
 	//
 	// Modify how DNS records are synchronized between sources and providers (default: sync, options: sync, upsert-only, create-only)
 	// +optional
-	Policy *Policy `json:"policy,omitempty"`
+	// +kubebuilder:default=sync
+	Policy Policy `json:"policy,omitempty"`
 
 	//
 	// REGISTRY information
 	//
 	// The registry implementation to use to keep track of DNS record ownership (default: txt, options: txt, noop, aws-sd)
 	// +optional
-	Registry *string `json:"registry,omitempty"`
+	Registry string `json:"registry,omitempty"`
 
 	// When using the TXT registry, a name that identifies this instance of ExternalDNS (default: default)
 	// +optional
-	TXTOwnerID *string `json:"txtOwnerID,omitempty"`
+	TXTOwnerID string `json:"txtOwnerID,omitempty"`
 
 	// When using the TXT registry, a custom string that's prefixed to each ownership DNS record (optional). Could
 	// contain record type template like '%{record_type}-prefix-'. Mutual exclusive with txt-suffix!
 	// +optional
-	TXTPrefix *string `json:"txtPrefix,omitempty"`
+	TXTPrefix string `json:"txtPrefix,omitempty"`
 
 	// When using the TXT registry, a custom string that's suffixed to the host portion of each ownership DNS
 	// record. Could contain record type template like '-%{record_type}-suffix'. Mutual exclusive with txt-prefix!
 	// +optional
-	TXTSuffix *string `json:"txtSuffix,omitempty"`
+	TXTSuffix string `json:"txtSuffix,omitempty"`
 
 	// When using the TXT registry, a custom string that's used instead of an asterisk for TXT records corresponding
 	// to wildcard DNS records
 	// +optional
-	TXTWildcardReplacement *string `json:"txtWildcardReplacement,omitempty"`
+	TXTWildcardReplacement string `json:"txtWildcardReplacement,omitempty"`
 }
 
 // DNSRecord hold the DNS name and target address, if there are multiple target address then the addresses are joint by separator ';' between them (ex: 1:2:3:4;6:7:8:9)
