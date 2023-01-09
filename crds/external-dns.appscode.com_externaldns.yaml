@@ -180,7 +180,6 @@ spec:
                   to the route host while creating a CNAME record.
                 type: string
               policy:
-                default: sync
                 description: "POLICY INFORMATION \n Modify how DNS records are synchronized
                   between sources and providers (default: sync, options: sync, upsert-only,
                   create-only)"

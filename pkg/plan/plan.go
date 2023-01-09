@@ -328,93 +328,153 @@ func convertEDNSObjectToCfg(edns *externaldnsv1alpha1.ExternalDNS) *externaldns.
 	// sources[] must contain strings that are lower cased
 	config.Sources = sources
 
-	config.OCPRouterName = edns.Spec.OCRouterName
-	config.GatewayNamespace = edns.Spec.GatewayNamespace
-	config.GatewayLabelFilter = edns.Spec.GatewayLabelFilter
-	if len(edns.Spec.ManageDNSRecordTypes) > 0 {
+	if edns.Spec.OCRouterName != nil {
+		config.OCPRouterName = *edns.Spec.OCRouterName
+	}
+	if edns.Spec.GatewayNamespace != nil {
+		config.GatewayNamespace = *edns.Spec.GatewayNamespace
+	}
+	if edns.Spec.GatewayLabelFilter != nil {
+		config.GatewayLabelFilter = *edns.Spec.GatewayLabelFilter
+	}
+	if edns.Spec.ManageDNSRecordTypes != nil {
 		config.ManagedDNSRecordTypes = edns.Spec.ManageDNSRecordTypes
 	}
-	if len(edns.Spec.DefaultTargets) > 0 {
+	if edns.Spec.DefaultTargets != nil {
 		config.DefaultTargets = edns.Spec.DefaultTargets
 	}
 
 	// For Node
 	if edns.Spec.Source.Node != nil && edns.Spec.Source.Type.Kind == "Node" {
 		config.FQDNTemplate = edns.Spec.Source.Node.FQDNTemplate
-		config.AnnotationFilter = edns.Spec.Source.Node.AnnotationFilter
-		config.LabelFilter = edns.Spec.Source.Node.LabelFilter
+		if edns.Spec.Source.Node.AnnotationFilter != nil {
+			config.AnnotationFilter = *edns.Spec.Source.Node.AnnotationFilter
+		}
+		if edns.Spec.Source.Node.LabelFilter != nil {
+			config.LabelFilter = *edns.Spec.Source.Node.LabelFilter
+		}
 	}
 
 	// For Service
 	if edns.Spec.Source.Service != nil && edns.Spec.Source.Type.Kind == "Service" {
-		config.LabelFilter = edns.Spec.Source.Service.LabelFilter
-		config.Namespace = edns.Spec.Source.Service.Namespace
-		config.AnnotationFilter = edns.Spec.Source.Service.AnnotationFilter
-		config.FQDNTemplate = edns.Spec.Source.Service.FQDNTemplate
-		config.CombineFQDNAndAnnotation = edns.Spec.Source.Service.CombineFQDNAndAnnotation
-		config.Compatibility = edns.Spec.Source.Service.Compatibility
-		config.PublishInternal = edns.Spec.Source.Service.PublishInternal
-		config.PublishHostIP = edns.Spec.Source.Service.PublishHostIP
-		config.AlwaysPublishNotReadyAddresses = edns.Spec.Source.Service.AlwaysPublishNotReadyAddresses
-		if len(edns.Spec.Source.Service.ServiceTypeFilter) > 0 {
+		if edns.Spec.Source.Service.LabelFilter != nil {
+			config.LabelFilter = *edns.Spec.Source.Service.LabelFilter
+		}
+		if edns.Spec.Source.Service.Namespace != nil {
+			config.Namespace = *edns.Spec.Source.Service.Namespace
+		}
+		if edns.Spec.Source.Service.AnnotationFilter != nil {
+			config.AnnotationFilter = *edns.Spec.Source.Service.AnnotationFilter
+		}
+		if edns.Spec.Source.Service.FQDNTemplate != nil {
+			config.FQDNTemplate = *edns.Spec.Source.Service.FQDNTemplate
+		}
+		if edns.Spec.Source.Service.CombineFQDNAndAnnotation != nil {
+			config.CombineFQDNAndAnnotation = *edns.Spec.Source.Service.CombineFQDNAndAnnotation
+		}
+		if edns.Spec.Source.Service.Compatibility != nil {
+			config.Compatibility = *edns.Spec.Source.Service.Compatibility
+		}
+		if edns.Spec.Source.Service.PublishInternal != nil {
+			config.PublishInternal = *edns.Spec.Source.Service.PublishInternal
+		}
+		if edns.Spec.Source.Service.PublishHostIP != nil {
+			config.PublishHostIP = *edns.Spec.Source.Service.PublishHostIP
+		}
+		if edns.Spec.Source.Service.AlwaysPublishNotReadyAddresses != nil {
+			config.AlwaysPublishNotReadyAddresses = *edns.Spec.Source.Service.AlwaysPublishNotReadyAddresses
+		}
+		if edns.Spec.Source.Service.ServiceTypeFilter != nil {
 			config.ServiceTypeFilter = edns.Spec.Source.Service.ServiceTypeFilter
 		}
-		config.IgnoreHostnameAnnotation = edns.Spec.Source.Service.IgnoreHostnameAnnotation
+		if edns.Spec.Source.Service.IgnoreHostnameAnnotation != nil {
+			config.IgnoreHostnameAnnotation = *edns.Spec.Source.Service.IgnoreHostnameAnnotation
+		}
 	}
 
 	// For Ingress
 	if edns.Spec.Source.Ingress != nil && edns.Spec.Source.Type.Kind == "Ingress" {
-		config.IgnoreIngressRulesSpec = edns.Spec.Source.Ingress.IgnoreIngressRulesSpec
-		config.IgnoreHostnameAnnotation = edns.Spec.Source.Ingress.IgnoreHostnameAnnotation
-		config.FQDNTemplate = edns.Spec.Source.Ingress.FQDNTemplate
-		config.Namespace = edns.Spec.Source.Ingress.Namespace
-		config.AnnotationFilter = edns.Spec.Source.Ingress.AnnotationFilter
-		config.CombineFQDNAndAnnotation = edns.Spec.Source.Ingress.CombineFQDNAndAnnotation
-		config.IgnoreIngressTLSSpec = edns.Spec.Source.Ingress.IgnoreIngressTLSSpec
-		config.LabelFilter = edns.Spec.Source.Ingress.LabelFilter
+		if edns.Spec.Source.Ingress.IgnoreIngressRulesSpec != nil {
+			config.IgnoreIngressRulesSpec = *edns.Spec.Source.Ingress.IgnoreIngressRulesSpec
+		}
+		if edns.Spec.Source.Ingress.IgnoreHostnameAnnotation != nil {
+			config.IgnoreHostnameAnnotation = *edns.Spec.Source.Ingress.IgnoreHostnameAnnotation
+		}
+		if edns.Spec.Source.Ingress.FQDNTemplate != nil {
+			config.FQDNTemplate = *edns.Spec.Source.Ingress.FQDNTemplate
+		}
+		if edns.Spec.Source.Ingress.Namespace != nil {
+			config.Namespace = *edns.Spec.Source.Ingress.Namespace
+		}
+		if edns.Spec.Source.Ingress.AnnotationFilter != nil {
+			config.AnnotationFilter = *edns.Spec.Source.Ingress.AnnotationFilter
+		}
+		if edns.Spec.Source.Ingress.CombineFQDNAndAnnotation != nil {
+			config.CombineFQDNAndAnnotation = *edns.Spec.Source.Ingress.CombineFQDNAndAnnotation
+		}
+		if edns.Spec.Source.Ingress.IgnoreIngressTLSSpec != nil {
+			config.IgnoreIngressTLSSpec = *edns.Spec.Source.Ingress.IgnoreIngressTLSSpec
+		}
+		if edns.Spec.Source.Ingress.LabelFilter != nil {
+			config.LabelFilter = *edns.Spec.Source.Ingress.LabelFilter
+		}
 	}
 
 	// PROVIDER
 	config.Provider = edns.Spec.Provider.String()
 
-	if len(edns.Spec.DomainFilter) > 0 {
+	if edns.Spec.DomainFilter != nil {
 		config.DomainFilter = edns.Spec.DomainFilter
 	}
-	if len(edns.Spec.ExcludeDomains) > 0 {
+	if edns.Spec.ExcludeDomains != nil {
 		config.ExcludeDomains = edns.Spec.ExcludeDomains
 	}
-	if len(edns.Spec.ZoneIDFilter) > 0 {
+	if edns.Spec.ZoneIDFilter != nil {
 		config.ZoneIDFilter = edns.Spec.ZoneIDFilter
 	}
 
 	// for aws provider
 	if edns.Spec.AWS != nil {
 
-		if len(edns.Spec.AWS.ZoneTagFilter) > 0 {
+		if edns.Spec.AWS.ZoneTagFilter != nil {
 			config.AWSZoneTagFilter = edns.Spec.AWS.ZoneTagFilter
 		}
-		config.AWSZoneType = edns.Spec.AWS.ZoneType
-		config.AWSAssumeRole = edns.Spec.AWS.AssumeRole
+		if edns.Spec.AWS.ZoneType != nil {
+			config.AWSZoneType = *edns.Spec.AWS.ZoneType
+		}
+		if edns.Spec.AWS.AssumeRole != nil {
+			config.AWSAssumeRole = *edns.Spec.AWS.AssumeRole
+		}
 		if edns.Spec.AWS.BatchChangeSize != nil {
 			config.AWSBatchChangeSize = *edns.Spec.AWS.BatchChangeSize
 		}
 		if edns.Spec.AWS.BatchChangeInterval != nil {
 			config.AWSBatchChangeInterval = *edns.Spec.AWS.BatchChangeInterval
 		}
-		config.AWSEvaluateTargetHealth = edns.Spec.AWS.EvaluateTargetHealth
+		if edns.Spec.AWS.EvaluateTargetHealth != nil {
+			config.AWSEvaluateTargetHealth = *edns.Spec.AWS.EvaluateTargetHealth
+		}
 		if edns.Spec.AWS.APIRetries != nil {
 			config.AWSAPIRetries = *edns.Spec.AWS.APIRetries
 		}
-		config.AWSPreferCNAME = edns.Spec.AWS.PreferCNAME
+		if edns.Spec.AWS.PreferCNAME != nil {
+			config.AWSPreferCNAME = *edns.Spec.AWS.PreferCNAME
+		}
 		if edns.Spec.AWS.ZoneCacheDuration != nil {
 			config.AWSZoneCacheDuration = *edns.Spec.AWS.ZoneCacheDuration
 		}
-		config.AWSSDServiceCleanup = edns.Spec.AWS.SDServiceCleanup
+		if edns.Spec.AWS.SDServiceCleanup != nil {
+			config.AWSSDServiceCleanup = *edns.Spec.AWS.SDServiceCleanup
+		}
 	}
 
 	// for cloudflare provider
 	if edns.Spec.Cloudflare != nil {
-		config.CloudflareProxied = edns.Spec.Cloudflare.Proxied
+
+		if edns.Spec.Cloudflare.Proxied != nil {
+			config.CloudflareProxied = *edns.Spec.Cloudflare.Proxied
+		}
+
 		if edns.Spec.Cloudflare.ZonesPerPage != nil {
 			config.CloudflareZonesPerPage = *edns.Spec.Cloudflare.ZonesPerPage
 		}
@@ -426,14 +486,23 @@ func convertEDNSObjectToCfg(edns *externaldnsv1alpha1.ExternalDNS) *externaldns.
 		config.AzureConfigFile = fmt.Sprintf("/tmp/%s-%s-credential", edns.Namespace, edns.Name)
 	}
 	if edns.Spec.Azure != nil {
-		config.AzureSubscriptionID = edns.Spec.Azure.SubscriptionId
-		config.AzureResourceGroup = edns.Spec.Azure.ResourceGroup
-		config.AzureUserAssignedIdentityClientID = edns.Spec.Azure.UserAssignedIdentityClientID
+
+		if edns.Spec.Azure.SubscriptionId != nil {
+			config.AzureSubscriptionID = *edns.Spec.Azure.SubscriptionId
+		}
+		if edns.Spec.Azure.ResourceGroup != nil {
+			config.AzureResourceGroup = *edns.Spec.Azure.ResourceGroup
+		}
+		if edns.Spec.Azure.UserAssignedIdentityClientID != nil {
+			config.AzureUserAssignedIdentityClientID = *edns.Spec.Azure.UserAssignedIdentityClientID
+		}
 	}
 
 	// for google dns provider
 	if edns.Spec.Google != nil {
-		config.GoogleProject = edns.Spec.Google.Project
+		if edns.Spec.Google.Project != nil {
+			config.GoogleProject = *edns.Spec.Google.Project
+		}
 
 		if edns.Spec.Google.BatchChangeSize != nil {
 			config.GoogleBatchChangeSize = *edns.Spec.Google.BatchChangeSize
@@ -443,19 +512,33 @@ func convertEDNSObjectToCfg(edns *externaldnsv1alpha1.ExternalDNS) *externaldns.
 			config.GoogleBatchChangeInterval = *edns.Spec.Google.BatchChangeInterval
 		}
 
-		config.GoogleZoneVisibility = edns.Spec.Google.ZoneVisibility
+		if edns.Spec.Google.ZoneVisibility != nil {
+			config.GoogleZoneVisibility = *edns.Spec.Google.ZoneVisibility
+		}
 	}
 
 	// POLICY
 
-	config.Policy = string(edns.Spec.Policy)
+	if edns.Spec.Policy != nil {
+		config.Policy = edns.Spec.Policy.String()
+	}
 
 	// REGISTRY
-	config.Registry = edns.Spec.Registry
-	config.TXTOwnerID = edns.Spec.TXTOwnerID
-	config.TXTPrefix = edns.Spec.TXTPrefix
-	config.TXTSuffix = edns.Spec.TXTSuffix
-	config.TXTWildcardReplacement = edns.Spec.TXTWildcardReplacement
+	if edns.Spec.Registry != nil {
+		config.Registry = *edns.Spec.Registry
+	}
+	if edns.Spec.TXTOwnerID != nil {
+		config.TXTOwnerID = *edns.Spec.TXTOwnerID
+	}
+	if edns.Spec.TXTPrefix != nil {
+		config.TXTPrefix = *edns.Spec.TXTPrefix
+	}
+	if edns.Spec.TXTSuffix != nil {
+		config.TXTSuffix = *edns.Spec.TXTSuffix
+	}
+	if edns.Spec.TXTWildcardReplacement != nil {
+		config.TXTWildcardReplacement = *edns.Spec.TXTWildcardReplacement
+	}
 
 	return &config
 }

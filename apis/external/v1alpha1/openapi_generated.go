@@ -18243,7 +18243,6 @@ func schema_external_dns_operator_apis_external_v1alpha1_ServiceConfig(ref commo
 					"alwaysPublishNotReadyAddresses": {
 						SchemaProps: spec.SchemaProps{
 							Description: "Always publish also not ready addresses for headless services",
-							Default:     false,
 							Type:        []string{"boolean"},
 							Format:      "",
 						},
