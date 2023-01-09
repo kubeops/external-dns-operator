@@ -228,7 +228,7 @@ func SetDNSRecords(ctx context.Context, edns *externaldnsv1alpha1.ExternalDNS) (
 
 	dnsRecs, e := createAndApplyPlan(ctx, cfg, reg, endpointsSource)
 	if e != nil {
-		klog.Errorf("failed to create and apply plan: %s", err.Error())
+		klog.Errorf("failed to create and apply plan: %s", e.Error())
 		return nil, e
 	}
 
