@@ -19,6 +19,7 @@ package plan
 import (
 	"context"
 	"fmt"
+	"gomodules.xyz/sets"
 	"log"
 	"regexp"
 	"strings"
@@ -305,13 +306,15 @@ func createAndApplyPlan(ctx context.Context, cfg *externaldns.Config, r registry
 		klog.Info("all records are already up to date")
 	}
 
-	validRecordTypes := make(map[string]bool)
+	//validRecordTypes := make(map[string]bool)
+	managedRecordsTypes := sets.NewString()
+
 	for _, dnsType := range cfg.ManagedDNSRecordTypes {
-		validRecordTypes[dnsType] = true
+		managedRecordsTypes.Insert(dnsType)
 	}
 
 	for _, rec := range pln.Desired {
-		if validRecordTypes[rec.RecordType] {
+		if managedRecordsTypes.Has(rec.RecordType) {
 			dnsRecs = append(dnsRecs, externaldnsv1alpha1.DNSRecord{Name: rec.DNSName, Target: rec.Targets.String()})
 		}
 	}
