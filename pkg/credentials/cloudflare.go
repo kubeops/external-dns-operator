@@ -66,10 +66,14 @@ func setCloudflareCredentials(ctx context.Context, kc client.Client, edns *exter
 	}
 
 	if string(secret.Data[CFBaseURL]) != "" {
-		return os.Setenv(CFBaseURL, string(secret.Data[CFBaseURL]))
+		if err := os.Setenv(CFBaseURL, string(secret.Data[CFBaseURL])); err != nil {
+			return err
+		}
 	}
 	if string(secret.Data[CFApiToken]) != "" {
-		return os.Setenv(CFApiToken, string(secret.Data[CFApiToken]))
+		if err := os.Setenv(CFApiToken, string(secret.Data[CFApiToken])); err != nil {
+			return err
+		}
 	} else {
 		if err := os.Setenv(CFApiKey, string(secret.Data[CFApiKey])); err != nil {
 			return err
