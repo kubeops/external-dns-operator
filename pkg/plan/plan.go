@@ -27,6 +27,7 @@ import (
 	externaldnsv1alpha1 "kubeops.dev/external-dns-operator/apis/external/v1alpha1"
 
 	"github.com/sirupsen/logrus"
+	"gomodules.xyz/sets"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/external-dns/endpoint"
@@ -305,8 +306,16 @@ func createAndApplyPlan(ctx context.Context, cfg *externaldns.Config, r registry
 		klog.Info("all records are already up to date")
 	}
 
+	managedRecordsTypes := sets.NewString()
+
+	for _, dnsType := range cfg.ManagedDNSRecordTypes {
+		managedRecordsTypes.Insert(dnsType)
+	}
+
 	for _, rec := range pln.Desired {
-		dnsRecs = append(dnsRecs, externaldnsv1alpha1.DNSRecord{Name: rec.DNSName, Target: rec.Targets.String()})
+		if managedRecordsTypes.Has(rec.RecordType) {
+			dnsRecs = append(dnsRecs, externaldnsv1alpha1.DNSRecord{Name: rec.DNSName, Target: rec.Targets.String()})
+		}
 	}
 	return dnsRecs, nil
 }
