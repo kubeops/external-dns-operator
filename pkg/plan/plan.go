@@ -311,7 +311,7 @@ func createAndApplyPlan(ctx context.Context, cfg *externaldns.Config, r registry
 	}
 
 	for _, rec := range pln.Desired {
-		if validRecordTypes[rec.RecordType] == true {
+		if validRecordTypes[rec.RecordType] {
 			dnsRecs = append(dnsRecs, externaldnsv1alpha1.DNSRecord{Name: rec.DNSName, Target: rec.Targets.String()})
 		}
 	}
