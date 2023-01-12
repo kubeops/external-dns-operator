@@ -19,7 +19,6 @@ package plan
 import (
 	"context"
 	"fmt"
-	"gomodules.xyz/sets"
 	"log"
 	"regexp"
 	"strings"
@@ -28,6 +27,7 @@ import (
 	externaldnsv1alpha1 "kubeops.dev/external-dns-operator/apis/external/v1alpha1"
 
 	"github.com/sirupsen/logrus"
+	"gomodules.xyz/sets"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/external-dns/endpoint"

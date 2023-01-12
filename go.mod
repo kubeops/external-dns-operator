@@ -11,6 +11,7 @@ require (
 	github.com/spf13/cobra v1.6.0
 	go.bytebuilders.dev/license-verifier v0.12.2
 	gomodules.xyz/logs v0.0.6
+	gomodules.xyz/sets v0.2.1
 	gomodules.xyz/x v0.0.14
 	k8s.io/api v0.25.2
 	k8s.io/apimachinery v0.25.2
@@ -176,7 +177,6 @@ require (
 	gomodules.xyz/clock v0.0.0-20200817085942-06523dba733f // indirect
 	gomodules.xyz/flags v0.1.3 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.2.0 // indirect
-	gomodules.xyz/sets v0.2.1 // indirect
 	gomodules.xyz/wait v0.2.0 // indirect
 	google.golang.org/api v0.96.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
