@@ -305,8 +305,15 @@ func createAndApplyPlan(ctx context.Context, cfg *externaldns.Config, r registry
 		klog.Info("all records are already up to date")
 	}
 
+	validRecordTypes := make(map[string]bool)
+	for _, dnsType := range cfg.ManagedDNSRecordTypes {
+		validRecordTypes[dnsType] = true
+	}
+
 	for _, rec := range pln.Desired {
-		dnsRecs = append(dnsRecs, externaldnsv1alpha1.DNSRecord{Name: rec.DNSName, Target: rec.Targets.String()})
+		if validRecordTypes[rec.RecordType] == true {
+			dnsRecs = append(dnsRecs, externaldnsv1alpha1.DNSRecord{Name: rec.DNSName, Target: rec.Targets.String()})
+		}
 	}
 	return dnsRecs, nil
 }
