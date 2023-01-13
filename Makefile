@@ -431,6 +431,7 @@ install:
 	@cd ../installer; \
 	helm upgrade -i external-dns-operator charts/external-dns-operator --wait \
 		--namespace=$(KUBE_NAMESPACE) --create-namespace \
+		--set registryFQDN="" \
 		--set image.registry=$(REGISTRY) \
 		--set image.tag=$(TAG_PROD) \
 		--set imagePullPolicy=$(IMAGE_PULL_POLICY) \
