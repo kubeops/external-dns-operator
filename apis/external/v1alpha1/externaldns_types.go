@@ -245,6 +245,40 @@ type SourceConfig struct {
 	Ingress *IngressConfig `json:"ingress"`
 }
 
+type CloudflareSecretReference struct {
+	//first API token will be used, if it is not present then
+	// API KEY and API Email will be used
+
+	// +optional
+	APITokenKey string `json:"apiTokenKey"`
+
+	// +optional
+	APIKey string `json:"apiKey"`
+
+	// +optional
+	APIEmailKey string `json:"apiEmailKey"`
+
+	// +optional
+	BaseURLKey string `json:"baseURLKey"`
+}
+
+type ProviderSecretReference struct {
+	//SecretName is the name of the secret that contains the provider credentials
+	SecretName string `json:"secretName"`
+
+	// +optional
+	AWSCredentialKey string `json:"awsCredentialKey"`
+
+	// +optional
+	AzureCredentialKey string `json:"azureCredentialKey"`
+
+	// +optional
+	GoogleCredentialKey string `json:"googleCredentialKey"`
+
+	// +optional
+	CloudflareSecretRef CloudflareSecretReference `json:"cloudflareSecretRef"`
+}
+
 // ExternalDNSSpec defines the desired state of ExternalDNS
 type ExternalDNSSpec struct {
 	// ProviderSecretRef contains the name of the provider secret. The secret information may differ with respect to provider.
