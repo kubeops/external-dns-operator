@@ -83,7 +83,7 @@ type AWSProvider struct {
 
 	// provider secret credential information
 	// +optional
-	SecretRef *GeneralSecretReference `json:"secretRef,omitempty"`
+	SecretRef *GenericSecretReference `json:"secretRef,omitempty"`
 }
 
 type CloudflareProvider struct {
@@ -116,7 +116,7 @@ type AzureProvider struct {
 	UserAssignedIdentityClientID *string `json:"userAssignedIdentityClientID,omitempty"`
 
 	// Provider secret credential information
-	SecretRef *GeneralSecretReference `json:"secretRef,omitempty"`
+	SecretRef *GenericSecretReference `json:"secretRef,omitempty"`
 }
 
 type GoogleProvider struct {
@@ -137,7 +137,7 @@ type GoogleProvider struct {
 	ZoneVisibility *string `json:"zoneVisibility,omitempty"`
 
 	// Provider secret credential information
-	SecretRef *GeneralSecretReference `json:"secretRef,omitempty"`
+	SecretRef *GenericSecretReference `json:"secretRef,omitempty"`
 }
 
 type ServiceConfig struct {
@@ -260,9 +260,9 @@ type SourceConfig struct {
 	Ingress *IngressConfig `json:"ingress"`
 }
 
-// GeneralSecretReference contains the information of the provider secret. Name is for secret name and CredentialKey is for specifying the key of the secret.
+// GenericSecretReference contains the information of the provider secret. Name is for secret name and CredentialKey is for specifying the key of the secret.
 // It is considered optional where workload identity or IRSA (IAM Role for Service Account) is used, otherwise it is mandatory
-type GeneralSecretReference struct {
+type GenericSecretReference struct {
 	// Name of the provider secret
 	Name string `json:"name"`
 	// credential key of the provider secret
