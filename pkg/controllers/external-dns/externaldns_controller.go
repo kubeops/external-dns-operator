@@ -151,23 +151,23 @@ func (r *ExternalDNSReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		}
 
 		for _, edns := range ednsList.Items {
-			provider := edns.Spec.Provider.String()
-			if provider == externaldnsv1alpha1.ProviderAWS.String() {
+			switch edns.Spec.Provider.String() {
+			case externaldnsv1alpha1.ProviderAWS.String():
 				if edns.Spec.AWS != nil && edns.Spec.AWS.SecretRef != nil && edns.Spec.AWS.SecretRef.Name == object.GetName() {
 					reconcileReq = append(reconcileReq, reconcile.Request{NamespacedName: client.ObjectKey{Name: edns.Name, Namespace: edns.Namespace}})
 				}
-			}
-			if provider == externaldnsv1alpha1.ProviderAzure.String() {
+
+			case externaldnsv1alpha1.ProviderAzure.String():
 				if edns.Spec.Azure != nil && edns.Spec.Azure.SecretRef != nil && edns.Spec.Azure.SecretRef.Name == object.GetName() {
 					reconcileReq = append(reconcileReq, reconcile.Request{NamespacedName: client.ObjectKey{Name: edns.Name, Namespace: edns.Namespace}})
 				}
-			}
-			if provider == externaldnsv1alpha1.ProviderGoogle.String() {
+
+			case externaldnsv1alpha1.ProviderGoogle.String():
 				if edns.Spec.Google != nil && edns.Spec.Google.SecretRef != nil && edns.Spec.Google.SecretRef.Name == object.GetName() {
 					reconcileReq = append(reconcileReq, reconcile.Request{NamespacedName: client.ObjectKey{Name: edns.Name, Namespace: edns.Namespace}})
 				}
-			}
-			if provider == externaldnsv1alpha1.ProviderCloudflare.String() {
+
+			case externaldnsv1alpha1.ProviderCloudflare.String():
 				if edns.Spec.Cloudflare != nil && edns.Spec.Cloudflare.SecretRef != nil && edns.Spec.Cloudflare.SecretRef.Name == object.GetName() {
 					reconcileReq = append(reconcileReq, reconcile.Request{NamespacedName: client.ObjectKey{Name: edns.Name, Namespace: edns.Namespace}})
 				}

@@ -47,7 +47,7 @@ func validCFSecret(secret *core.Secret, tokenKey, apiKey, apiEmail string) bool 
 }
 
 func setCloudflareCredentials(ctx context.Context, kc client.Client, edns *externaldnsv1alpha1.ExternalDNS) error {
-	if err := resetEnvVariables(CFApiToken, CFApiKey, CFApiEmail); err != nil {
+	if err := resetEnvVariables(CFApiToken, CFApiKey, CFApiEmail, CFBaseURL); err != nil {
 		return err
 	}
 
@@ -70,7 +70,7 @@ func setCloudflareCredentials(ctx context.Context, kc client.Client, edns *exter
 			return err
 		}
 	}
-	if string(secret.Data[edns.Spec.Cloudflare.SecretRef.APITokenKey]) != "" {
+	if len(secret.Data[edns.Spec.Cloudflare.SecretRef.APITokenKey]) > 0 {
 		if err := os.Setenv(CFApiToken, string(secret.Data[edns.Spec.Cloudflare.SecretRef.APITokenKey])); err != nil {
 			return err
 		}
