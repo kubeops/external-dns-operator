@@ -25,6 +25,7 @@ import (
 	"kubeops.dev/external-dns-operator/pkg/informers"
 	"kubeops.dev/external-dns-operator/pkg/plan"
 
+	"github.com/pkg/errors"
 	core "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/klog/v2"
@@ -102,7 +103,10 @@ func (r *ExternalDNSReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 
 	// REGISTER WATCHER
 	if err := informers.RegisterWatcher(ctx, edns, r.watcher, r.Client); err != nil {
-		return ctrl.Result{}, r.updateEdnsStatus(ctx, edns, newConditionPtr(externaldnsv1alpha1.CreateAndRegisterWatcher, err.Error(), edns.Generation, false), phasePointer(externaldnsv1alpha1.ExternalDNSPhaseFailed))
+		if patchErr := r.updateEdnsStatus(ctx, edns, newConditionPtr(externaldnsv1alpha1.CreateAndRegisterWatcher, err.Error(), edns.Generation, false), phasePointer(externaldnsv1alpha1.ExternalDNSPhaseFailed)); patchErr != nil {
+			err = errors.Wrap(err, patchErr.Error())
+		}
+		return ctrl.Result{}, err
 	}
 
 	if patchErr := r.updateEdnsStatus(ctx, edns, newConditionPtr(externaldnsv1alpha1.CreateAndRegisterWatcher, "Watcher registered", edns.Generation, true), nil); patchErr != nil {
@@ -116,7 +120,10 @@ func (r *ExternalDNSReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	// create and set provider secret credentials and environment variables
 	err := credentials.SetCredential(ctx, r.Client, edns)
 	if err != nil {
-		return ctrl.Result{}, r.updateEdnsStatus(ctx, edns, newConditionPtr(externaldnsv1alpha1.GetProviderSecret, err.Error(), edns.Generation, false), phasePointer(externaldnsv1alpha1.ExternalDNSPhaseFailed))
+		if patchErr := r.updateEdnsStatus(ctx, edns, newConditionPtr(externaldnsv1alpha1.GetProviderSecret, err.Error(), edns.Generation, false), phasePointer(externaldnsv1alpha1.ExternalDNSPhaseFailed)); patchErr != nil {
+			err = errors.Wrap(err, patchErr.Error())
+		}
+		return ctrl.Result{}, err
 	}
 
 	if patchErr := r.updateEdnsStatus(ctx, edns, newConditionPtr(externaldnsv1alpha1.GetProviderSecret, "Provider credential configured", edns.Generation, true), nil); patchErr != nil {
@@ -128,7 +135,10 @@ func (r *ExternalDNSReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	// successMsg is used to identify whether the 'plan applied' or 'already up to date'
 	dnsRecs, err := plan.SetDNSRecords(ctx, edns)
 	if err != nil {
-		return ctrl.Result{}, r.updateEdnsStatus(ctx, edns, newConditionPtr(externaldnsv1alpha1.CreateAndApplyPlan, err.Error(), edns.Generation, false), phasePointer(externaldnsv1alpha1.ExternalDNSPhaseFailed))
+		if patchErr := r.updateEdnsStatus(ctx, edns, newConditionPtr(externaldnsv1alpha1.CreateAndApplyPlan, err.Error(), edns.Generation, false), phasePointer(externaldnsv1alpha1.ExternalDNSPhaseFailed)); patchErr != nil {
+			err = errors.Wrap(err, patchErr.Error())
+		}
+		return ctrl.Result{}, err
 	}
 
 	err = r.patchDNSRecords(ctx, edns, dnsRecs)
