@@ -29,8 +29,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func validAzureSecret(secret *core.Secret) bool {
-	_, found := secret.Data["azure.json"]
+func validAzureSecret(secret *core.Secret, key string) bool {
+	_, found := secret.Data[key]
 	return found
 }
 
@@ -45,7 +45,7 @@ func setAzureCredential(ctx context.Context, kc client.Client, edns *externaldns
 		return err
 	}
 
-	if !validAzureSecret(secret) {
+	if !validAzureSecret(secret, edns.Spec.Azure.SecretRef.CredentialKey) {
 		return errors.New("invalid Azure provider secret")
 	}
 	fileName := fmt.Sprintf("%s-%s-credential", edns.Namespace, edns.Name)
@@ -57,7 +57,7 @@ func setAzureCredential(ctx context.Context, kc client.Client, edns *externaldns
 	}
 	defer file.Close()
 
-	b := secret.Data["azure.json"]
+	b := secret.Data[edns.Spec.Azure.SecretRef.CredentialKey]
 	_, err = file.Write(b)
 	if err != nil {
 		return err

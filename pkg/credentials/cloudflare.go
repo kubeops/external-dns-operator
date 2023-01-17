@@ -35,12 +35,12 @@ const (
 	CFApiEmail = "CF_API_EMAIL"
 )
 
-func validCFSecret(secret *core.Secret) bool {
-	if _, foundToken := secret.Data[CFApiToken]; foundToken {
+func validCFSecret(secret *core.Secret, tokenKey, apiKey, apiEmail string) bool {
+	if _, foundToken := secret.Data[tokenKey]; foundToken {
 		return true
 	} else {
-		_, foundKey := secret.Data[CFApiKey]
-		_, foundEmail := secret.Data[CFApiEmail]
+		_, foundKey := secret.Data[apiKey]
+		_, foundEmail := secret.Data[apiEmail]
 
 		return foundKey && foundEmail
 	}
@@ -61,24 +61,24 @@ func setCloudflareCredentials(ctx context.Context, kc client.Client, edns *exter
 		return err
 	}
 
-	if !validCFSecret(secret) {
+	if !validCFSecret(secret, edns.Spec.Cloudflare.SecretRef.APITokenKey, edns.Spec.Cloudflare.SecretRef.APIKey, edns.Spec.Cloudflare.SecretRef.APIEmailKey) {
 		return errors.New("invalid cloudflare provider secret")
 	}
 
-	if string(secret.Data[CFBaseURL]) != "" {
-		if err := os.Setenv(CFBaseURL, string(secret.Data[CFBaseURL])); err != nil {
+	if edns.Spec.Cloudflare.BaseURL != "" {
+		if err := os.Setenv(CFBaseURL, edns.Spec.Cloudflare.BaseURL); err != nil {
 			return err
 		}
 	}
-	if string(secret.Data[CFApiToken]) != "" {
-		if err := os.Setenv(CFApiToken, string(secret.Data[CFApiToken])); err != nil {
+	if string(secret.Data[edns.Spec.Cloudflare.SecretRef.APITokenKey]) != "" {
+		if err := os.Setenv(CFApiToken, string(secret.Data[edns.Spec.Cloudflare.SecretRef.APITokenKey])); err != nil {
 			return err
 		}
 	} else {
-		if err := os.Setenv(CFApiKey, string(secret.Data[CFApiKey])); err != nil {
+		if err := os.Setenv(CFApiKey, string(secret.Data[edns.Spec.Cloudflare.SecretRef.APIKey])); err != nil {
 			return err
 		}
-		if err := os.Setenv(CFApiEmail, string(secret.Data[CFApiEmail])); err != nil {
+		if err := os.Setenv(CFApiEmail, string(secret.Data[edns.Spec.Cloudflare.SecretRef.APIEmailKey])); err != nil {
 			return err
 		}
 	}
