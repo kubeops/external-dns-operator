@@ -24,7 +24,7 @@ import (
 	"strings"
 	"time"
 
-	externaldnsv1alpha1 "kubeops.dev/external-dns-operator/apis/external/v1alpha1"
+	api "kubeops.dev/external-dns-operator/apis/external/v1alpha1"
 
 	"github.com/sirupsen/logrus"
 	"gomodules.xyz/sets"
@@ -206,7 +206,7 @@ var defaultConfig = externaldns.Config{
 	IBMCloudConfigFile:          "/etc/kubernetes/ibmcloud.json",
 }
 
-func SetDNSRecords(ctx context.Context, edns *externaldnsv1alpha1.ExternalDNS) ([]externaldnsv1alpha1.DNSRecord, error) {
+func SetDNSRecords(ctx context.Context, edns *api.ExternalDNS) ([]api.DNSRecord, error) {
 	cfg := convertEDNSObjectToCfg(edns)
 
 	endpointsSource, err := createEndpointsSource(ctx, cfg)
@@ -237,7 +237,7 @@ func SetDNSRecords(ctx context.Context, edns *externaldnsv1alpha1.ExternalDNS) (
 }
 
 // create and apply dns plan, If plan is successfully applied then returns dns record, which defines the desired records of the plan
-func createAndApplyPlan(ctx context.Context, cfg *externaldns.Config, r registry.Registry, endpointSource source.Source) ([]externaldnsv1alpha1.DNSRecord, error) {
+func createAndApplyPlan(ctx context.Context, cfg *externaldns.Config, r registry.Registry, endpointSource source.Source) ([]api.DNSRecord, error) {
 	var domainFilter endpoint.DomainFilter
 	if cfg.RegexDomainFilter.String() != "" {
 		domainFilter = endpoint.NewRegexDomainFilter(cfg.RegexDomainFilter, cfg.RegexDomainExclusion)
@@ -292,7 +292,7 @@ func createAndApplyPlan(ctx context.Context, cfg *externaldns.Config, r registry
 	klog.Info("Desired: ", pln.Desired)
 	klog.Info("Current: ", pln.Current)
 
-	dnsRecs := make([]externaldnsv1alpha1.DNSRecord, 0)
+	dnsRecs := make([]api.DNSRecord, 0)
 
 	if pln.Changes.HasChanges() {
 		err = r.ApplyChanges(ctx, pln.Changes)
@@ -314,13 +314,13 @@ func createAndApplyPlan(ctx context.Context, cfg *externaldns.Config, r registry
 
 	for _, rec := range pln.Desired {
 		if managedRecordsTypes.Has(rec.RecordType) {
-			dnsRecs = append(dnsRecs, externaldnsv1alpha1.DNSRecord{Name: rec.DNSName, Target: rec.Targets.String()})
+			dnsRecs = append(dnsRecs, api.DNSRecord{Name: rec.DNSName, Target: rec.Targets.String()})
 		}
 	}
 	return dnsRecs, nil
 }
 
-func convertEDNSObjectToCfg(edns *externaldnsv1alpha1.ExternalDNS) *externaldns.Config {
+func convertEDNSObjectToCfg(edns *api.ExternalDNS) *externaldns.Config {
 	config := defaultConfig
 
 	if edns.Namespace != "" {
@@ -490,7 +490,7 @@ func convertEDNSObjectToCfg(edns *externaldnsv1alpha1.ExternalDNS) *externaldns.
 	}
 
 	// for azure provide
-	if edns.Spec.Provider.String() == externaldnsv1alpha1.ProviderAzure.String() {
+	if edns.Spec.Provider == api.ProviderAzure {
 		// hard-code assignment of AzureConfigFile path
 		config.AzureConfigFile = fmt.Sprintf("/tmp/%s-%s-credential", edns.Namespace, edns.Name)
 	}

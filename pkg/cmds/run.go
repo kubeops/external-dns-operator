@@ -19,8 +19,8 @@ package cmds
 import (
 	"os"
 
-	externaldnsv1alpha1 "kubeops.dev/external-dns-operator/apis/external/v1alpha1"
-	externaldnscontrollers "kubeops.dev/external-dns-operator/pkg/controllers/external-dns"
+	api "kubeops.dev/external-dns-operator/apis/external/v1alpha1"
+	controllers "kubeops.dev/external-dns-operator/pkg/controllers/external-dns"
 
 	"github.com/spf13/cobra"
 	v "gomodules.xyz/x/version"
@@ -45,7 +45,7 @@ var (
 
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
-	utilruntime.Must(externaldnsv1alpha1.AddToScheme(scheme))
+	utilruntime.Must(api.AddToScheme(scheme))
 }
 
 func NewCmdRun() *cobra.Command {
@@ -94,7 +94,7 @@ func NewCmdRun() *cobra.Command {
 				os.Exit(1)
 			}
 
-			if err = (&externaldnscontrollers.ExternalDNSReconciler{
+			if err = (&controllers.ExternalDNSReconciler{
 				Client: mgr.GetClient(),
 				Scheme: mgr.GetScheme(),
 			}).SetupWithManager(mgr); err != nil {

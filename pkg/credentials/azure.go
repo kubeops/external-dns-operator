@@ -22,7 +22,7 @@ import (
 	"fmt"
 	"os"
 
-	externaldnsv1alpha1 "kubeops.dev/external-dns-operator/apis/external/v1alpha1"
+	api "kubeops.dev/external-dns-operator/apis/external/v1alpha1"
 
 	core "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -34,7 +34,7 @@ func validAzureSecret(secret *core.Secret, key string) bool {
 	return found
 }
 
-func setAzureCredential(ctx context.Context, kc client.Client, edns *externaldnsv1alpha1.ExternalDNS) error {
+func setAzureCredential(ctx context.Context, kc client.Client, edns *api.ExternalDNS) error {
 	// for azure, user must have to provide ProviderSecretRef
 	if edns.Spec.Azure == nil || edns.Spec.Azure.SecretRef == nil {
 		return errors.New("providerSecretRef is not given for azure provider")

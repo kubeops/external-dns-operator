@@ -21,7 +21,7 @@ import (
 	"errors"
 	"os"
 
-	externaldnsv1alpha1 "kubeops.dev/external-dns-operator/apis/external/v1alpha1"
+	api "kubeops.dev/external-dns-operator/apis/external/v1alpha1"
 
 	core "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -46,7 +46,7 @@ func validCFSecret(secret *core.Secret, tokenKey, apiKey, apiEmail string) bool 
 	}
 }
 
-func setCloudflareCredentials(ctx context.Context, kc client.Client, edns *externaldnsv1alpha1.ExternalDNS) error {
+func setCloudflareCredentials(ctx context.Context, kc client.Client, edns *api.ExternalDNS) error {
 	if err := resetEnvVariables(CFApiToken, CFApiKey, CFApiEmail, CFBaseURL); err != nil {
 		return err
 	}

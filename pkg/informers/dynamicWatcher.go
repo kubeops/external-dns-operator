@@ -21,7 +21,7 @@ import (
 	"reflect"
 	"sync"
 
-	externaldnsv1alpha1 "kubeops.dev/external-dns-operator/apis/external/v1alpha1"
+	api "kubeops.dev/external-dns-operator/apis/external/v1alpha1"
 
 	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -108,11 +108,11 @@ func getRuntimeObject(gvk schema.GroupVersionKind) runtime.Object {
 	return unObj
 }
 
-func RegisterWatcher(ctx context.Context, crd *externaldnsv1alpha1.ExternalDNS, watcher *ObjectTracker, r client.Client) error {
+func RegisterWatcher(ctx context.Context, crd *api.ExternalDNS, watcher *ObjectTracker, r client.Client) error {
 	sourceHandler := func(object client.Object) []reconcile.Request {
 		reconcileReq := make([]reconcile.Request, 0)
 
-		dnsList := &externaldnsv1alpha1.ExternalDNSList{}
+		dnsList := &api.ExternalDNSList{}
 
 		if err := r.List(ctx, dnsList); err != nil {
 			klog.Errorf("failed to list the external dns resources: %s", err.Error())
