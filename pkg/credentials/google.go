@@ -31,8 +31,8 @@ import (
 
 const GoogleApplicationCredentials = "GOOGLE_APPLICATION_CREDENTIALS"
 
-func validGoogleSecret(secret *core.Secret) bool {
-	_, found := secret.Data["credentials.json"]
+func validGoogleSecret(secret *core.Secret, key string) bool {
+	_, found := secret.Data[key]
 	return found
 }
 
@@ -42,16 +42,16 @@ func setGoogleCredential(ctx context.Context, kc client.Client, edns *externaldn
 	}
 
 	// if ProviderSecretRef is nil then user is intended to use Workload Identity
-	if edns.Spec.ProviderSecretRef == nil {
+	if edns.Spec.Google == nil || edns.Spec.Google.SecretRef == nil {
 		return nil
 	}
 
-	secret, err := getSecret(ctx, kc, types.NamespacedName{Namespace: edns.Namespace, Name: edns.Spec.ProviderSecretRef.Name})
+	secret, err := getSecret(ctx, kc, types.NamespacedName{Namespace: edns.Namespace, Name: edns.Spec.Google.SecretRef.Name})
 	if err != nil {
 		return err
 	}
 
-	if !validGoogleSecret(secret) {
+	if !validGoogleSecret(secret, edns.Spec.Google.SecretRef.CredentialKey) {
 		return errors.New("invalid Google provider secret")
 	}
 	fileName := fmt.Sprintf("%s-%s-credential", edns.Namespace, edns.Name)
@@ -63,7 +63,7 @@ func setGoogleCredential(ctx context.Context, kc client.Client, edns *externaldn
 	}
 	defer file.Close()
 
-	b := secret.Data["credentials.json"]
+	b := secret.Data[edns.Spec.Google.SecretRef.CredentialKey]
 	_, err = file.Write(b)
 	if err != nil {
 		return err

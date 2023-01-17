@@ -31,8 +31,8 @@ import (
 
 const AWSSharedCredentialsFile = "AWS_SHARED_CREDENTIALS_FILE"
 
-func validAWSSecret(secret *core.Secret) bool {
-	_, found := secret.Data["credentials"]
+func validAWSSecret(secret *core.Secret, key string) bool {
+	_, found := secret.Data[key]
 	return found
 }
 
@@ -42,16 +42,16 @@ func setAWSCredential(ctx context.Context, kc client.Client, edns *externaldnsv1
 	}
 
 	// if ProviderSecretRef is nil then user is intended to use IRSA (IAM Role for Service Account)
-	if edns.Spec.ProviderSecretRef == nil {
+	if edns.Spec.AWS == nil || edns.Spec.AWS.SecretRef == nil {
 		return nil
 	}
 
-	secret, err := getSecret(ctx, kc, types.NamespacedName{Namespace: edns.Namespace, Name: edns.Spec.ProviderSecretRef.Name})
+	secret, err := getSecret(ctx, kc, types.NamespacedName{Namespace: edns.Namespace, Name: edns.Spec.AWS.SecretRef.Name})
 	if err != nil {
 		return err
 	}
 
-	if !validAWSSecret(secret) {
+	if !validAWSSecret(secret, edns.Spec.AWS.SecretRef.CredentialKey) {
 		return errors.New("invalid aws provider secret")
 	}
 
@@ -64,7 +64,7 @@ func setAWSCredential(ctx context.Context, kc client.Client, edns *externaldnsv1
 	}
 	defer file.Close()
 
-	b := secret.Data["credentials"]
+	b := secret.Data[edns.Spec.AWS.SecretRef.CredentialKey]
 	_, err = file.Write(b)
 	if err != nil {
 		return err

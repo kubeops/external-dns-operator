@@ -19,7 +19,6 @@ package v1alpha1
 import (
 	"time"
 
-	core "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	kmapi "kmodules.xyz/client-go/api/v1"
@@ -81,6 +80,10 @@ type AWSProvider struct {
 	// When using the AWS CloudMap provider, delete empty Services without endpoints (default: disabled)
 	// +optional
 	SDServiceCleanup *bool `json:"sdServiceCleanup,omitempty"`
+
+	// provider secret credential information
+	// +optional
+	SecretRef *GenericSecretReference `json:"secretRef,omitempty"`
 }
 
 type CloudflareProvider struct {
@@ -91,6 +94,12 @@ type CloudflareProvider struct {
 	// When using the Cloudflare provider, specify how many zones per page listed, max. possible 50 (default: 50)
 	// +optional
 	ZonesPerPage *int `json:"zonesPerPage,omitempty"`
+
+	// +optional
+	BaseURL string `json:"baseURL,omitempty"`
+
+	// +optional
+	SecretRef *CloudflareSecretReference `json:"secretRef,omitempty"`
 }
 
 type AzureProvider struct {
@@ -105,6 +114,9 @@ type AzureProvider struct {
 	// When using the Azure provider, override the client id of user assigned identity in config file
 	// +optional
 	UserAssignedIdentityClientID *string `json:"userAssignedIdentityClientID,omitempty"`
+
+	// Provider secret credential information
+	SecretRef *GenericSecretReference `json:"secretRef,omitempty"`
 }
 
 type GoogleProvider struct {
@@ -123,6 +135,9 @@ type GoogleProvider struct {
 	// When using the Google provider, filter for zones with this visibility (optional, options: public, private)
 	// +optional
 	ZoneVisibility *string `json:"zoneVisibility,omitempty"`
+
+	// Provider secret credential information
+	SecretRef *GenericSecretReference `json:"secretRef,omitempty"`
 }
 
 type ServiceConfig struct {
@@ -245,16 +260,36 @@ type SourceConfig struct {
 	Ingress *IngressConfig `json:"ingress"`
 }
 
+// GenericSecretReference contains the information of the provider secret. Name is for secret name and CredentialKey is for specifying the key of the secret.
+// It is considered optional where workload identity or IRSA (IAM Role for Service Account) is used, otherwise it is mandatory
+type GenericSecretReference struct {
+	// Name of the provider secret
+	Name string `json:"name"`
+	// credential key of the provider secret
+	CredentialKey string `json:"credentialKey"`
+}
+
+// CloudflareSecretReference contains the name of the provider secret. The secret information may differ with respect to provider.
+// It is considered optional where workload identity or IRSA (IAM Role for Service Account) is used, otherwise it is mandatory
+type CloudflareSecretReference struct {
+	// Name is the name of the secret that contains the provider credentials
+	Name string `json:"name"`
+
+	// first API token will be used, if it is not present then
+	// API KEY and API Email will be used
+
+	// +optional
+	APITokenKey string `json:"apiTokenKey,omitempty"`
+
+	// +optional
+	APIKey string `json:"apiKey,omitempty"`
+
+	// +optional
+	APIEmailKey string `json:"apiEmailKey,omitempty"`
+}
+
 // ExternalDNSSpec defines the desired state of ExternalDNS
 type ExternalDNSSpec struct {
-	// ProviderSecretRef contains the name of the provider secret. The secret information may differ with respect to provider.
-	// It is considered optional where workload identity or IRSA (IAM Role for Service Account) is used, otherwise it is mandatory
-	// example:
-	// providerSecretRef:
-	//		name: my-secret
-	// +optional
-	ProviderSecretRef *core.LocalObjectReference `json:"providerSecretRef"`
-
 	// Request timeout when calling Kubernetes API. 0s means no timeout
 	// +optional
 	RequestTimeout *time.Duration `json:"requestTimeout,omitempty"`
