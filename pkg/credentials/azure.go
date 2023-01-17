@@ -36,11 +36,11 @@ func validAzureSecret(secret *core.Secret) bool {
 
 func setAzureCredential(ctx context.Context, kc client.Client, edns *externaldnsv1alpha1.ExternalDNS) error {
 	// for azure, user must have to provide ProviderSecretRef
-	if edns.Spec.ProviderSecretRef == nil {
+	if edns.Spec.Azure == nil || edns.Spec.Azure.SecretRef == nil {
 		return errors.New("providerSecretRef is not given for azure provider")
 	}
 
-	secret, err := getSecret(ctx, kc, types.NamespacedName{Namespace: edns.Namespace, Name: edns.Spec.ProviderSecretRef.Name})
+	secret, err := getSecret(ctx, kc, types.NamespacedName{Namespace: edns.Namespace, Name: edns.Spec.Azure.SecretRef.Name})
 	if err != nil {
 		return err
 	}

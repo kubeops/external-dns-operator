@@ -42,11 +42,11 @@ func setGoogleCredential(ctx context.Context, kc client.Client, edns *externaldn
 	}
 
 	// if ProviderSecretRef is nil then user is intended to use Workload Identity
-	if edns.Spec.ProviderSecretRef == nil {
+	if edns.Spec.Google == nil || edns.Spec.Google.SecretRef == nil {
 		return nil
 	}
 
-	secret, err := getSecret(ctx, kc, types.NamespacedName{Namespace: edns.Namespace, Name: edns.Spec.ProviderSecretRef.Name})
+	secret, err := getSecret(ctx, kc, types.NamespacedName{Namespace: edns.Namespace, Name: edns.Spec.Google.SecretRef.Name})
 	if err != nil {
 		return err
 	}

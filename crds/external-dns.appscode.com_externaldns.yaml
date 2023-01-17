@@ -75,6 +75,19 @@ spec:
                     description: 'When using the AWS CloudMap provider, delete empty
                       Services without endpoints (default: disabled)'
                     type: boolean
+                  secretRef:
+                    description: provider secret credential information
+                    properties:
+                      credentialKey:
+                        description: credential key of the provider secret
+                        type: string
+                      name:
+                        description: Name of the provider secret
+                        type: string
+                    required:
+                    - credentialKey
+                    - name
+                    type: object
                   zoneCacheDuration:
                     description: When using the AWS provider, set the zones list cache
                       TTL (0s to disable).
@@ -98,6 +111,19 @@ spec:
                     description: When using the Azure provider, override the Azure
                       resource group to use (required for azure-private-dns)
                     type: string
+                  secretRef:
+                    description: Provider secret credential information
+                    properties:
+                      credentialKey:
+                        description: credential key of the provider secret
+                        type: string
+                      name:
+                        description: Name of the provider secret
+                        type: string
+                    required:
+                    - credentialKey
+                    - name
+                    type: object
                   subscriptionId:
                     description: When using the Azure provider, specify the Azure
                       configuration file. (required for azure-private-dns)
@@ -110,10 +136,32 @@ spec:
               cloudflare:
                 description: Cloudflare provider information
                 properties:
+                  baseURL:
+                    type: string
                   proxied:
                     description: 'When using the Cloudflare provider, specify if the
                       proxy mode must be enabled (default: disabled)'
                     type: boolean
+                  secretRef:
+                    description: CloudflareSecretReference contains the name of the
+                      provider secret. The secret information may differ with respect
+                      to provider. It is considered optional where workload identity
+                      or IRSA (IAM Role for Service Account) is used, otherwise it
+                      is mandatory
+                    properties:
+                      apiEmailKey:
+                        type: string
+                      apiKey:
+                        type: string
+                      apiTokenKey:
+                        type: string
+                      name:
+                        description: Name is the name of the secret that contains
+                          the provider credentials
+                        type: string
+                    required:
+                    - name
+                    type: object
                   zonesPerPage:
                     description: 'When using the Cloudflare provider, specify how
                       many zones per page listed, max. possible 50 (default: 50)'
@@ -162,6 +210,19 @@ spec:
                       auto-detected, when running on GCP. Specify other project with
                       this. Must be specified when running outside GCP.
                     type: string
+                  secretRef:
+                    description: Provider secret credential information
+                    properties:
+                      credentialKey:
+                        description: credential key of the provider secret
+                        type: string
+                      name:
+                        description: Name of the provider secret
+                        type: string
+                    required:
+                    - credentialKey
+                    - name
+                    type: object
                   zoneVisibility:
                     description: 'When using the Google provider, filter for zones
                       with this visibility (optional, options: public, private)'
@@ -188,19 +249,6 @@ spec:
                 description: RELATED TO PROVIDERS The DNS provider where the DNS records
                   will be created. (AWS, Cloudflare)
                 type: string
-              providerSecretRef:
-                description: 'ProviderSecretRef contains the name of the provider
-                  secret. The secret information may differ with respect to provider.
-                  It is considered optional where workload identity or IRSA (IAM Role
-                  for Service Account) is used, otherwise it is mandatory example:
-                  providerSecretRef: name: my-secret'
-                properties:
-                  name:
-                    description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                      TODO: Add other useful fields. apiVersion, kind, uid?'
-                    type: string
-                type: object
-                x-kubernetes-map-type: atomic
               registry:
                 description: "REGISTRY information \n The registry implementation
                   to use to keep track of DNS record ownership (default: txt, options:

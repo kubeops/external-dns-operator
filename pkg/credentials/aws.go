@@ -42,11 +42,11 @@ func setAWSCredential(ctx context.Context, kc client.Client, edns *externaldnsv1
 	}
 
 	// if ProviderSecretRef is nil then user is intended to use IRSA (IAM Role for Service Account)
-	if edns.Spec.ProviderSecretRef == nil {
+	if edns.Spec.AWS != nil || edns.Spec.AWS.SecretRef == nil {
 		return nil
 	}
 
-	secret, err := getSecret(ctx, kc, types.NamespacedName{Namespace: edns.Namespace, Name: edns.Spec.ProviderSecretRef.Name})
+	secret, err := getSecret(ctx, kc, types.NamespacedName{Namespace: edns.Namespace, Name: edns.Spec.AWS.SecretRef.Name})
 	if err != nil {
 		return err
 	}

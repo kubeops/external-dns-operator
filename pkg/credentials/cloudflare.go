@@ -52,11 +52,11 @@ func setCloudflareCredentials(ctx context.Context, kc client.Client, edns *exter
 	}
 
 	// ProviderSecretRef is required for cloudflare
-	if edns.Spec.ProviderSecretRef == nil {
+	if edns.Spec.Cloudflare == nil || edns.Spec.Cloudflare.SecretRef == nil {
 		return errors.New("providerSecretRef is not given for cloudflare provider")
 	}
 
-	secret, err := getSecret(ctx, kc, types.NamespacedName{Namespace: edns.Namespace, Name: edns.Spec.ProviderSecretRef.Name})
+	secret, err := getSecret(ctx, kc, types.NamespacedName{Namespace: edns.Namespace, Name: edns.Spec.Cloudflare.SecretRef.Name})
 	if err != nil {
 		return err
 	}

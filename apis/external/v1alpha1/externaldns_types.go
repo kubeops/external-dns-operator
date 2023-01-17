@@ -275,7 +275,7 @@ type CloudflareSecretReference struct {
 	// Name is the name of the secret that contains the provider credentials
 	Name string `json:"name"`
 
-	//first API token will be used, if it is not present then
+	// first API token will be used, if it is not present then
 	// API KEY and API Email will be used
 
 	// +optional
@@ -290,7 +290,6 @@ type CloudflareSecretReference struct {
 
 // ExternalDNSSpec defines the desired state of ExternalDNS
 type ExternalDNSSpec struct {
-
 	// Request timeout when calling Kubernetes API. 0s means no timeout
 	// +optional
 	RequestTimeout *time.Duration `json:"requestTimeout,omitempty"`
