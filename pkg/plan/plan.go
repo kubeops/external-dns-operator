@@ -490,7 +490,7 @@ func convertEDNSObjectToCfg(edns *api.ExternalDNS) *externaldns.Config {
 	}
 
 	// for azure provide
-	if edns.Spec.Provider.String() == api.ProviderAzure.String() {
+	if edns.Spec.Provider == api.ProviderAzure {
 		// hard-code assignment of AzureConfigFile path
 		config.AzureConfigFile = fmt.Sprintf("/tmp/%s-%s-credential", edns.Namespace, edns.Name)
 	}

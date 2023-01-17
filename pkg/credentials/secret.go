@@ -47,17 +47,17 @@ func resetEnvVariables(list ...string) error {
 }
 
 func SetCredential(ctx context.Context, kc client.Client, edns *api.ExternalDNS) error {
-	switch edns.Spec.Provider.String() {
-	case api.ProviderAWS.String():
+	switch edns.Spec.Provider {
+	case api.ProviderAWS:
 		return setAWSCredential(ctx, kc, edns)
 
-	case api.ProviderCloudflare.String():
+	case api.ProviderCloudflare:
 		return setCloudflareCredentials(ctx, kc, edns)
 
-	case api.ProviderAzure.String():
+	case api.ProviderAzure:
 		return setAzureCredential(ctx, kc, edns)
 
-	case api.ProviderGoogle.String():
+	case api.ProviderGoogle:
 		return setGoogleCredential(ctx, kc, edns)
 
 	default:
