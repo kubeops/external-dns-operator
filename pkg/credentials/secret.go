@@ -21,7 +21,7 @@ import (
 	"errors"
 	"os"
 
-	externaldnsv1alpha1 "kubeops.dev/external-dns-operator/apis/external/v1alpha1"
+	api "kubeops.dev/external-dns-operator/apis/external/v1alpha1"
 
 	core "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -46,18 +46,18 @@ func resetEnvVariables(list ...string) error {
 	return nil
 }
 
-func SetCredential(ctx context.Context, kc client.Client, edns *externaldnsv1alpha1.ExternalDNS) error {
+func SetCredential(ctx context.Context, kc client.Client, edns *api.ExternalDNS) error {
 	switch edns.Spec.Provider.String() {
-	case externaldnsv1alpha1.ProviderAWS.String():
+	case api.ProviderAWS.String():
 		return setAWSCredential(ctx, kc, edns)
 
-	case externaldnsv1alpha1.ProviderCloudflare.String():
+	case api.ProviderCloudflare.String():
 		return setCloudflareCredentials(ctx, kc, edns)
 
-	case externaldnsv1alpha1.ProviderAzure.String():
+	case api.ProviderAzure.String():
 		return setAzureCredential(ctx, kc, edns)
 
-	case externaldnsv1alpha1.ProviderGoogle.String():
+	case api.ProviderGoogle.String():
 		return setGoogleCredential(ctx, kc, edns)
 
 	default:

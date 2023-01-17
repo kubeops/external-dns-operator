@@ -22,7 +22,7 @@ import (
 	"fmt"
 	"os"
 
-	externaldnsv1alpha1 "kubeops.dev/external-dns-operator/apis/external/v1alpha1"
+	api "kubeops.dev/external-dns-operator/apis/external/v1alpha1"
 
 	core "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -36,7 +36,7 @@ func validGoogleSecret(secret *core.Secret, key string) bool {
 	return found
 }
 
-func setGoogleCredential(ctx context.Context, kc client.Client, edns *externaldnsv1alpha1.ExternalDNS) error {
+func setGoogleCredential(ctx context.Context, kc client.Client, edns *api.ExternalDNS) error {
 	if err := resetEnvVariables(GoogleApplicationCredentials); err != nil {
 		return err
 	}
