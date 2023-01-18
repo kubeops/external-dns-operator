@@ -4,8 +4,6 @@ metadata:
   name: aws-edns-node
   namespace: demo
 spec:
-  providerSecretRef:
-    name: aws-credential
   source:
     type:
       group: ""
@@ -19,7 +17,10 @@ spec:
   txtPrefix: xyz
   policy: sync
   provider: aws
+  domainFilter:
+      - appscode.info
   aws:
     zoneType: public
-  domainFilter:
-    - appscode.info
+    secretRef:
+      name: aws-credential
+      credentialKey: credentials

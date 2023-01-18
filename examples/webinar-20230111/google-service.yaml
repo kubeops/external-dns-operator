@@ -4,8 +4,6 @@ metadata:
   name: google-edns-node
   namespace: demo
 spec:
-  providerSecretRef:
-    name: google-cred
   source:
     type:
       group: ""
@@ -15,7 +13,10 @@ spec:
   txtOwnerID: external-dns
   txtPrefix: service
   provider: google
+  domainFilter:
+      - appscode.info
   google:
     project: appscode-testing
-  domainFilter:
-    - appscode.info
+    secretRef:
+      name: google-cred
+      credentialKey: credentials.json
