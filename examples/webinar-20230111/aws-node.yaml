@@ -1,0 +1,25 @@
+apiVersion: external-dns.appscode.com/v1alpha1
+kind: ExternalDNS
+metadata:
+  name: aws-edns-node
+  namespace: demo
+spec:
+  providerSecretRef:
+    name: aws-credential
+  source:
+    type:
+      group: ""
+      version: v1
+      kind: Node
+    node:
+      #annotationFilter: lke.linode.com/wgip=172.31.2.1
+      fqdnTemplate: node.appscode.info
+  registry: txt
+  txtOwnerID: external-dns
+  txtPrefix: xyz
+  policy: sync
+  provider: aws
+  aws:
+    zoneType: public
+  domainFilter:
+    - appscode.info
