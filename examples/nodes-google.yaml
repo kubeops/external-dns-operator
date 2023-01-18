@@ -19,9 +19,12 @@ spec:
   registry: txt
   txtOwnerID: external-dns
   txtPrefix: xyz
-  provider: google
-  google:
-    project: project-name
   domainFilter:
     - example.com
   policy: upsert-only
+  provider: google
+  google:
+    project: project-name
+    secretRef:
+      name: google-credential
+      credentialKey: credentials.json

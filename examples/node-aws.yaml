@@ -4,8 +4,6 @@ metadata:
   name: aws-edns-node
   namespace: demo
 spec:
-  providerSecretRef:
-    name: aws-credential
   source:
     type:
       group: ""
@@ -18,9 +16,12 @@ spec:
   registry: txt
   txtOwnerID: external-dns
   txtPrefix: xyz
-  provider: aws
   domainFilter:
     - example.com
   policy: upsert-only
+  provider: aws
   aws:
     zoneType: public
+    secretRef:
+      name: aws-credential
+      credentialKey: credentials
