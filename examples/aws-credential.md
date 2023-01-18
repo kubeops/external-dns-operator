@@ -12,7 +12,7 @@ EOF
 ### Create secret from file
 Use the above file to create a secret:
 ```bash
-kubectl create secret generic aws-secret --namespace demo --from-file /local/path/to/credentials
+kubectl create secret generic aws-credential --namespace demo --from-file /local/path/to/credentials
 ```
 
 The secret must be in the same **namespace** as the External-DNS

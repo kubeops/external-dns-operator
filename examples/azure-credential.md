@@ -16,7 +16,7 @@ EOF
 Use the JSON file to create a secret.
 
 ```shell
-kubectl create secret generic azure-secret --namespace demo --from-file /local/path/to/azure.json
+kubectl create secret generic azure-credential --namespace demo --from-file /local/path/to/azure.json
 ```
 
 The secret must be in the same namespace as the External-DNS
