@@ -1,0 +1,22 @@
+apiVersion: external-dns.appscode.com/v1alpha1
+kind: ExternalDNS
+metadata:
+  name: google-edns-node
+  namespace: demo
+spec:
+  source:
+    type:
+      group: ""
+      version: v1
+      kind: Service
+  registry: txt
+  txtOwnerID: external-dns
+  txtPrefix: service
+  provider: google
+  domainFilter:
+      - appscode.info
+  google:
+    project: appscode-testing
+    secretRef:
+      name: google-cred
+      credentialKey: credentials.json

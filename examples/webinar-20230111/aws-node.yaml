@@ -10,16 +10,15 @@ spec:
       version: v1
       kind: Node
     node:
-      #labelFilter: app=demo-node
-      #annotationFilter: lke.linode.com/wgip=0.0.0.0
-      fqdnTemplate: node.example.com
+      #annotationFilter: lke.linode.com/wgip=172.31.2.1
+      fqdnTemplate: node.appscode.info
   registry: txt
   txtOwnerID: external-dns
   txtPrefix: xyz
-  domainFilter:
-    - example.com
-  policy: upsert-only
+  policy: sync
   provider: aws
+  domainFilter:
+      - appscode.info
   aws:
     zoneType: public
     secretRef:

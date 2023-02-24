@@ -1,23 +1,25 @@
 apiVersion: external-dns.appscode.com/v1alpha1
 kind: ExternalDNS
 metadata:
-  name: azure-nodes
+  name: node.example.com
   namespace: demo
 spec:
-  providerSecretRef:
-    name: azure-credential
   source:
     type:
       group: ""
       version: v1
       kind: Node
     node:
-      labelFilter: app=demo-node
-      annotationFilter: lke.linode.com/wgip=0.0.0.0
+      labelFilter: app=demo-node #sample label filter format
+      annotationFilter: lke.linode.com/wgip=0.0.0.0 #sample annotation filter format
       fqdnTemplate: node.example.com
   registry: txt
   txtOwnerID: external-dns
   txtPrefix: xyz
-  provider: azure
   domainFilter:
     - example.com
+  provider: azure
+  azure:
+    secretRef:
+      name: azure-credential
+      credentialKey: azure.json
