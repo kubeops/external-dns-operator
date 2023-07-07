@@ -429,6 +429,7 @@ AWS_SECRET_ACCESS_KEY ?= $(LINODE_CLI_OBJ_SECRET_KEY)
 .PHONY: install
 install:
 	@cd ../installer; \
+	kubectl create ns $(KUBE_NAMESPACE) || true; \
 	kubectl label ns $(KUBE_NAMESPACE) pod-security.kubernetes.io/enforce=restricted; \
 	helm upgrade -i external-dns-operator charts/external-dns-operator --wait \
 		--namespace=$(KUBE_NAMESPACE) --create-namespace \
