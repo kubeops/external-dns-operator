@@ -31,6 +31,7 @@ import (
 	"k8s.io/klog/v2"
 	kmapi "kmodules.xyz/client-go/api/v1"
 	kmc "kmodules.xyz/client-go/client"
+	condutil "kmodules.xyz/client-go/conditions"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -50,7 +51,7 @@ type ExternalDNSReconciler struct {
 }
 
 func newCondition(reason string, message string, generation int64, conditionStatus bool) *kmapi.Condition {
-	newCondition := kmapi.NewCondition(reason, message, generation, conditionStatus)
+	newCondition := condutil.NewCondition(reason, message, generation, conditionStatus)
 	return &newCondition
 }
 
@@ -60,13 +61,13 @@ func newPhase(phase api.ExternalDNSPhase) *api.ExternalDNSPhase {
 
 // update the status of the crd, conditionType is the reason of the condition
 func (r *ExternalDNSReconciler) updateEdnsStatus(ctx context.Context, edns *api.ExternalDNS, newCondition *kmapi.Condition, phase *api.ExternalDNSPhase) error {
-	_, _, patchErr := kmc.PatchStatus(ctx, r.Client, edns, func(obj client.Object) client.Object {
+	_, patchErr := kmc.PatchStatus(ctx, r.Client, edns, func(obj client.Object) client.Object {
 		in := obj.(*api.ExternalDNS)
 		if phase != nil {
 			in.Status.Phase = *phase
 		}
 		if newCondition != nil {
-			in.Status.Conditions = kmapi.SetCondition(in.Status.Conditions, *newCondition)
+			in.Status.Conditions = condutil.SetCondition(in.Status.Conditions, *newCondition)
 		}
 		return in
 	})
@@ -74,7 +75,7 @@ func (r *ExternalDNSReconciler) updateEdnsStatus(ctx context.Context, edns *api.
 }
 
 func (r ExternalDNSReconciler) patchDNSRecords(ctx context.Context, edns *api.ExternalDNS, dnsRecs []api.DNSRecord) error {
-	_, _, patchErr := kmc.PatchStatus(ctx, r.Client, edns, func(obj client.Object) client.Object {
+	_, patchErr := kmc.PatchStatus(ctx, r.Client, edns, func(obj client.Object) client.Object {
 		in := obj.(*api.ExternalDNS)
 		in.Status.DNSRecords = dnsRecs
 		return in
