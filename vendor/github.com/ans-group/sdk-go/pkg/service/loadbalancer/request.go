@@ -1,6 +1,8 @@
 package loadbalancer
 
-import "github.com/ans-group/sdk-go/pkg/connection"
+import (
+	"github.com/ans-group/sdk-go/pkg/connection"
+)
 
 // PatchClusterRequest represents a request to patch a cluster
 type PatchClusterRequest struct {
@@ -53,6 +55,9 @@ type CreateTargetGroupRequest struct {
 	Source                   string                   `json:"source,omitempty"`
 	TimeoutsConnect          int                      `json:"timeouts_connect,omitempty"`
 	TimeoutsServer           int                      `json:"timeouts_server,omitempty"`
+	TimeoutsHTTPRequest      int                      `json:"timeouts_http_request,omitempty"`
+	TimeoutsCheck            int                      `json:"timeouts_check,omitempty"`
+	TimeoutsTunnel           int                      `json:"timeouts_tunnel,omitempty"`
 	CustomOptions            string                   `json:"custom_options,omitempty"`
 	MonitorURL               string                   `json:"monitor_url,omitempty"`
 	MonitorMethod            TargetGroupMonitorMethod `json:"monitor_method,omitempty"`
@@ -81,6 +86,9 @@ type PatchTargetGroupRequest struct {
 	Source                   string                   `json:"source,omitempty"`
 	TimeoutsConnect          int                      `json:"timeouts_connect,omitempty"`
 	TimeoutsServer           int                      `json:"timeouts_server,omitempty"`
+	TimeoutsHTTPRequest      int                      `json:"timeouts_http_request,omitempty"`
+	TimeoutsCheck            int                      `json:"timeouts_check,omitempty"`
+	TimeoutsTunnel           int                      `json:"timeouts_tunnel,omitempty"`
 	CustomOptions            string                   `json:"custom_options,omitempty"`
 	MonitorURL               string                   `json:"monitor_url,omitempty"`
 	MonitorMethod            TargetGroupMonitorMethod `json:"monitor_method,omitempty"`
@@ -111,41 +119,54 @@ type PatchVIPRequest struct {
 	CIDR string `json:"cidr,omitempty"`
 }
 
+type ListenerGeoIPRequest struct {
+	Restriction   ListenerGeoIPRestriction `json:"restriction,omitempty"`
+	Continents    []string                 `json:"continents,omitempty"`
+	Countries     []string                 `json:"countries,omitempty"`
+	EuropeanUnion *bool                    `json:"european_union,omitempty"`
+}
+
 // CreateListenerRequest represents a request to create a listener
 type CreateListenerRequest struct {
-	Name                 string `json:"name"`
-	ClusterID            int    `json:"cluster_id"`
-	HSTSEnabled          bool   `json:"hsts_enabled"`
-	Mode                 Mode   `json:"mode"`
-	HSTSMaxAge           int    `json:"hsts_maxage"`
-	Close                bool   `json:"close"`
-	RedirectHTTPS        bool   `json:"redirect_https"`
-	DefaultTargetGroupID int    `json:"default_target_group_id"`
-	AccessIsAllowList    bool   `json:"access_is_allow_list"`
-	AllowTLSV1           bool   `json:"allow_tlsv1"`
-	AllowTLSV11          bool   `json:"allow_tlsv11"`
-	DisableTLSV12        bool   `json:"disable_tlsv12"`
-	DisableHTTP2         bool   `json:"disable_http2"`
-	HTTP2Only            bool   `json:"http2_only"`
-	CustomCiphers        string `json:"custom_ciphers"`
+	Name                 string                `json:"name"`
+	ClusterID            int                   `json:"cluster_id"`
+	HSTSEnabled          bool                  `json:"hsts_enabled"`
+	Mode                 Mode                  `json:"mode"`
+	HSTSMaxAge           int                   `json:"hsts_maxage"`
+	Close                bool                  `json:"close"`
+	RedirectHTTPS        bool                  `json:"redirect_https"`
+	DefaultTargetGroupID int                   `json:"default_target_group_id"`
+	AccessIsAllowList    bool                  `json:"access_is_allow_list"`
+	AllowTLSV1           bool                  `json:"allow_tlsv1"`
+	AllowTLSV11          bool                  `json:"allow_tlsv11"`
+	DisableTLSV12        bool                  `json:"disable_tlsv12"`
+	DisableHTTP2         bool                  `json:"disable_http2"`
+	HTTP2Only            bool                  `json:"http2_only"`
+	CustomCiphers        string                `json:"custom_ciphers"`
+	CustomOptions        string                `json:"custom_options,omitempty"`
+	GeoIP                *ListenerGeoIPRequest `json:"geoip,omitempty"`
+	TimeoutsClient       int                   `json:"timeouts_client,omitempty"`
 }
 
 // PatchListenerRequest represents a request to patch a listener
 type PatchListenerRequest struct {
-	Name                 string `json:"name,omitempty"`
-	HSTSEnabled          *bool  `json:"hsts_enabled,omitempty"`
-	Mode                 Mode   `json:"mode,omitempty"`
-	HSTSMaxAge           int    `json:"hsts_maxage,omitempty"`
-	Close                *bool  `json:"close,omitempty"`
-	RedirectHTTPS        *bool  `json:"redirect_https,omitempty"`
-	DefaultTargetGroupID int    `json:"default_target_group_id,omitempty"`
-	AccessIsAllowList    *bool  `json:"access_is_allow_list,omitempty"`
-	AllowTLSV1           *bool  `json:"allow_tlsv1,omitempty"`
-	AllowTLSV11          *bool  `json:"allow_tlsv11,omitempty"`
-	DisableTLSV12        *bool  `json:"disable_tlsv12,omitempty"`
-	DisableHTTP2         *bool  `json:"disable_http2,omitempty"`
-	HTTP2Only            *bool  `json:"http2_only,omitempty"`
-	CustomCiphers        string `json:"custom_ciphers,omitempty"`
+	Name                 string                `json:"name,omitempty"`
+	HSTSEnabled          *bool                 `json:"hsts_enabled,omitempty"`
+	Mode                 Mode                  `json:"mode,omitempty"`
+	HSTSMaxAge           int                   `json:"hsts_maxage,omitempty"`
+	Close                *bool                 `json:"close,omitempty"`
+	RedirectHTTPS        *bool                 `json:"redirect_https,omitempty"`
+	DefaultTargetGroupID int                   `json:"default_target_group_id,omitempty"`
+	AccessIsAllowList    *bool                 `json:"access_is_allow_list,omitempty"`
+	AllowTLSV1           *bool                 `json:"allow_tlsv1,omitempty"`
+	AllowTLSV11          *bool                 `json:"allow_tlsv11,omitempty"`
+	DisableTLSV12        *bool                 `json:"disable_tlsv12,omitempty"`
+	DisableHTTP2         *bool                 `json:"disable_http2,omitempty"`
+	HTTP2Only            *bool                 `json:"http2_only,omitempty"`
+	CustomCiphers        string                `json:"custom_ciphers,omitempty"`
+	CustomOptions        string                `json:"custom_options,omitempty"`
+	GeoIP                *ListenerGeoIPRequest `json:"geoip,omitempty"`
+	TimeoutsClient       int                   `json:"timeouts_client,omitempty"`
 }
 
 // CreateAccessIPRequest represents a request to create an access IP

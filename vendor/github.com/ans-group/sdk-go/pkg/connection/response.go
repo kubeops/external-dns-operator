@@ -2,6 +2,7 @@ package connection
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -9,11 +10,6 @@ import (
 
 	"github.com/ans-group/sdk-go/pkg/logging"
 )
-
-type ResponseBody interface {
-	Error() error
-	Pagination() APIResponseMetadataPagination
-}
 
 // APIResponse represents the base API response
 type APIResponse struct {
@@ -81,39 +77,21 @@ type APIResponseMetadataPaginationLinks struct {
 	Last     string `json:"last"`
 }
 
-// DeserializeResponseBody deserializes the API response body and stores the result
-// in parameter out
-func (r *APIResponse) DeserializeResponseBody(out interface{}) error {
-	defer r.Response.Body.Close()
-	bodyBytes, err := ioutil.ReadAll(r.Response.Body)
-	if err != nil {
-		return fmt.Errorf("failed to read response body with response status code %d: %s", r.StatusCode, err)
-	}
-
-	logging.Debugf("Response body: %s", string(bodyBytes))
-
-	if len(bodyBytes) > 0 {
-		return json.Unmarshal(bodyBytes, out)
-	}
-
-	return nil
-}
-
 // ValidateStatusCode validates the API response
-func (r *APIResponse) ValidateStatusCode(codes []int, respBody ResponseBody) error {
+func (r *APIResponse) ValidateStatusCode(codes ...int) bool {
 	if len(codes) > 0 {
 		for _, code := range codes {
 			if r.StatusCode == code {
-				return nil
+				return true
 			}
 		}
 	} else {
 		if r.StatusCode >= 200 && r.StatusCode <= 299 {
-			return nil
+			return true
 		}
 	}
 
-	return fmt.Errorf("unexpected status code (%d): %w", r.StatusCode, respBody.Error())
+	return false
 }
 
 type ResponseHandler func(resp *APIResponse) error
@@ -132,37 +110,63 @@ func NotFoundResponseHandler(err error) ResponseHandler {
 	return StatusCodeResponseHandler(404, err)
 }
 
-// HandleResponse deserializes the response body into provided respBody, and validates
-// the response using the optionally provided ResponseHandler handler
-func (r *APIResponse) HandleResponse(respBody ResponseBody, handlers ...ResponseHandler) error {
-	err := r.DeserializeResponseBody(respBody)
+type ResponseDeserializer interface {
+	Deserialize(r *APIResponse) error
+}
+
+func APIResponseJSONDeserializer(r *APIResponse, out interface{}) error {
+	defer r.Response.Body.Close()
+	bodyBytes, err := ioutil.ReadAll(r.Response.Body)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to read response body with response status code %d: %s", r.StatusCode, err)
 	}
 
-	for _, handler := range handlers {
-		if handler != nil {
-			err = handler(r)
+	logging.Debugf("Response body: %s", string(bodyBytes))
+
+	if len(bodyBytes) > 0 {
+		return json.Unmarshal(bodyBytes, out)
+	}
+
+	return nil
+}
+
+// HandleResponse deserializes the response body into provided respBody, and validates
+// the response using the optionally provided ResponseHandler handler
+func (r *APIResponse) HandleResponse(respBody interface{}, handlers ...ResponseHandler) error {
+	if respBody != nil {
+		if respBodyDeserializer, ok := respBody.(ResponseDeserializer); ok {
+			err := respBodyDeserializer.Deserialize(r)
+			if err != nil {
+				return err
+			}
+		} else {
+			err := APIResponseJSONDeserializer(r, respBody)
 			if err != nil {
 				return err
 			}
 		}
 	}
 
-	return r.ValidateStatusCode([]int{}, respBody)
-}
-
-// Error returns an error struct with embedded errors from body
-func (a *APIResponseBody) Error() error {
-	return &APIResponseBodyError{
-		Message: a.Message,
-		Errors:  a.Errors,
+	for _, handler := range handlers {
+		if handler != nil {
+			err := handler(r)
+			if err != nil {
+				return err
+			}
+		}
 	}
-}
 
-// TotalPages returns amount of pages for API response
-func (a *APIResponseBody) Pagination() APIResponseMetadataPagination {
-	return a.Metadata.Pagination
+	if !r.ValidateStatusCode() {
+		errStr := fmt.Sprintf("unexpected status code (%d)", r.StatusCode)
+		err, ok := respBody.(error)
+		if ok {
+			return fmt.Errorf("%s: %w", errStr, err)
+		}
+
+		return errors.New(errStr)
+	}
+
+	return nil
 }
 
 // APIResponseBodyStringData represents the API response body containing generic data

@@ -2,7 +2,7 @@ package cloudflare
 
 import (
 	"context"
-	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"errors"
+	"github.com/goccy/go-json"
 )
 
 // ProxyProtocol implements json.Unmarshaler in order to support deserializing of the deprecated boolean

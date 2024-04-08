@@ -20,7 +20,7 @@ import (
 // AuthorizationConfigured returns whether authorization  is
 // configured on this virtual host.
 func (v *VirtualHost) AuthorizationConfigured() bool {
-	return v.TLS != nil && v.Authorization != nil
+	return v.Authorization != nil
 }
 
 // DisableAuthorization returns true if this virtual host disables
@@ -113,7 +113,7 @@ func (dc *DetailedCondition) AddError(errorType, reason, message string) {
 // AddErrorf adds an error-level Subcondition to the DetailedCondition, using
 // fmt.Sprintf on the formatmsg and args params.
 // If a SubCondition with the given errorType exists, will overwrite the details.
-func (dc *DetailedCondition) AddErrorf(errorType, reason, formatmsg string, args ...interface{}) {
+func (dc *DetailedCondition) AddErrorf(errorType, reason, formatmsg string, args ...any) {
 	dc.AddError(errorType, reason, fmt.Sprintf(formatmsg, args...))
 }
 
@@ -148,7 +148,7 @@ func (dc *DetailedCondition) AddWarning(warnType, reason, message string) {
 // fmt.Sprintf on the formatmsg and args params.
 // If a SubCondition with the given errorType exists, will overwrite the details.
 // Note that adding warnings does not update the DetailedCondition Reason or Message.
-func (dc *DetailedCondition) AddWarningf(warnType, reason, formatmsg string, args ...interface{}) {
+func (dc *DetailedCondition) AddWarningf(warnType, reason, formatmsg string, args ...any) {
 	dc.AddWarning(warnType, reason, fmt.Sprintf(formatmsg, args...))
 }
 
@@ -179,7 +179,6 @@ func (dc *DetailedCondition) IsPositivePolarity() bool {
 // getIndex checks if a SubCondition of type condType exists in the
 // slice, and returns its index if so. If not, returns -1.
 func getIndex(condType string, subconds []SubCondition) int {
-
 	for i, cond := range subconds {
 		if cond.Type == condType {
 			return i
@@ -191,7 +190,6 @@ func getIndex(condType string, subconds []SubCondition) int {
 // GetConditionFor returns the a pointer to the condition for a given type,
 // or nil if there are none currently present.
 func (status *HTTPProxyStatus) GetConditionFor(condType string) *DetailedCondition {
-
 	for i, cond := range status.Conditions {
 		if cond.Type == condType {
 			return &status.Conditions[i]

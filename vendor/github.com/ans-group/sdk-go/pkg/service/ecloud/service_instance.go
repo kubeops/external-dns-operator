@@ -637,3 +637,33 @@ func (s *Service) createInstanceImageResponseBody(instanceID string, req CreateI
 
 	return connection.Post[TaskReference](s.connection, fmt.Sprintf("/ecloud/v2/instances/%s/create-image", instanceID), &req, connection.NotFoundResponseHandler(&InstanceNotFoundError{ID: instanceID}))
 }
+
+// EncryptInstance encrypts an instance
+func (s *Service) EncryptInstance(instanceID string) (string, error) {
+	body, err := s.encryptInstanceResponseBody(instanceID)
+
+	return body.Data.TaskID, err
+}
+
+func (s *Service) encryptInstanceResponseBody(instanceID string) (*connection.APIResponseBodyData[TaskReference], error) {
+	if instanceID == "" {
+		return &connection.APIResponseBodyData[TaskReference]{}, fmt.Errorf("invalid instance id")
+	}
+
+	return connection.Put[TaskReference](s.connection, fmt.Sprintf("/ecloud/v2/instances/%s/encrypt", instanceID), nil, connection.NotFoundResponseHandler(&InstanceNotFoundError{ID: instanceID}))
+}
+
+// DecryptInstance decrypts an instance
+func (s *Service) DecryptInstance(instanceID string) (string, error) {
+	body, err := s.decryptInstanceResponseBody(instanceID)
+
+	return body.Data.TaskID, err
+}
+
+func (s *Service) decryptInstanceResponseBody(instanceID string) (*connection.APIResponseBodyData[TaskReference], error) {
+	if instanceID == "" {
+		return &connection.APIResponseBodyData[TaskReference]{}, fmt.Errorf("invalid instance id")
+	}
+
+	return connection.Put[TaskReference](s.connection, fmt.Sprintf("/ecloud/v2/instances/%s/decrypt", instanceID), nil, connection.NotFoundResponseHandler(&InstanceNotFoundError{ID: instanceID}))
+}

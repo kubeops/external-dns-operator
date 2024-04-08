@@ -19,6 +19,7 @@ package scaleway
 import (
 	"context"
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 
@@ -55,9 +56,32 @@ type ScalewayChange struct {
 
 // NewScalewayProvider initializes a new Scaleway DNS provider
 func NewScalewayProvider(ctx context.Context, domainFilter endpoint.DomainFilter, dryRun bool) (*ScalewayProvider, error) {
+	var err error
+	defaultPageSize := uint64(1000)
+	if envPageSize, ok := os.LookupEnv("SCW_DEFAULT_PAGE_SIZE"); ok {
+		defaultPageSize, err = strconv.ParseUint(envPageSize, 10, 32)
+		if err != nil {
+			log.Infof("Ignoring default page size %s, defaulting to 1000", envPageSize)
+			defaultPageSize = 1000
+		}
+	}
+
+	p := &scw.Profile{}
+	c, err := scw.LoadConfig()
+	if err != nil {
+		log.Warnf("Cannot load config: %v", err)
+	} else {
+		p, err = c.GetActiveProfile()
+		if err != nil {
+			log.Warnf("Cannot get active profile: %v", err)
+		}
+	}
+
 	scwClient, err := scw.NewClient(
+		scw.WithProfile(p),
 		scw.WithEnv(),
 		scw.WithUserAgent("ExternalDNS/"+externaldns.Version),
+		scw.WithDefaultPageSize(uint32(defaultPageSize)),
 	)
 	if err != nil {
 		return nil, err
@@ -81,7 +105,7 @@ func NewScalewayProvider(ctx context.Context, domainFilter endpoint.DomainFilter
 }
 
 // AdjustEndpoints is used to normalize the endoints
-func (p *ScalewayProvider) AdjustEndpoints(endpoints []*endpoint.Endpoint) []*endpoint.Endpoint {
+func (p *ScalewayProvider) AdjustEndpoints(endpoints []*endpoint.Endpoint) ([]*endpoint.Endpoint, error) {
 	eps := make([]*endpoint.Endpoint, len(endpoints))
 	for i := range endpoints {
 		eps[i] = endpoints[i]
@@ -92,7 +116,7 @@ func (p *ScalewayProvider) AdjustEndpoints(endpoints []*endpoint.Endpoint) []*en
 			eps[i] = eps[i].WithProviderSpecific(scalewayPriorityKey, fmt.Sprintf("%d", scalewayDefaultPriority))
 		}
 	}
-	return eps
+	return eps, nil
 }
 
 // Zones returns the list of hosted zones.
@@ -256,6 +280,10 @@ func (p *ScalewayProvider) generateApplyRequests(ctx context.Context, changes *p
 		req.Changes = append(req.Changes, &domain.RecordChange{
 			Add: recordsToAdd[zoneName],
 		})
+		// ignore sending empty update requests
+		if len(req.Changes) == 1 && len(req.Changes[0].Add.Records) == 0 {
+			continue
+		}
 		returnedRequests = append(returnedRequests, req)
 	}
 
@@ -278,9 +306,9 @@ func endpointToScalewayRecords(zoneName string, ep *endpoint.Endpoint) []*domain
 	}
 	priority := scalewayDefaultPriority
 	if prop, ok := ep.GetProviderSpecificProperty(scalewayPriorityKey); ok {
-		prio, err := strconv.ParseUint(prop.Value, 10, 32)
+		prio, err := strconv.ParseUint(prop, 10, 32)
 		if err != nil {
-			log.Errorf("Failed parsing value of %s: %s: %v; using priority of %d", scalewayPriorityKey, prop.Value, err, scalewayDefaultPriority)
+			log.Errorf("Failed parsing value of %s: %s: %v; using priority of %d", scalewayPriorityKey, prop, err, scalewayDefaultPriority)
 		} else {
 			priority = uint32(prio)
 		}

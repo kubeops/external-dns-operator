@@ -39,6 +39,10 @@ type APIConnection struct {
 	UserAgent   string
 }
 
+type RequestSerializer interface {
+	Serialize() ([]byte, error)
+}
+
 // NewAPIKeyCredentialsAPIConnection creates a new client
 func NewAPIKeyCredentialsAPIConnection(apiKey string) *APIConnection {
 	return NewAPIConnection(&APIKeyCredentials{APIKey: apiKey})
@@ -171,10 +175,20 @@ func (c *APIConnection) getBody(request APIRequest) (io.Reader, error) {
 			}
 		}
 
-		err := json.NewEncoder(buf).Encode(request.Body)
-		if err != nil {
-			return nil, err
+		if serializer, ok := request.Body.(RequestSerializer); ok {
+			body, err := serializer.Serialize()
+			if err != nil {
+				return nil, err
+			}
+
+			buf.Write(body)
+		} else {
+			err := json.NewEncoder(buf).Encode(request.Body)
+			if err != nil {
+				return nil, err
+			}
 		}
+
 		logging.Tracef("Encoded body: %s", buf)
 	}
 

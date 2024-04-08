@@ -2,14 +2,14 @@ package cloudflare
 
 import (
 	"context"
-	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
 
-	"errors"
+	"github.com/goccy/go-json"
 )
 
 var (

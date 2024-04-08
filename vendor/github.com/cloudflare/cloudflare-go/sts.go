@@ -1,11 +1,12 @@
 package cloudflare
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
+
+	"github.com/goccy/go-json"
 
 	"github.com/hashicorp/go-retryablehttp"
 )
@@ -80,7 +81,7 @@ func fetchSTSCredentials(stsConfig *SecurityTokenConfiguration) (string, error) 
 	}
 
 	var respBody []byte
-	respBody, err = ioutil.ReadAll(resp.Body)
+	respBody, err = io.ReadAll(resp.Body)
 	if err != nil {
 		return "", fmt.Errorf("failed to read response body: %w", err)
 	}

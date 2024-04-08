@@ -127,6 +127,8 @@ type ECloudService interface {
 	GetAvailabilityZones(parameters connection.APIRequestParameters) ([]AvailabilityZone, error)
 	GetAvailabilityZonesPaginated(parameters connection.APIRequestParameters) (*connection.Paginated[AvailabilityZone], error)
 	GetAvailabilityZone(azID string) (AvailabilityZone, error)
+	GetAvailabilityZoneIOPSTiers(azID string, parameters connection.APIRequestParameters) ([]IOPSTier, error)
+	GetAvailabilityZoneIOPSTiersPaginated(azID string, parameters connection.APIRequestParameters) (*connection.Paginated[IOPSTier], error)
 
 	// Network
 	GetNetworks(parameters connection.APIRequestParameters) ([]Network, error)
@@ -176,6 +178,8 @@ type ECloudService interface {
 	GetInstanceFloatingIPs(instanceID string, parameters connection.APIRequestParameters) ([]FloatingIP, error)
 	GetInstanceFloatingIPsPaginated(instanceID string, parameters connection.APIRequestParameters) (*connection.Paginated[FloatingIP], error)
 	CreateInstanceImage(instanceID string, req CreateInstanceImageRequest) (TaskReference, error)
+	EncryptInstance(instanceID string) (string, error)
+	DecryptInstance(instanceID string) (string, error)
 
 	// Floating IP
 	GetFloatingIPs(parameters connection.APIRequestParameters) ([]FloatingIP, error)
@@ -442,6 +446,19 @@ type ECloudService interface {
 	GetResourceTiers(parameters connection.APIRequestParameters) ([]ResourceTier, error)
 	GetResourceTiersPaginated(parameters connection.APIRequestParameters) (*connection.Paginated[ResourceTier], error)
 	GetResourceTier(tierID string) (ResourceTier, error)
+
+	// NAT Overload Rules
+	GetNATOverloadRules(parameters connection.APIRequestParameters) ([]NATOverloadRule, error)
+	GetNATOverloadRulesPaginated(parameters connection.APIRequestParameters) (*connection.Paginated[NATOverloadRule], error)
+	GetNATOverloadRule(ruleID string) (NATOverloadRule, error)
+	CreateNATOverloadRule(req CreateNATOverloadRuleRequest) (TaskReference, error)
+	PatchNATOverloadRule(ruleID string, req PatchNATOverloadRuleRequest) (TaskReference, error)
+	DeleteNATOverloadRule(ruleID string) (string, error)
+
+	//IOPS Tiers
+	GetIOPSTiers(parameters connection.APIRequestParameters) ([]IOPSTier, error)
+	GetIOPSTiersPaginated(parameters connection.APIRequestParameters) (*connection.Paginated[IOPSTier], error)
+	GetIOPSTier(iopsID string) (IOPSTier, error)
 }
 
 // Service implements ECloudService for managing

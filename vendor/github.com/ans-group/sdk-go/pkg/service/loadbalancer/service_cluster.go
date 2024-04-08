@@ -128,12 +128,8 @@ func (s *Service) ValidateCluster(clusterID int) error {
 
 	if response.StatusCode == 422 {
 		body := &validateClusterResponseBody{}
-		err := response.DeserializeResponseBody(body)
-		if err != nil {
-			return err
-		}
 
-		return errors.New(body.ErrorString())
+		return errors.New(body.Error())
 	}
 
 	return response.HandleResponse(&connection.APIResponseBody{}, func(resp *connection.APIResponse) error {
@@ -146,14 +142,7 @@ func (s *Service) ValidateCluster(clusterID int) error {
 }
 
 type validateClusterResponseBody struct {
-	Errors interface{} `json:"errors"`
-}
-
-func (r *validateClusterResponseBody) ErrorString() string {
-	return fmt.Sprintf("%+v", r.Errors)
-}
-func (r *validateClusterResponseBody) Pagination() connection.APIResponseMetadataPagination {
-	return connection.APIResponseMetadataPagination{}
+	connection.APIResponseBody
 }
 
 // GetCluster retrieves a single cluster by id

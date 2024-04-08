@@ -16,11 +16,11 @@ package gandi
 import (
 	"context"
 	"errors"
-	"fmt"
 	"os"
 	"strings"
 
 	"github.com/go-gandi/go-gandi"
+	"github.com/go-gandi/go-gandi/config"
 	"github.com/go-gandi/go-gandi/livedns"
 	log "github.com/sirupsen/logrus"
 
@@ -52,21 +52,27 @@ type GandiProvider struct {
 }
 
 func NewGandiProvider(ctx context.Context, domainFilter endpoint.DomainFilter, dryRun bool) (*GandiProvider, error) {
-	key, ok := os.LookupEnv("GANDI_KEY")
-	if !ok {
-		return nil, errors.New("no environment variable GANDI_KEY provided")
+	key, ok_key := os.LookupEnv("GANDI_KEY")
+	pat, ok_pat := os.LookupEnv("GANDI_PAT")
+	if !(ok_key || ok_pat) {
+		return nil, errors.New("no environment variable GANDI_KEY or GANDI_PAT provided")
+	}
+	if ok_key {
+		log.Warning("Usage of GANDI_KEY (API Key) is deprecated. Please consider creating a Personal Access Token (PAT) instead, see https://api.gandi.net/docs/authentication/")
 	}
 	sharingID, _ := os.LookupEnv("GANDI_SHARING_ID")
 
-	g := gandi.Config{
-		SharingID: sharingID,
-		Debug:     false,
+	g := config.Config{
+		APIKey:              key,
+		PersonalAccessToken: pat,
+		SharingID:           sharingID,
+		Debug:               false,
 		// dry-run doesn't work but it won't hurt passing the flag
 		DryRun: dryRun,
 	}
 
-	liveDNSClient := gandi.NewLiveDNSClient(key, g)
-	domainClient := gandi.NewDomainClient(key, g)
+	liveDNSClient := gandi.NewLiveDNSClient(g)
+	domainClient := gandi.NewDomainClient(g)
 
 	gandiProvider := &GandiProvider{
 		LiveDNSClient: NewLiveDNSClient(liveDNSClient),
@@ -119,11 +125,20 @@ func (p *GandiProvider) Records(ctx context.Context) ([]*endpoint.Endpoint, erro
 					name = zone
 				}
 
-				if len(r.RrsetValues) > 1 {
-					return nil, fmt.Errorf("can't handle multiple values for rrset %s", name)
-				}
+				for _, v := range r.RrsetValues {
+					log.WithFields(log.Fields{
+						"record": r.RrsetName,
+						"type":   r.RrsetType,
+						"value":  v,
+						"ttl":    r.RrsetTTL,
+						"zone":   zone,
+					}).Debug("Returning endpoint record")
 
-				endpoints = append(endpoints, endpoint.NewEndpoint(name, r.RrsetType, r.RrsetValues[0]))
+					endpoints = append(
+						endpoints,
+						endpoint.NewEndpointWithTTL(name, r.RrsetType, endpoint.TTL(r.RrsetTTL), v),
+					)
+				}
 			}
 		}
 	}
@@ -156,15 +171,28 @@ func (p *GandiProvider) submitChanges(ctx context.Context, changes []*GandiChang
 
 	for _, changes := range zoneChanges {
 		for _, change := range changes {
-			// Prepare record name
-			recordName := strings.TrimSuffix(change.Record.RrsetName, "."+change.ZoneName)
-			if recordName == change.ZoneName {
-				recordName = "@"
-			}
 			if change.Record.RrsetType == endpoint.RecordTypeCNAME && !strings.HasSuffix(change.Record.RrsetValues[0], ".") {
 				change.Record.RrsetValues[0] += "."
 			}
-			change.Record.RrsetName = recordName
+
+			// Prepare record name
+			if change.Record.RrsetName == change.ZoneName {
+				log.WithFields(log.Fields{
+					"record": change.Record.RrsetName,
+					"type":   change.Record.RrsetType,
+					"value":  change.Record.RrsetValues[0],
+					"ttl":    change.Record.RrsetTTL,
+					"action": change.Action,
+					"zone":   change.ZoneName,
+				}).Debugf("Converting record name: %s to apex domain (@)", change.Record.RrsetName)
+
+				change.Record.RrsetName = "@"
+			} else {
+				change.Record.RrsetName = strings.TrimSuffix(
+					change.Record.RrsetName,
+					"."+change.ZoneName,
+				)
+			}
 
 			log.WithFields(log.Fields{
 				"record": change.Record.RrsetName,

@@ -25,12 +25,11 @@ type TLSCertificateDelegationSpec struct {
 // CertificateDelegation maps the authority to reference a secret
 // in the current namespace to a set of namespaces.
 type CertificateDelegation struct {
-
 	// required, the name of a secret in the current namespace.
 	SecretName string `json:"secretName"`
 
 	// required, the namespaces the authority to reference the
-	// the secret will be delegated to.
+	// secret will be delegated to.
 	// If TargetNamespaces is nil or empty, the CertificateDelegation'
 	// is ignored. If the TargetNamespace list contains the character, "*"
 	// the secret will be delegated to all namespaces.

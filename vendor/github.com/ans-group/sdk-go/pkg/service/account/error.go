@@ -28,3 +28,12 @@ type InvoiceQueryNotFoundError struct {
 func (e *InvoiceQueryNotFoundError) Error() string {
 	return fmt.Sprintf("Invoice query not found with ID [%d]", e.ID)
 }
+
+// ClientNotFoundError indicates a client was not found
+type ClientNotFoundError struct {
+	ID int
+}
+
+func (e *ClientNotFoundError) Error() string {
+	return fmt.Sprintf("Client not found with ID [%d]", e.ID)
+}

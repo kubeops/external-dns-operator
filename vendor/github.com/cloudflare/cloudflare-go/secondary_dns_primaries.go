@@ -2,11 +2,11 @@ package cloudflare
 
 import (
 	"context"
-	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 
-	"errors"
+	"github.com/goccy/go-json"
 )
 
 const (

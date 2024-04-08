@@ -25,7 +25,6 @@ import (
 
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
-	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
 	testing "k8s.io/client-go/testing"
@@ -37,9 +36,9 @@ type FakeExternalDNSs struct {
 	ns   string
 }
 
-var externaldnssResource = schema.GroupVersionResource{Group: "external-dns.appscode.com", Version: "v1alpha1", Resource: "externaldnss"}
+var externaldnssResource = v1alpha1.SchemeGroupVersion.WithResource("externaldnss")
 
-var externaldnssKind = schema.GroupVersionKind{Group: "external-dns.appscode.com", Version: "v1alpha1", Kind: "ExternalDNS"}
+var externaldnssKind = v1alpha1.SchemeGroupVersion.WithKind("ExternalDNS")
 
 // Get takes name of the externalDNS, and returns the corresponding externalDNS object, and an error if there is any.
 func (c *FakeExternalDNSs) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.ExternalDNS, err error) {

@@ -2,12 +2,12 @@ package cloudflare
 
 import (
 	"context"
-	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
 
-	"errors"
+	"github.com/goccy/go-json"
 )
 
 var ErrNotEnoughFilterIDsProvided = errors.New("at least one filter ID must be provided.")
@@ -125,6 +125,7 @@ func (api *API) Filters(ctx context.Context, rc *ResourceContainer, params Filte
 	var filters []Filter
 	var fResponse FiltersDetailResponse
 	for {
+		fResponse = FiltersDetailResponse{}
 		uri := buildURI(fmt.Sprintf("/zones/%s/filters", rc.Identifier), params)
 
 		res, err := api.makeRequestContext(ctx, http.MethodGet, uri, nil)

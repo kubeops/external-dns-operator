@@ -107,7 +107,7 @@ type SubCondition struct {
 // slice in this case.
 //
 // `Valid`, `status: false` means that the object has had one or more fatal errors during processing into Contour.
-//  The details of the errors will be present under the `errors` field. There must be at least one error in the `errors`
+// The details of the errors will be present under the `errors` field. There must be at least one error in the `errors`
 // slice if `status` is `false`.
 //
 // For DetailedConditions of types other than `Valid`, the Condition must be in the negative polarity.
@@ -143,6 +143,12 @@ const (
 
 	// ConditionTypeCORSError describes an error condition related to CORS.
 	ConditionTypeCORSError = "CORSError"
+
+	// ConditionTypeIPFilterError describes an error condition related to IP filters.
+	ConditionTypeIPFilterError = "IPFilterError"
+
+	// ConditionTypeJWTVerificationError describes an error condition related to JWT verification.
+	ConditionTypeJWTVerificationError = "JWTVerificationError"
 
 	// ConditionTypeIncludeError describes an error condition with
 	// inclusion of another HTTPProxy resource.
@@ -187,4 +193,8 @@ const (
 	// ConditionTypeVirtualHostError describes an error condition relating
 	// to the VirtualHost configuration section of an HTTPProxy resource.
 	ConditionTypeVirtualHostError = "VirtualHostError"
+
+	// ConditionTypeListenerError describes an error condition relating
+	// to the configuration of Listeners.
+	ConditionTypeListenerError = "ListenerError"
 )

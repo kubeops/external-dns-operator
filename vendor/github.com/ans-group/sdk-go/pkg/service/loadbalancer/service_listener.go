@@ -102,6 +102,25 @@ func (s *Service) patchListenerResponseBody(listenerID int, req PatchListenerReq
 	})
 }
 
+// PatchListener patches a listener
+func (s *Service) DisableListenerGeoIP(listenerID int) error {
+	_, err := s.disableListenerGeoIPResponseBody(listenerID)
+
+	return err
+}
+
+func (s *Service) disableListenerGeoIPResponseBody(listenerID int) (*connection.APIResponseBodyData[interface{}], error) {
+	if listenerID < 1 {
+		return nil, fmt.Errorf("invalid listener id")
+	}
+
+	disableGeoIPReq := struct {
+		GeoIP interface{} `json:"geoip"`
+	}{}
+
+	return connection.Patch[interface{}](s.connection, fmt.Sprintf("/loadbalancers/v2/listeners/%d", listenerID), &disableGeoIPReq, connection.NotFoundResponseHandler(&ListenerNotFoundError{ID: listenerID}))
+}
+
 // DeleteListener deletes a listener
 func (s *Service) DeleteListener(listenerID int) error {
 	_, err := s.deleteListenerResponseBody(listenerID)

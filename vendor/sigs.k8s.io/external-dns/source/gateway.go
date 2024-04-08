@@ -19,6 +19,7 @@ package source
 import (
 	"context"
 	"fmt"
+	"net/netip"
 	"sort"
 	"strings"
 	"text/template"
@@ -32,10 +33,10 @@ import (
 	kubeinformers "k8s.io/client-go/informers"
 	coreinformers "k8s.io/client-go/informers/core/v1"
 	cache "k8s.io/client-go/tools/cache"
-	"sigs.k8s.io/gateway-api/apis/v1beta1"
+	v1 "sigs.k8s.io/gateway-api/apis/v1"
 	gateway "sigs.k8s.io/gateway-api/pkg/client/clientset/versioned"
 	informers "sigs.k8s.io/gateway-api/pkg/client/informers/externalversions"
-	informers_v1b1 "sigs.k8s.io/gateway-api/pkg/client/informers/externalversions/apis/v1beta1"
+	informers_v1 "sigs.k8s.io/gateway-api/pkg/client/informers/externalversions/apis/v1"
 
 	"sigs.k8s.io/external-dns/endpoint"
 )
@@ -51,11 +52,11 @@ type gatewayRoute interface {
 	// Metadata returns the route's metadata.
 	Metadata() *metav1.ObjectMeta
 	// Hostnames returns the route's specified hostnames.
-	Hostnames() []v1beta1.Hostname
+	Hostnames() []v1.Hostname
 	// Protocol returns the route's protocol type.
-	Protocol() v1beta1.ProtocolType
+	Protocol() v1.ProtocolType
 	// RouteStatus returns the route's common status.
-	RouteStatus() v1beta1.RouteStatus
+	RouteStatus() v1.RouteStatus
 }
 
 type newGatewayRouteInformerFunc func(informers.SharedInformerFactory) gatewayRouteInformer
@@ -82,7 +83,7 @@ func newGatewayInformerFactory(client gateway.Interface, namespace string, label
 type gatewayRouteSource struct {
 	gwNamespace string
 	gwLabels    labels.Selector
-	gwInformer  informers_v1b1.GatewayInformer
+	gwInformer  informers_v1.GatewayInformer
 
 	rtKind        string
 	rtNamespace   string
@@ -123,8 +124,8 @@ func newGatewayRouteSource(clients ClientGenerator, config *Config, kind string,
 	}
 
 	informerFactory := newGatewayInformerFactory(client, config.GatewayNamespace, gwLabels)
-	gwInformer := informerFactory.Gateway().V1beta1().Gateways() // TODO: Gateway informer should be shared across gateway sources.
-	gwInformer.Informer()                                        // Register with factory before starting.
+	gwInformer := informerFactory.Gateway().V1().Gateways() // TODO: Gateway informer should be shared across gateway sources.
+	gwInformer.Informer()                                   // Register with factory before starting.
 
 	rtInformerFactory := informerFactory
 	if config.Namespace != config.GatewayNamespace || !selectorsEqual(rtLabels, gwLabels) {
@@ -228,18 +229,11 @@ func (src *gatewayRouteSource) Endpoints(ctx context.Context) ([]*endpoint.Endpo
 		}
 
 		// Create endpoints from hostnames and targets.
-		resourceKey := fmt.Sprintf("%s/%s/%s", kind, meta.Namespace, meta.Name)
+		resource := fmt.Sprintf("%s/%s/%s", kind, meta.Namespace, meta.Name)
 		providerSpecific, setIdentifier := getProviderSpecificAnnotations(annots)
-		ttl, err := getTTLFromAnnotations(annots)
-		if err != nil {
-			log.Warn(err)
-		}
+		ttl := getTTLFromAnnotations(annots, resource)
 		for host, targets := range hostTargets {
-			eps := endpointsForHostname(host, targets, ttl, providerSpecific, setIdentifier)
-			for _, ep := range eps {
-				ep.Labels[endpoint.ResourceLabelKey] = resourceKey
-			}
-			endpoints = append(endpoints, eps...)
+			endpoints = append(endpoints, endpointsForHostname(host, targets, ttl, providerSpecific, setIdentifier, resource)...)
 		}
 		log.Debugf("Endpoints generated from %s %s/%s: %v", src.rtKind, meta.Namespace, meta.Name, endpoints)
 	}
@@ -257,15 +251,15 @@ type gatewayRouteResolver struct {
 }
 
 type gatewayListeners struct {
-	gateway   *v1beta1.Gateway
-	listeners map[v1beta1.SectionName][]v1beta1.Listener
+	gateway   *v1.Gateway
+	listeners map[v1.SectionName][]v1.Listener
 }
 
-func newGatewayRouteResolver(src *gatewayRouteSource, gateways []*v1beta1.Gateway, namespaces []*corev1.Namespace) *gatewayRouteResolver {
+func newGatewayRouteResolver(src *gatewayRouteSource, gateways []*v1.Gateway, namespaces []*corev1.Namespace) *gatewayRouteResolver {
 	// Create Gateway Listener lookup table.
 	gws := make(map[types.NamespacedName]gatewayListeners, len(gateways))
 	for _, gw := range gateways {
-		lss := make(map[v1beta1.SectionName][]v1beta1.Listener, len(gw.Spec.Listeners)+1)
+		lss := make(map[v1.SectionName][]v1.Listener, len(gw.Spec.Listeners)+1)
 		for i, lis := range gw.Spec.Listeners {
 			lss[lis.Name] = gw.Spec.Listeners[i : i+1]
 		}
@@ -352,8 +346,12 @@ func (c *gatewayRouteResolver) resolve(rt gatewayRoute) (map[string]endpoint.Tar
 				if !ok {
 					continue
 				}
-				for _, addr := range gw.gateway.Status.Addresses {
-					hostTargets[host] = append(hostTargets[host], addr.Value)
+				override := getTargetsFromTargetAnnotation(gw.gateway.Annotations)
+				hostTargets[host] = append(hostTargets[host], override...)
+				if len(override) == 0 {
+					for _, addr := range gw.gateway.Status.Addresses {
+						hostTargets[host] = append(hostTargets[host], addr.Value)
+					}
 				}
 				match = true
 			}
@@ -397,23 +395,23 @@ func (c *gatewayRouteResolver) hosts(rt gatewayRoute) ([]string, error) {
 	return hostnames, nil
 }
 
-func (c *gatewayRouteResolver) routeIsAllowed(gw *v1beta1.Gateway, lis *v1beta1.Listener, rt gatewayRoute) bool {
+func (c *gatewayRouteResolver) routeIsAllowed(gw *v1.Gateway, lis *v1.Listener, rt gatewayRoute) bool {
 	meta := rt.Metadata()
 	allow := lis.AllowedRoutes
 
 	// Check the route's namespace.
-	from := v1beta1.NamespacesFromSame
+	from := v1.NamespacesFromSame
 	if allow != nil && allow.Namespaces != nil && allow.Namespaces.From != nil {
 		from = *allow.Namespaces.From
 	}
 	switch from {
-	case v1beta1.NamespacesFromAll:
+	case v1.NamespacesFromAll:
 		// OK
-	case v1beta1.NamespacesFromSame:
+	case v1.NamespacesFromSame:
 		if gw.Namespace != meta.Namespace {
 			return false
 		}
-	case v1beta1.NamespacesFromSelector:
+	case v1.NamespacesFromSelector:
 		selector, err := metav1.LabelSelectorAsSelector(allow.Namespaces.Selector)
 		if err != nil {
 			log.Debugf("Gateway %s/%s section %q has invalid namespace selector: %v", gw.Namespace, gw.Name, lis.Name, err)
@@ -451,7 +449,7 @@ func (c *gatewayRouteResolver) routeIsAllowed(gw *v1beta1.Gateway, lis *v1beta1.
 
 func gwRouteIsAccepted(conds []metav1.Condition) bool {
 	for _, c := range conds {
-		if v1beta1.RouteConditionType(c.Type) == v1beta1.RouteConditionAccepted {
+		if v1.RouteConditionType(c.Type) == v1.RouteConditionAccepted {
 			return c.Status == metav1.ConditionTrue
 		}
 	}
@@ -478,50 +476,105 @@ func uniqueTargets(targets endpoint.Targets) endpoint.Targets {
 
 // gwProtocolMatches returns whether a and b are the same protocol,
 // where HTTP and HTTPS are considered the same.
-func gwProtocolMatches(a, b v1beta1.ProtocolType) bool {
-	if a == v1beta1.HTTPSProtocolType {
-		a = v1beta1.HTTPProtocolType
+// and TLS and TCP are considered the same.
+func gwProtocolMatches(a, b v1.ProtocolType) bool {
+	if a == v1.HTTPSProtocolType {
+		a = v1.HTTPProtocolType
 	}
-	if b == v1beta1.HTTPSProtocolType {
-		b = v1beta1.HTTPProtocolType
+	if b == v1.HTTPSProtocolType {
+		b = v1.HTTPProtocolType
+	}
+	// if Listener is TLS and Route is TCP set Listener type to TCP as to pass true and return valid match
+	if a == v1.TCPProtocolType && b == v1.TLSProtocolType {
+		b = v1.TCPProtocolType
 	}
 	return a == b
 }
 
 // gwMatchingHost returns the most-specific overlapping host and a bool indicating if one was found.
-// For example, if one host is "*.foo.com" and the other is "bar.foo.com", "bar.foo.com" will be returned.
-// An empty string matches anything.
-func gwMatchingHost(gwHost, rtHost string) (string, bool) {
-	gwHost = toLowerCaseASCII(gwHost) // TODO: trim "." suffix?
-	rtHost = toLowerCaseASCII(rtHost) // TODO: trim "." suffix?
-
-	if gwHost == "" {
-		return rtHost, true
+// Hostnames that are prefixed with a wildcard label (`*.`) are interpreted as a suffix match.
+// That means that "*.example.com" would match both "test.example.com" and "foo.test.example.com",
+// but not "example.com". An empty string matches anything.
+func gwMatchingHost(a, b string) (string, bool) {
+	var ok bool
+	if a, ok = gwHost(a); !ok {
+		return "", false
 	}
-	if rtHost == "" {
-		return gwHost, true
-	}
-
-	gwParts := strings.Split(gwHost, ".")
-	rtParts := strings.Split(rtHost, ".")
-	if len(gwParts) != len(rtParts) {
+	if b, ok = gwHost(b); !ok {
 		return "", false
 	}
 
-	host := rtHost
-	for i, gwPart := range gwParts {
-		switch rtPart := rtParts[i]; {
-		case rtPart == gwPart:
-			// continue
-		case i == 0 && gwPart == "*":
-			// continue
-		case i == 0 && rtPart == "*":
-			host = gwHost // gwHost is more specific
-		default:
-			return "", false
+	if a == "" {
+		return b, true
+	}
+	if b == "" || a == b {
+		return a, true
+	}
+	if na, nb := len(a), len(b); nb < na || (na == nb && strings.HasPrefix(b, "*.")) {
+		a, b = b, a
+	}
+	if strings.HasPrefix(a, "*.") && strings.HasSuffix(b, a[1:]) {
+		return b, true
+	}
+	return "", false
+}
+
+// gwHost returns the canonical host and a value indicating if it's valid.
+func gwHost(host string) (string, bool) {
+	if host == "" {
+		return "", true
+	}
+	if isIPAddr(host) || !isDNS1123Domain(strings.TrimPrefix(host, "*.")) {
+		return "", false
+	}
+	return toLowerCaseASCII(host), true
+}
+
+// isIPAddr returns whether s in an IP address.
+func isIPAddr(s string) bool {
+	_, err := netip.ParseAddr(s)
+	return err == nil
+}
+
+// isDNS1123Domain returns whether s is a valid domain name according to RFC 1123.
+func isDNS1123Domain(s string) bool {
+	if n := len(s); n == 0 || n > 255 {
+		return false
+	}
+	for lbl, rest := "", s; rest != ""; {
+		if lbl, rest, _ = strings.Cut(rest, "."); !isDNS1123Label(lbl) {
+			return false
 		}
 	}
-	return host, true
+	return true
+}
+
+// isDNS1123Label returns whether s is a valid domain label according to RFC 1123.
+func isDNS1123Label(s string) bool {
+	n := len(s)
+	if n == 0 || n > 63 {
+		return false
+	}
+	if !isAlphaNum(s[0]) || !isAlphaNum(s[n-1]) {
+		return false
+	}
+	for i, k := 1, n-1; i < k; i++ {
+		if b := s[i]; b != '-' && !isAlphaNum(b) {
+			return false
+		}
+	}
+	return true
+}
+
+func isAlphaNum(b byte) bool {
+	switch {
+	case 'a' <= b && b <= 'z',
+		'A' <= b && b <= 'Z',
+		'0' <= b && b <= '9':
+		return true
+	default:
+		return false
+	}
 }
 
 func strVal(ptr *string, def string) string {
@@ -531,7 +584,7 @@ func strVal(ptr *string, def string) string {
 	return *ptr
 }
 
-func sectionVal(ptr *v1beta1.SectionName, def v1beta1.SectionName) v1beta1.SectionName {
+func sectionVal(ptr *v1.SectionName, def v1.SectionName) v1.SectionName {
 	if ptr == nil || *ptr == "" {
 		return def
 	}

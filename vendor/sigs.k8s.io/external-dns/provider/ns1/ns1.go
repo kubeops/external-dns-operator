@@ -75,7 +75,7 @@ func (n NS1DomainService) UpdateRecord(r *dns.Record) (*http.Response, error) {
 
 // GetZone wraps the Get method of the API's Zones service
 func (n NS1DomainService) GetZone(zone string) (*dns.Zone, *http.Response, error) {
-	return n.service.Zones.Get(zone)
+	return n.service.Zones.Get(zone, true)
 }
 
 // ListZones wraps the List method of the API's Zones service
@@ -179,7 +179,7 @@ func (p *NS1Provider) Records(ctx context.Context) ([]*endpoint.Endpoint, error)
 
 // ns1BuildRecord returns a dns.Record for a change set
 func (p *NS1Provider) ns1BuildRecord(zoneName string, change *ns1Change) *dns.Record {
-	record := dns.NewRecord(zoneName, change.Endpoint.DNSName, change.Endpoint.RecordType)
+	record := dns.NewRecord(zoneName, change.Endpoint.DNSName, change.Endpoint.RecordType, map[string]string{}, []string{})
 	for _, v := range change.Endpoint.Targets {
 		record.AddAnswer(dns.NewAnswer(strings.Split(v, " ")))
 	}

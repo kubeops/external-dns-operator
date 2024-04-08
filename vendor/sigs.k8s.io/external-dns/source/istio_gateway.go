@@ -38,6 +38,10 @@ import (
 	"sigs.k8s.io/external-dns/endpoint"
 )
 
+// IstioGatewayIngressSource is the annotation used to determine if the gateway is implemented by an Ingress object
+// instead of a standard LoadBalancer service type
+const IstioGatewayIngressSource = "external-dns.alpha.kubernetes.io/ingress"
+
 // gatewaySource is an implementation of Source for Istio Gateway objects.
 // The gateway implementation uses the spec.servers.hosts values for the hostnames.
 // Use targetAnnotationKey to explicitly set Endpoint.
@@ -149,7 +153,7 @@ func (sc *gatewaySource) Endpoints(ctx context.Context) ([]*endpoint.Endpoint, e
 
 		// apply template if host is missing on gateway
 		if (sc.combineFQDNAnnotation || len(gwHostnames) == 0) && sc.fqdnTemplate != nil {
-			iHostnames, err := execTemplate(sc.fqdnTemplate, &gateway)
+			iHostnames, err := execTemplate(sc.fqdnTemplate, gateway)
 			if err != nil {
 				return nil, err
 			}
@@ -166,7 +170,7 @@ func (sc *gatewaySource) Endpoints(ctx context.Context) ([]*endpoint.Endpoint, e
 			continue
 		}
 
-		gwEndpoints, err := sc.endpointsFromGateway(gwHostnames, gateway)
+		gwEndpoints, err := sc.endpointsFromGateway(ctx, gwHostnames, gateway)
 		if err != nil {
 			return nil, err
 		}
@@ -177,7 +181,6 @@ func (sc *gatewaySource) Endpoints(ctx context.Context) ([]*endpoint.Endpoint, e
 		}
 
 		log.Debugf("Endpoints generated from gateway: %s/%s: %v", gateway.Namespace, gateway.Name, gwEndpoints)
-		sc.setResourceLabel(gateway, gwEndpoints)
 		endpoints = append(endpoints, gwEndpoints...)
 	}
 
@@ -196,7 +199,7 @@ func (sc *gatewaySource) AddEventHandler(ctx context.Context, handler func()) {
 }
 
 // filterByAnnotations filters a list of configs by a given annotation selector.
-func (sc *gatewaySource) filterByAnnotations(gateways []networkingv1alpha3.Gateway) ([]networkingv1alpha3.Gateway, error) {
+func (sc *gatewaySource) filterByAnnotations(gateways []*networkingv1alpha3.Gateway) ([]*networkingv1alpha3.Gateway, error) {
 	labelSelector, err := metav1.ParseToLabelSelector(sc.annotationFilter)
 	if err != nil {
 		return nil, err
@@ -211,7 +214,7 @@ func (sc *gatewaySource) filterByAnnotations(gateways []networkingv1alpha3.Gatew
 		return gateways, nil
 	}
 
-	var filteredList []networkingv1alpha3.Gateway
+	var filteredList []*networkingv1alpha3.Gateway
 
 	for _, gw := range gateways {
 		// convert the annotations to an equivalent label selector
@@ -226,15 +229,52 @@ func (sc *gatewaySource) filterByAnnotations(gateways []networkingv1alpha3.Gatew
 	return filteredList, nil
 }
 
-func (sc *gatewaySource) setResourceLabel(gateway networkingv1alpha3.Gateway, endpoints []*endpoint.Endpoint) {
-	for _, ep := range endpoints {
-		ep.Labels[endpoint.ResourceLabelKey] = fmt.Sprintf("gateway/%s/%s", gateway.Namespace, gateway.Name)
+func parseIngress(ingress string) (namespace, name string, err error) {
+	parts := strings.Split(ingress, "/")
+	if len(parts) == 2 {
+		namespace, name = parts[0], parts[1]
+	} else if len(parts) == 1 {
+		name = parts[0]
+	} else {
+		err = fmt.Errorf("invalid ingress name (name or namespace/name) found %q", ingress)
 	}
+
+	return
 }
 
-func (sc *gatewaySource) targetsFromGateway(gateway networkingv1alpha3.Gateway) (targets endpoint.Targets, err error) {
+func (sc *gatewaySource) targetsFromIngress(ctx context.Context, ingressStr string, gateway *networkingv1alpha3.Gateway) (targets endpoint.Targets, err error) {
+	namespace, name, err := parseIngress(ingressStr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse Ingress annotation on Gateway (%s/%s): %w", gateway.Namespace, gateway.Name, err)
+	}
+	if namespace == "" {
+		namespace = gateway.Namespace
+	}
+
+	ingress, err := sc.kubeClient.NetworkingV1().Ingresses(namespace).Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		log.Error(err)
+		return
+	}
+	for _, lb := range ingress.Status.LoadBalancer.Ingress {
+		if lb.IP != "" {
+			targets = append(targets, lb.IP)
+		} else if lb.Hostname != "" {
+			targets = append(targets, lb.Hostname)
+		}
+	}
+	return
+}
+
+func (sc *gatewaySource) targetsFromGateway(ctx context.Context, gateway *networkingv1alpha3.Gateway) (targets endpoint.Targets, err error) {
 	targets = getTargetsFromTargetAnnotation(gateway.Annotations)
 	if len(targets) > 0 {
+		return
+	}
+
+	ingressStr, ok := gateway.Annotations[IstioGatewayIngressSource]
+	if ok && ingressStr != "" {
+		targets, err = sc.targetsFromIngress(ctx, ingressStr, gateway)
 		return
 	}
 
@@ -246,6 +286,11 @@ func (sc *gatewaySource) targetsFromGateway(gateway networkingv1alpha3.Gateway) 
 
 	for _, service := range services {
 		if !gatewaySelectorMatchesServiceSelector(gateway.Spec.Selector, service.Spec.Selector) {
+			continue
+		}
+
+		if len(service.Spec.ExternalIPs) > 0 {
+			targets = append(targets, service.Spec.ExternalIPs...)
 			continue
 		}
 
@@ -262,19 +307,18 @@ func (sc *gatewaySource) targetsFromGateway(gateway networkingv1alpha3.Gateway) 
 }
 
 // endpointsFromGatewayConfig extracts the endpoints from an Istio Gateway Config object
-func (sc *gatewaySource) endpointsFromGateway(hostnames []string, gateway networkingv1alpha3.Gateway) ([]*endpoint.Endpoint, error) {
+func (sc *gatewaySource) endpointsFromGateway(ctx context.Context, hostnames []string, gateway *networkingv1alpha3.Gateway) ([]*endpoint.Endpoint, error) {
 	var endpoints []*endpoint.Endpoint
+	var err error
+
+	resource := fmt.Sprintf("gateway/%s/%s", gateway.Namespace, gateway.Name)
 
 	annotations := gateway.Annotations
-	ttl, err := getTTLFromAnnotations(annotations)
-	if err != nil {
-		log.Warn(err)
-	}
+	ttl := getTTLFromAnnotations(annotations, resource)
 
 	targets := getTargetsFromTargetAnnotation(annotations)
-
 	if len(targets) == 0 {
-		targets, err = sc.targetsFromGateway(gateway)
+		targets, err = sc.targetsFromGateway(ctx, gateway)
 		if err != nil {
 			return nil, err
 		}
@@ -283,13 +327,13 @@ func (sc *gatewaySource) endpointsFromGateway(hostnames []string, gateway networ
 	providerSpecific, setIdentifier := getProviderSpecificAnnotations(annotations)
 
 	for _, host := range hostnames {
-		endpoints = append(endpoints, endpointsForHostname(host, targets, ttl, providerSpecific, setIdentifier)...)
+		endpoints = append(endpoints, endpointsForHostname(host, targets, ttl, providerSpecific, setIdentifier, resource)...)
 	}
 
 	return endpoints, nil
 }
 
-func (sc *gatewaySource) hostNamesFromGateway(gateway networkingv1alpha3.Gateway) ([]string, error) {
+func (sc *gatewaySource) hostNamesFromGateway(gateway *networkingv1alpha3.Gateway) ([]string, error) {
 	var hostnames []string
 	for _, server := range gateway.Spec.Servers {
 		for _, host := range server.Hosts {

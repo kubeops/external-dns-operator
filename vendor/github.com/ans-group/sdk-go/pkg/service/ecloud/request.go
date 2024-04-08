@@ -179,12 +179,14 @@ func (c *CreateVirtualMachineTemplateRequest) Validate() *connection.ValidationE
 type CreateVPCRequest struct {
 	Name               string `json:"name,omitempty"`
 	RegionID           string `json:"region_id"`
+	ClientID           int    `json:"client_id,omitempty"`
 	AdvancedNetworking *bool  `json:"advanced_networking,omitempty"`
 }
 
 // PatchVPCRequest represents a request to patch a VPC
 type PatchVPCRequest struct {
-	Name string `json:"name,omitempty"`
+	Name     string `json:"name,omitempty"`
+	ClientID *int   `json:"client_id,omitempty"`
 }
 
 // CreateNetworkRequest represents a request to create a network
@@ -237,12 +239,15 @@ type CreateInstanceRequest struct {
 	VPCID              string                 `json:"vpc_id"`
 	ImageID            string                 `json:"image_id"`
 	ImageData          map[string]interface{} `json:"image_data"`
-	VCPUCores          int                    `json:"vcpu_cores"`
+	VCPUCores          int                    `json:"vcpu_cores,omitempty"`
+	VCPUSockets        int                    `json:"vcpu_sockets,omitempty"`
+	VCPUCoresPerSocket int                    `json:"vcpu_cores_per_socket,omitempty"`
 	RAMCapacity        int                    `json:"ram_capacity"`
 	Locked             bool                   `json:"locked"`
 	VolumeCapacity     int                    `json:"volume_capacity"`
 	VolumeIOPS         int                    `json:"volume_iops,omitempty"`
 	BackupEnabled      bool                   `json:"backup_enabled"`
+	IsEncrypted        bool                   `json:"is_encrypted"`
 	NetworkID          string                 `json:"network_id,omitempty"`
 	FloatingIPID       string                 `json:"floating_ip_id,omitempty"`
 	RequiresFloatingIP bool                   `json:"requires_floating_ip,omitempty"`
@@ -250,14 +255,17 @@ type CreateInstanceRequest struct {
 	SSHKeyPairIDs      []string               `json:"ssh_key_pair_ids,omitempty"`
 	HostGroupID        string                 `json:"host_group_id,omitempty"`
 	ResourceTierID     string                 `json:"resource_tier_id,omitempty"`
+	CustomIPAddress    connection.IPAddress   `json:"custom_ip_address,omitempty"`
 }
 
 // PatchInstanceRequest represents a request to patch an instance
 type PatchInstanceRequest struct {
-	Name          string  `json:"name,omitempty"`
-	VCPUCores     int     `json:"vcpu_cores,omitempty"`
-	RAMCapacity   int     `json:"ram_capacity,omitempty"`
-	VolumeGroupID *string `json:"volume_group_id,omitempty"`
+	Name               string  `json:"name,omitempty"`
+	VCPUCores          int     `json:"vcpu_cores,omitempty"`
+	VCPUSockets        int     `json:"vcpu_sockets,omitempty"`
+	VCPUCoresPerSocket int     `json:"vcpu_cores_per_socket,omitempty"`
+	RAMCapacity        int     `json:"ram_capacity,omitempty"`
+	VolumeGroupID      *string `json:"volume_group_id,omitempty"`
 }
 
 // CreateFirewallPolicyRequest represents a request to create a firewall policy
@@ -281,6 +289,7 @@ type CreateVolumeRequest struct {
 	IOPS               int    `json:"iops,omitempty"`
 	AvailabilityZoneID string `json:"availability_zone_id"`
 	VolumeGroupID      string `json:"volume_group_id,omitempty"`
+	IsShared           bool   `json:"is_shared,omitempty"`
 }
 
 // PatchVolumeRequest represents a request to patch a volume
@@ -614,4 +623,20 @@ type UpdateImageRequest struct {
 	LogoURI          string `json:"logo_uri,omitempty"`
 	DocumentationURI string `json:"documentation_uri,omitempty"`
 	Description      string `json:"description,omitempty"`
+}
+
+// NATOverloadRule represents an eCloud NAT overload rule
+type CreateNATOverloadRuleRequest struct {
+	Name         string                `json:"name,omitempty"`
+	NetworkID    string                `json:"network_id"`
+	FloatingIPID string                `json:"floating_ip_id"`
+	Subnet       string                `json:"subnet"`
+	Action       NATOverloadRuleAction `json:"action"`
+}
+
+// NATOverloadRule represents an eCloud NAT overload rule
+type PatchNATOverloadRuleRequest struct {
+	Name   string                `json:"name,omitempty"`
+	Subnet string                `json:"subnet,omitempty"`
+	Action NATOverloadRuleAction `json:"action,omitempty"`
 }

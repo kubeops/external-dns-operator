@@ -194,7 +194,7 @@ func (p *Paginated[T]) Items() []T {
 
 // TotalPages returns the total number of pages
 func (p *Paginated[T]) TotalPages() int {
-	return p.body.Pagination().TotalPages
+	return p.body.Metadata.Pagination.TotalPages
 }
 
 // CurrentPage returns the current page
@@ -208,7 +208,7 @@ func (p *Paginated[T]) CurrentPage() int {
 
 // Total returns the total number of items for current page
 func (p *Paginated[T]) Total() int {
-	return p.body.Pagination().Total
+	return p.body.Metadata.Pagination.Total
 }
 
 // First returns the the first page

@@ -6,6 +6,13 @@ import (
 
 // AccountService is an interface for managing account
 type AccountService interface {
+	GetClients(parameters connection.APIRequestParameters) ([]Client, error)
+	GetClientsPaginated(parameters connection.APIRequestParameters) (*connection.Paginated[Client], error)
+	GetClient(clientID int) (Client, error)
+	CreateClient(req CreateClientRequest) (int, error)
+	PatchClient(clientID int, patch PatchClientRequest) error
+	DeleteClient(clientID int) error
+
 	GetContacts(parameters connection.APIRequestParameters) ([]Contact, error)
 	GetContactsPaginated(parameters connection.APIRequestParameters) (*connection.Paginated[Contact], error)
 	GetContact(contactID int) (Contact, error)

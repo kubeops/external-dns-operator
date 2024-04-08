@@ -41,6 +41,7 @@ import (
 // representing the server time when this object was created. It is not guaranteed to be set in happens-before order across separate operations.
 // Clients may not set this value. It is represented in RFC3339 form and is in UTC.
 // Populated by the system. Read-only. Null for lists. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#metadata"
+// +cue-gen:DestinationRule:preserveUnknownFields:false
 // -->
 //
 // <!-- go code generation tags
@@ -48,6 +49,9 @@ import (
 // +kubetype-gen:groupVersion=networking.istio.io/v1beta1
 // +genclient
 // +k8s:deepcopy-gen=true
+// -->
+// <!-- istio code generation tags
+// +istio.io/sync-from:networking/v1alpha3/destination_rule.proto
 // -->
 type DestinationRule struct {
 	v1.TypeMeta `json:",inline"`
@@ -68,7 +72,7 @@ type DestinationRuleList struct {
 	v1.TypeMeta `json:",inline"`
 	// +optional
 	v1.ListMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
-	Items       []DestinationRule `json:"items" protobuf:"bytes,2,rep,name=items"`
+	Items       []*DestinationRule `json:"items" protobuf:"bytes,2,rep,name=items"`
 }
 
 //
@@ -85,6 +89,7 @@ type DestinationRuleList struct {
 // +cue-gen:Gateway:subresource:status
 // +cue-gen:Gateway:scope:Namespaced
 // +cue-gen:Gateway:resource:categories=istio-io,networking-istio-io,shortNames=gw
+// +cue-gen:Gateway:preserveUnknownFields:false
 // -->
 //
 // <!-- go code generation tags
@@ -92,6 +97,9 @@ type DestinationRuleList struct {
 // +kubetype-gen:groupVersion=networking.istio.io/v1beta1
 // +genclient
 // +k8s:deepcopy-gen=true
+// -->
+// <!-- istio code generation tags
+// +istio.io/sync-from:networking/v1alpha3/gateway.proto
 // -->
 type Gateway struct {
 	v1.TypeMeta `json:",inline"`
@@ -112,7 +120,52 @@ type GatewayList struct {
 	v1.TypeMeta `json:",inline"`
 	// +optional
 	v1.ListMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
-	Items       []Gateway `json:"items" protobuf:"bytes,2,rep,name=items"`
+	Items       []*Gateway `json:"items" protobuf:"bytes,2,rep,name=items"`
+}
+
+//
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// `ProxyConfig` exposes proxy level configuration options.
+//
+// <!-- crd generation tags
+// +cue-gen:ProxyConfig:groupName:networking.istio.io
+// +cue-gen:ProxyConfig:version:v1beta1
+// +cue-gen:ProxyConfig:storageVersion
+// +cue-gen:ProxyConfig:annotations:helm.sh/resource-policy=keep
+// +cue-gen:ProxyConfig:labels:app=istio-pilot,chart=istio,heritage=Tiller,release=istio
+// +cue-gen:ProxyConfig:subresource:status
+// +cue-gen:ProxyConfig:scope:Namespaced
+// +cue-gen:ProxyConfig:resource:categories=istio-io,networking-istio-io,plural=proxyconfigs
+// +cue-gen:ProxyConfig:preserveUnknownFields:false
+// -->
+//
+// <!-- go code generation tags
+// +kubetype-gen
+// +kubetype-gen:groupVersion=networking.istio.io/v1beta1
+// +genclient
+// +k8s:deepcopy-gen=true
+// -->
+type ProxyConfig struct {
+	v1.TypeMeta `json:",inline"`
+	// +optional
+	v1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
+
+	// Spec defines the implementation of this definition.
+	// +optional
+	Spec networkingv1beta1.ProxyConfig `json:"spec,omitempty" protobuf:"bytes,2,opt,name=spec"`
+
+	Status v1alpha1.IstioStatus `json:"status"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// ProxyConfigList is a collection of ProxyConfigs.
+type ProxyConfigList struct {
+	v1.TypeMeta `json:",inline"`
+	// +optional
+	v1.ListMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
+	Items       []*ProxyConfig `json:"items" protobuf:"bytes,2,rep,name=items"`
 }
 
 //
@@ -132,12 +185,13 @@ type GatewayList struct {
 // +cue-gen:ServiceEntry:printerColumn:name=Hosts,type=string,JSONPath=.spec.hosts,description="The hosts associated with the ServiceEntry"
 // +cue-gen:ServiceEntry:printerColumn:name=Location,type=string,JSONPath=.spec.location,description="Whether the service is external to the
 // mesh or part of the mesh (MESH_EXTERNAL or MESH_INTERNAL)"
-// +cue-gen:ServiceEntry:printerColumn:name=Resolution,type=string,JSONPath=.spec.resolution,description="Service discovery mode for the hosts
+// +cue-gen:ServiceEntry:printerColumn:name=Resolution,type=string,JSONPath=.spec.resolution,description="Service resolution mode for the hosts
 // (NONE, STATIC, or DNS)"
 // +cue-gen:ServiceEntry:printerColumn:name=Age,type=date,JSONPath=.metadata.creationTimestamp,description="CreationTimestamp is a timestamp
 // representing the server time when this object was created. It is not guaranteed to be set in happens-before order across separate operations.
 // Clients may not set this value. It is represented in RFC3339 form and is in UTC.
 // Populated by the system. Read-only. Null for lists. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#metadata"
+// +cue-gen:ServiceEntry:preserveUnknownFields:false
 // -->
 //
 // <!-- go code generation tags
@@ -145,6 +199,9 @@ type GatewayList struct {
 // +kubetype-gen:groupVersion=networking.istio.io/v1beta1
 // +genclient
 // +k8s:deepcopy-gen=true
+// -->
+// <!-- istio code generation tags
+// +istio.io/sync-from:networking/v1alpha3/service_entry.proto
 // -->
 type ServiceEntry struct {
 	v1.TypeMeta `json:",inline"`
@@ -165,7 +222,7 @@ type ServiceEntryList struct {
 	v1.TypeMeta `json:",inline"`
 	// +optional
 	v1.ListMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
-	Items       []ServiceEntry `json:"items" protobuf:"bytes,2,rep,name=items"`
+	Items       []*ServiceEntry `json:"items" protobuf:"bytes,2,rep,name=items"`
 }
 
 //
@@ -183,6 +240,7 @@ type ServiceEntryList struct {
 // +cue-gen:Sidecar:subresource:status
 // +cue-gen:Sidecar:scope:Namespaced
 // +cue-gen:Sidecar:resource:categories=istio-io,networking-istio-io
+// +cue-gen:Sidecar:preserveUnknownFields:false
 // -->
 //
 // <!-- go code generation tags
@@ -190,6 +248,9 @@ type ServiceEntryList struct {
 // +kubetype-gen:groupVersion=networking.istio.io/v1beta1
 // +genclient
 // +k8s:deepcopy-gen=true
+// -->
+// <!-- istio code generation tags
+// +istio.io/sync-from:networking/v1alpha3/sidecar.proto
 // -->
 type Sidecar struct {
 	v1.TypeMeta `json:",inline"`
@@ -210,10 +271,10 @@ type SidecarList struct {
 	v1.TypeMeta `json:",inline"`
 	// +optional
 	v1.ListMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
-	Items       []Sidecar `json:"items" protobuf:"bytes,2,rep,name=items"`
+	Items       []*Sidecar `json:"items" protobuf:"bytes,2,rep,name=items"`
 }
 
-// please upgrade the proto package
+//
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // Configuration affecting traffic routing.
@@ -233,6 +294,7 @@ type SidecarList struct {
 // representing the server time when this object was created. It is not guaranteed to be set in happens-before order across separate operations.
 // Clients may not set this value. It is represented in RFC3339 form and is in UTC.
 // Populated by the system. Read-only. Null for lists. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#metadata"
+// +cue-gen:VirtualService:preserveUnknownFields:false
 // -->
 //
 // <!-- go code generation tags
@@ -240,6 +302,9 @@ type SidecarList struct {
 // +kubetype-gen:groupVersion=networking.istio.io/v1beta1
 // +genclient
 // +k8s:deepcopy-gen=true
+// -->
+// <!-- istio code generation tags
+// +istio.io/sync-from:networking/v1alpha3/virtual_service.proto
 // -->
 type VirtualService struct {
 	v1.TypeMeta `json:",inline"`
@@ -260,10 +325,10 @@ type VirtualServiceList struct {
 	v1.TypeMeta `json:",inline"`
 	// +optional
 	v1.ListMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
-	Items       []VirtualService `json:"items" protobuf:"bytes,2,rep,name=items"`
+	Items       []*VirtualService `json:"items" protobuf:"bytes,2,rep,name=items"`
 }
 
-// please upgrade the proto package
+//
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // WorkloadEntry enables specifying the properties of a single non-Kubernetes workload such a VM or a bare metal services that can be referred to by service entries.
@@ -281,6 +346,7 @@ type VirtualServiceList struct {
 // Clients may not set this value. It is represented in RFC3339 form and is in UTC.
 // Populated by the system. Read-only. Null for lists. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#metadata"
 // +cue-gen:WorkloadEntry:printerColumn:name=Address,type=string,JSONPath=.spec.address,description="Address associated with the network endpoint."
+// +cue-gen:WorkloadEntry:preserveUnknownFields:false
 // -->
 //
 // <!-- go code generation tags
@@ -288,6 +354,9 @@ type VirtualServiceList struct {
 // +kubetype-gen:groupVersion=networking.istio.io/v1beta1
 // +genclient
 // +k8s:deepcopy-gen=true
+// -->
+// <!-- istio code generation tags
+// +istio.io/sync-from:networking/v1alpha3/workload_entry.proto
 // -->
 type WorkloadEntry struct {
 	v1.TypeMeta `json:",inline"`
@@ -308,5 +377,59 @@ type WorkloadEntryList struct {
 	v1.TypeMeta `json:",inline"`
 	// +optional
 	v1.ListMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
-	Items       []WorkloadEntry `json:"items" protobuf:"bytes,2,rep,name=items"`
+	Items       []*WorkloadEntry `json:"items" protobuf:"bytes,2,rep,name=items"`
+}
+
+//
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// `WorkloadGroup` enables specifying the properties of a single workload for bootstrap and
+// provides a template for `WorkloadEntry`, similar to how `Deployment` specifies properties
+// of workloads via `Pod` templates. A `WorkloadGroup` can have more than one `WorkloadEntry`.
+// `WorkloadGroup` has no relationship to resources which control service registry like `ServiceEntry`
+// and as such doesn't configure host name for these workloads.
+//
+// <!-- crd generation tags
+// +cue-gen:WorkloadGroup:groupName:networking.istio.io
+// +cue-gen:WorkloadGroup:version:v1beta1
+// +cue-gen:WorkloadGroup:labels:app=istio-pilot,chart=istio,heritage=Tiller,release=istio
+// +cue-gen:WorkloadGroup:subresource:status
+// +cue-gen:WorkloadGroup:scope:Namespaced
+// +cue-gen:WorkloadGroup:resource:categories=istio-io,networking-istio-io,shortNames=wg,plural=workloadgroups
+// +cue-gen:WorkloadGroup:printerColumn:name=Age,type=date,JSONPath=.metadata.creationTimestamp,description="CreationTimestamp is a timestamp
+// representing the server time when this object was created. It is not guaranteed to be set in happens-before order across separate operations.
+// Clients may not set this value. It is represented in RFC3339 form and is in UTC.
+// Populated by the system. Read-only. Null for lists. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#metadata"
+// +cue-gen:WorkloadGroup:preserveUnknownFields:false
+// -->
+//
+// <!-- go code generation tags
+// +kubetype-gen
+// +kubetype-gen:groupVersion=networking.istio.io/v1beta1
+// +genclient
+// +k8s:deepcopy-gen=true
+// -->
+// <!-- istio code generation tags
+// +istio.io/sync-from:networking/v1alpha3/workload_group.proto
+// -->
+type WorkloadGroup struct {
+	v1.TypeMeta `json:",inline"`
+	// +optional
+	v1.ObjectMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
+
+	// Spec defines the implementation of this definition.
+	// +optional
+	Spec networkingv1beta1.WorkloadGroup `json:"spec,omitempty" protobuf:"bytes,2,opt,name=spec"`
+
+	Status v1alpha1.IstioStatus `json:"status"`
+}
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// WorkloadGroupList is a collection of WorkloadGroups.
+type WorkloadGroupList struct {
+	v1.TypeMeta `json:",inline"`
+	// +optional
+	v1.ListMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
+	Items       []*WorkloadGroup `json:"items" protobuf:"bytes,2,rep,name=items"`
 }
