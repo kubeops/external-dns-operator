@@ -2,10 +2,11 @@ package cloudflare
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
+
+	"github.com/goccy/go-json"
 )
 
 // PagesDomain represents a pages domain.
@@ -44,8 +45,8 @@ type PagesDomainsResponse struct {
 
 // PagesDomainParameters represents parameters for a pages domain request.
 type PagesDomainParameters struct {
-	AccountID   string
-	ProjectName string
+	AccountID   string `json:"-"`
+	ProjectName string `json:"-"`
 	DomainName  string `json:"name,omitempty"`
 }
 

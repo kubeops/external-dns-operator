@@ -14,6 +14,11 @@ type LoadBalancerService interface {
 	DeployCluster(clusterID int) error
 	ValidateCluster(clusterID int) error
 
+	// Deployment
+	GetDeployments(parameters connection.APIRequestParameters) ([]Deployment, error)
+	GetDeploymentsPaginated(parameters connection.APIRequestParameters) (*connection.Paginated[Deployment], error)
+	GetDeployment(deploymentID int) (Deployment, error)
+
 	// Cluster ACL Templates
 	GetClusterACLTemplates(clusterID int) (ACLTemplates, error)
 
@@ -48,6 +53,7 @@ type LoadBalancerService interface {
 	GetListener(listenerID int) (Listener, error)
 	CreateListener(req CreateListenerRequest) (int, error)
 	PatchListener(listenerID int, req PatchListenerRequest) error
+	DisableListenerGeoIP(listenerID int) error
 	DeleteListener(listenerID int) error
 
 	// Listener ACL
@@ -72,6 +78,10 @@ type LoadBalancerService interface {
 	PatchAccessIP(accessIP int, req PatchAccessIPRequest) error
 	DeleteAccessIP(accessIP int) error
 
+	// Certificate
+	GetCertificates(parameters connection.APIRequestParameters) ([]Certificate, error)
+	GetCertificatesPaginated(parameters connection.APIRequestParameters) (*connection.Paginated[Certificate], error)
+
 	// Listener Certificate
 	GetListenerCertificates(listenerID int, parameters connection.APIRequestParameters) ([]Certificate, error)
 	GetListenerCertificatesPaginated(listenerID int, parameters connection.APIRequestParameters) (*connection.Paginated[Certificate], error)
@@ -83,10 +93,6 @@ type LoadBalancerService interface {
 	// Bind
 	GetBinds(parameters connection.APIRequestParameters) ([]Bind, error)
 	GetBindsPaginated(parameters connection.APIRequestParameters) (*connection.Paginated[Bind], error)
-
-	// Header
-	GetHeaders(parameters connection.APIRequestParameters) ([]Header, error)
-	GetHeadersPaginated(parameters connection.APIRequestParameters) (*connection.Paginated[Header], error)
 
 	// ACL
 	GetACLs(parameters connection.APIRequestParameters) ([]ACL, error)

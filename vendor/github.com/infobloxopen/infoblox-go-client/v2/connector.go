@@ -28,6 +28,7 @@ type AuthConfig struct {
 }
 
 type HostConfig struct {
+	Scheme  string
 	Host    string
 	Version string
 	Port    string
@@ -132,7 +133,6 @@ func getHTTPResponseError(resp *http.Response) error {
 	defer resp.Body.Close()
 	content, _ := ioutil.ReadAll(resp.Body)
 	msg := fmt.Sprintf("WAPI request error: %d('%s')\nContents:\n%s\n", resp.StatusCode, resp.Status, content)
-	log.Printf(msg)
 	if resp.StatusCode == http.StatusNotFound {
 		return NewNotFoundError(msg)
 	}
@@ -147,7 +147,7 @@ func (whr *WapiHttpRequestor) Init(authCfg AuthConfig, trCfg TransportConfig) {
 	if authCfg.ClientKey != nil && authCfg.ClientCert != nil {
 		cert, err := tls.X509KeyPair(authCfg.ClientCert, authCfg.ClientKey)
 		if err != nil {
-			log.Fatal(err)
+			log.Fatal("Invalid certificate key pair (PEM format error): ", err)
 		}
 
 		certList = []tls.Certificate{cert}
@@ -238,15 +238,25 @@ func (wrb *WapiRequestBuilder) BuildUrl(t RequestType, objType string, ref strin
 				vals.Set("_proxy_search", "GM")
 			}
 			for k, v := range queryParams.searchFields {
-				vals.Set(k, v)
+				if res, ok := ValidateMultiValue(v); ok {
+					for _, mv := range res {
+						vals.Add(k, strings.TrimSpace(mv))
+					}
+				} else {
+					vals.Set(k, v)
+				}
 			}
 		}
 
 		qry = vals.Encode()
 	}
 
+	scheme := "https"
+	if wrb.hostCfg.Scheme == "http" {
+		scheme = "http"
+	}
 	u := url.URL{
-		Scheme:   "https",
+		Scheme:   scheme,
 		Host:     wrb.hostCfg.Host + ":" + wrb.hostCfg.Port,
 		Path:     strings.Join(path, "/"),
 		RawQuery: qry,
@@ -255,9 +265,30 @@ func (wrb *WapiRequestBuilder) BuildUrl(t RequestType, objType string, ref strin
 	return u.String()
 }
 
+// populateNilLists fills nil lists in IBObject structs, since NIOS doesn't accept a null list in JSON payload.
+func (wrb *WapiRequestBuilder) populateNilLists(obj IBObject) IBObject {
+	objVal := reflect.ValueOf(obj)
+	if reflect.ValueOf(obj).Kind() == reflect.Ptr {
+		objVal = objVal.Elem()
+	}
+
+	for i := 0; i < objVal.NumField(); i++ {
+		fieldVal := objVal.Field(i)
+		if fieldVal.Type().Kind() == reflect.Slice && fieldVal.CanSet() {
+			if fieldVal.IsNil() == true {
+				fieldVal.Set(reflect.MakeSlice(fieldVal.Type(), 0, 0))
+			}
+		}
+	}
+
+	return obj
+}
+
 func (wrb *WapiRequestBuilder) BuildBody(t RequestType, obj IBObject) []byte {
 	var objJSON []byte
 	var err error
+
+	obj = wrb.populateNilLists(obj)
 
 	objJSON, err = json.Marshal(obj)
 	if err != nil {
@@ -296,7 +327,7 @@ func (wrb *WapiRequestBuilder) BuildRequest(t RequestType, obj IBObject, ref str
 
 	req, err = http.NewRequest(t.toMethod(), urlStr, bytes.NewBuffer(bodyStr))
 	if err != nil {
-		log.Printf("err1: '%s'", err)
+		log.Printf("cannot build request: '%s'", err)
 		return
 	}
 	req.Header.Set("Content-Type", "application/json")
@@ -350,8 +381,6 @@ func (c *Connector) CreateObject(obj IBObject) (ref string, err error) {
 }
 
 func (c *Connector) GetObject(
-	// TODO: distinguish between "not found" and other kinds of errors.
-
 	obj IBObject, ref string,
 	queryParams *QueryParams, res interface{}) (err error) {
 

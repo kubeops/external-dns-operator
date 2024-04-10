@@ -47,7 +47,6 @@ func (s *Service) DownloadReplyAttachmentStream(replyID string, attachmentName s
 }
 
 func (s *Service) downloadReplyAttachmentResponse(replyID string, attachmentName string) (*connection.APIResponse, error) {
-	body := &connection.APIResponseBody{}
 	response := &connection.APIResponse{}
 
 	if replyID == "" {
@@ -66,7 +65,7 @@ func (s *Service) downloadReplyAttachmentResponse(replyID string, attachmentName
 		return response, &AttachmentNotFoundError{Name: attachmentName}
 	}
 
-	return response, response.ValidateStatusCode([]int{}, body)
+	return response, response.HandleResponse(nil)
 }
 
 // UploadReplyAttachmentStream uploads the provided attachment

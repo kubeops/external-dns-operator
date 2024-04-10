@@ -177,28 +177,28 @@ func (p *GoogleProvider) Zones(ctx context.Context) (map[string]*dns.ManagedZone
 
 	f := func(resp *dns.ManagedZonesListResponse) error {
 		for _, zone := range resp.ManagedZones {
-			if p.domainFilter.Match(zone.DnsName) && p.zoneTypeFilter.Match(zone.Visibility) && (p.zoneIDFilter.Match(fmt.Sprintf("%v", zone.Id)) || p.zoneIDFilter.Match(fmt.Sprintf("%v", zone.Name))) {
-				zones[zone.Name] = zone
-				log.Debugf("Matched %s (zone: %s) (visibility: %s)", zone.DnsName, zone.Name, zone.Visibility)
+			if zone.PeeringConfig == nil {
+				if p.domainFilter.Match(zone.DnsName) && p.zoneTypeFilter.Match(zone.Visibility) && (p.zoneIDFilter.Match(fmt.Sprintf("%v", zone.Id)) || p.zoneIDFilter.Match(fmt.Sprintf("%v", zone.Name))) {
+					zones[zone.Name] = zone
+					log.Debugf("Matched %s (zone: %s) (visibility: %s)", zone.DnsName, zone.Name, zone.Visibility)
+				} else {
+					log.Debugf("Filtered %s (zone: %s) (visibility: %s)", zone.DnsName, zone.Name, zone.Visibility)
+				}
 			} else {
-				log.Debugf("Filtered %s (zone: %s) (visibility: %s)", zone.DnsName, zone.Name, zone.Visibility)
+				log.Debugf("Filtered peering zone %s (zone: %s) (visibility: %s)", zone.DnsName, zone.Name, zone.Visibility)
 			}
 		}
 
 		return nil
 	}
 
-	log.Debugf("Matching zones against domain filters: %v", p.domainFilter.Filters)
+	log.Debugf("Matching zones against domain filters: %v", p.domainFilter)
 	if err := p.managedZonesClient.List(p.project).Pages(ctx, f); err != nil {
 		return nil, err
 	}
 
 	if len(zones) == 0 {
-		if p.domainFilter.IsConfigured() {
-			log.Warnf("No zones in the project, %s, match domain filters: %v", p.project, p.domainFilter.Filters)
-		} else {
-			log.Warnf("No zones found in the project, %s", p.project)
-		}
+		log.Warnf("No zones in the project, %s, match domain filters: %v", p.project, p.domainFilter)
 	}
 
 	for _, zone := range zones {
@@ -217,7 +217,7 @@ func (p *GoogleProvider) Records(ctx context.Context) (endpoints []*endpoint.End
 
 	f := func(resp *dns.ResourceRecordSetsListResponse) error {
 		for _, r := range resp.Rrsets {
-			if !provider.SupportedRecordType(r.Type) {
+			if !p.SupportedRecordType(r.Type) {
 				continue
 			}
 			endpoints = append(endpoints, endpoint.NewEndpointWithTTL(r.Name, r.Type, endpoint.TTL(r.Ttl), r.Rrdatas...))
@@ -235,34 +235,6 @@ func (p *GoogleProvider) Records(ctx context.Context) (endpoints []*endpoint.End
 	return endpoints, nil
 }
 
-// CreateRecords creates a given set of DNS records in the given hosted zone.
-func (p *GoogleProvider) CreateRecords(endpoints []*endpoint.Endpoint) error {
-	change := &dns.Change{}
-
-	change.Additions = append(change.Additions, p.newFilteredRecords(endpoints)...)
-
-	return p.submitChange(p.ctx, change)
-}
-
-// UpdateRecords updates a given set of old records to a new set of records in a given hosted zone.
-func (p *GoogleProvider) UpdateRecords(records, oldRecords []*endpoint.Endpoint) error {
-	change := &dns.Change{}
-
-	change.Additions = append(change.Additions, p.newFilteredRecords(records)...)
-	change.Deletions = append(change.Deletions, p.newFilteredRecords(oldRecords)...)
-
-	return p.submitChange(p.ctx, change)
-}
-
-// DeleteRecords deletes a given set of DNS records in a given zone.
-func (p *GoogleProvider) DeleteRecords(endpoints []*endpoint.Endpoint) error {
-	change := &dns.Change{}
-
-	change.Deletions = append(change.Deletions, p.newFilteredRecords(endpoints)...)
-
-	return p.submitChange(p.ctx, change)
-}
-
 // ApplyChanges applies a given set of changes in a given zone.
 func (p *GoogleProvider) ApplyChanges(ctx context.Context, changes *plan.Changes) error {
 	change := &dns.Change{}
@@ -275,6 +247,16 @@ func (p *GoogleProvider) ApplyChanges(ctx context.Context, changes *plan.Changes
 	change.Deletions = append(change.Deletions, p.newFilteredRecords(changes.Delete)...)
 
 	return p.submitChange(ctx, change)
+}
+
+// SupportedRecordType returns true if the record type is supported by the provider
+func (p *GoogleProvider) SupportedRecordType(recordType string) bool {
+	switch recordType {
+	case "MX":
+		return true
+	default:
+		return provider.SupportedRecordType(recordType)
+	}
 }
 
 // newFilteredRecords returns a collection of RecordSets based on the given endpoints and domainFilter.
@@ -449,6 +431,18 @@ func newRecord(ep *endpoint.Endpoint) *dns.ResourceRecordSet {
 	copy(targets, []string(ep.Targets))
 	if ep.RecordType == endpoint.RecordTypeCNAME {
 		targets[0] = provider.EnsureTrailingDot(targets[0])
+	}
+
+	if ep.RecordType == endpoint.RecordTypeMX {
+		for i, mxRecord := range ep.Targets {
+			targets[i] = provider.EnsureTrailingDot(mxRecord)
+		}
+	}
+
+	if ep.RecordType == endpoint.RecordTypeSRV {
+		for i, srvRecord := range ep.Targets {
+			targets[i] = provider.EnsureTrailingDot(srvRecord)
+		}
 	}
 
 	// no annotation results in a Ttl of 0, default to 300 for backwards-compatibility

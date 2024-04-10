@@ -18,11 +18,14 @@ package oci
 
 import (
 	"context"
-	"io/ioutil"
+	"fmt"
+	"os"
 	"strings"
+	"time"
 
-	"github.com/oracle/oci-go-sdk/common"
-	"github.com/oracle/oci-go-sdk/dns"
+	"github.com/oracle/oci-go-sdk/v65/common"
+	"github.com/oracle/oci-go-sdk/v65/common/auth"
+	"github.com/oracle/oci-go-sdk/v65/dns"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	yaml "gopkg.in/yaml.v2"
@@ -36,18 +39,21 @@ const ociRecordTTL = 300
 
 // OCIAuthConfig holds connection parameters for the OCI API.
 type OCIAuthConfig struct {
-	Region      string `yaml:"region"`
-	TenancyID   string `yaml:"tenancy"`
-	UserID      string `yaml:"user"`
-	PrivateKey  string `yaml:"key"`
-	Fingerprint string `yaml:"fingerprint"`
-	Passphrase  string `yaml:"passphrase"`
+	Region               string `yaml:"region"`
+	TenancyID            string `yaml:"tenancy"`
+	UserID               string `yaml:"user"`
+	PrivateKey           string `yaml:"key"`
+	Fingerprint          string `yaml:"fingerprint"`
+	Passphrase           string `yaml:"passphrase"`
+	UseInstancePrincipal bool   `yaml:"useInstancePrincipal"`
+	UseWorkloadIdentity  bool   `yaml:"useWorkloadIdentity"`
 }
 
 // OCIConfig holds the configuration for the OCI Provider.
 type OCIConfig struct {
-	Auth          OCIAuthConfig `yaml:"auth"`
-	CompartmentID string        `yaml:"compartment"`
+	Auth              OCIAuthConfig `yaml:"auth"`
+	CompartmentID     string        `yaml:"compartment"`
+	ZoneCacheDuration time.Duration
 }
 
 // OCIProvider is an implementation of Provider for Oracle Cloud Infrastructure
@@ -59,6 +65,8 @@ type OCIProvider struct {
 
 	domainFilter endpoint.DomainFilter
 	zoneIDFilter provider.ZoneIDFilter
+	zoneScope    string
+	zoneCache    *zoneCache
 	dryRun       bool
 }
 
@@ -72,31 +80,57 @@ type ociDNSClient interface {
 // LoadOCIConfig reads and parses the OCI ExternalDNS config file at the given
 // path.
 func LoadOCIConfig(path string) (*OCIConfig, error) {
-	contents, err := ioutil.ReadFile(path)
+	contents, err := os.ReadFile(path)
 	if err != nil {
-		return nil, errors.Wrapf(err, "reading OCI config file %q", path)
+		return nil, fmt.Errorf("reading OCI config file %q: %w", path, err)
 	}
 
 	cfg := OCIConfig{}
 	if err := yaml.Unmarshal(contents, &cfg); err != nil {
-		return nil, errors.Wrapf(err, "parsing OCI config file %q", path)
+		return nil, fmt.Errorf("parsing OCI config file %q: %w", path, err)
 	}
 	return &cfg, nil
 }
 
 // NewOCIProvider initializes a new OCI DNS based Provider.
-func NewOCIProvider(cfg OCIConfig, domainFilter endpoint.DomainFilter, zoneIDFilter provider.ZoneIDFilter, dryRun bool) (*OCIProvider, error) {
+func NewOCIProvider(cfg OCIConfig, domainFilter endpoint.DomainFilter, zoneIDFilter provider.ZoneIDFilter, zoneScope string, dryRun bool) (*OCIProvider, error) {
 	var client ociDNSClient
-	client, err := dns.NewDnsClientWithConfigurationProvider(common.NewRawConfigurationProvider(
-		cfg.Auth.TenancyID,
-		cfg.Auth.UserID,
-		cfg.Auth.Region,
-		cfg.Auth.Fingerprint,
-		cfg.Auth.PrivateKey,
-		&cfg.Auth.Passphrase,
-	))
+	var err error
+	var configProvider common.ConfigurationProvider
+	if cfg.Auth.UseInstancePrincipal && cfg.Auth.UseWorkloadIdentity {
+		return nil, errors.New("only one of 'useInstancePrincipal' and 'useWorkloadIdentity' may be enabled for Oracle authentication")
+	}
+	if cfg.Auth.UseWorkloadIdentity {
+		// OCI SDK requires specific, dynamic environment variables for workload identity.
+		if err := os.Setenv(auth.ResourcePrincipalVersionEnvVar, auth.ResourcePrincipalVersion2_2); err != nil {
+			return nil, fmt.Errorf("unable to set OCI SDK environment variable: %s: %w", auth.ResourcePrincipalVersionEnvVar, err)
+		}
+		if err := os.Setenv(auth.ResourcePrincipalRegionEnvVar, cfg.Auth.Region); err != nil {
+			return nil, fmt.Errorf("unable to set OCI SDK environment variable: %s: %w", auth.ResourcePrincipalRegionEnvVar, err)
+		}
+		configProvider, err = auth.OkeWorkloadIdentityConfigurationProvider()
+		if err != nil {
+			return nil, fmt.Errorf("error creating OCI workload identity config provider: %w", err)
+		}
+	} else if cfg.Auth.UseInstancePrincipal {
+		configProvider, err = auth.InstancePrincipalConfigurationProvider()
+		if err != nil {
+			return nil, fmt.Errorf("error creating OCI instance principal config provider: %w", err)
+		}
+	} else {
+		configProvider = common.NewRawConfigurationProvider(
+			cfg.Auth.TenancyID,
+			cfg.Auth.UserID,
+			cfg.Auth.Region,
+			cfg.Auth.Fingerprint,
+			cfg.Auth.PrivateKey,
+			&cfg.Auth.Passphrase,
+		)
+	}
+
+	client, err = dns.NewDnsClientWithConfigurationProvider(configProvider)
 	if err != nil {
-		return nil, errors.Wrap(err, "initializing OCI DNS API client")
+		return nil, fmt.Errorf("initializing OCI DNS API client: %w", err)
 	}
 
 	return &OCIProvider{
@@ -104,48 +138,64 @@ func NewOCIProvider(cfg OCIConfig, domainFilter endpoint.DomainFilter, zoneIDFil
 		cfg:          cfg,
 		domainFilter: domainFilter,
 		zoneIDFilter: zoneIDFilter,
-		dryRun:       dryRun,
+		zoneScope:    zoneScope,
+		zoneCache: &zoneCache{
+			duration: cfg.ZoneCacheDuration,
+		},
+		dryRun: dryRun,
 	}, nil
 }
 
 func (p *OCIProvider) zones(ctx context.Context) (map[string]dns.ZoneSummary, error) {
+	if !p.zoneCache.Expired() {
+		log.Debug("Using cached zones list")
+		return p.zoneCache.zones, nil
+	}
 	zones := make(map[string]dns.ZoneSummary)
-
+	scopes := []dns.GetZoneScopeEnum{dns.GetZoneScopeEnum(p.zoneScope)}
+	// If zone scope is empty, list all zones types.
+	if p.zoneScope == "" {
+		scopes = dns.GetGetZoneScopeEnumValues()
+	}
 	log.Debugf("Matching zones against domain filters: %v", p.domainFilter.Filters)
+	for _, scope := range scopes {
+		if err := p.addPaginatedZones(ctx, zones, scope); err != nil {
+			return nil, err
+		}
+	}
+	if len(zones) == 0 {
+		log.Warnf("No zones in compartment %q match domain filters %v", p.cfg.CompartmentID, p.domainFilter)
+	}
+	p.zoneCache.Reset(zones)
+	return zones, nil
+}
+
+func (p *OCIProvider) addPaginatedZones(ctx context.Context, zones map[string]dns.ZoneSummary, scope dns.GetZoneScopeEnum) error {
 	var page *string
+	// Loop until we have listed all zones.
 	for {
 		resp, err := p.client.ListZones(ctx, dns.ListZonesRequest{
 			CompartmentId: &p.cfg.CompartmentID,
 			ZoneType:      dns.ListZonesZoneTypePrimary,
+			Scope:         dns.ListZonesScopeEnum(scope),
 			Page:          page,
 		})
 		if err != nil {
-			return nil, errors.Wrapf(err, "listing zones in %q", p.cfg.CompartmentID)
+			return provider.NewSoftError(fmt.Errorf("listing zones in %s: %w", p.cfg.CompartmentID, err))
 		}
-
 		for _, zone := range resp.Items {
 			if p.domainFilter.Match(*zone.Name) && p.zoneIDFilter.Match(*zone.Id) {
-				zones[*zone.Name] = zone
+				zones[*zone.Id] = zone
 				log.Debugf("Matched %q (%q)", *zone.Name, *zone.Id)
 			} else {
 				log.Debugf("Filtered %q (%q)", *zone.Name, *zone.Id)
 			}
 		}
-
 		if page = resp.OpcNextPage; resp.OpcNextPage == nil {
 			break
 		}
 	}
-
-	if len(zones) == 0 {
-		if p.domainFilter.IsConfigured() {
-			log.Warnf("No zones in compartment %q match domain filters %v", p.cfg.CompartmentID, p.domainFilter.Filters)
-		} else {
-			log.Warnf("No zones found in compartment %q", p.cfg.CompartmentID)
-		}
-	}
-
-	return zones, nil
+	return nil
 }
 
 func (p *OCIProvider) newFilteredRecordOperations(endpoints []*endpoint.Endpoint, opType dns.RecordOperationOperationEnum) []dns.RecordOperation {
@@ -162,7 +212,7 @@ func (p *OCIProvider) newFilteredRecordOperations(endpoints []*endpoint.Endpoint
 func (p *OCIProvider) Records(ctx context.Context) ([]*endpoint.Endpoint, error) {
 	zones, err := p.zones(ctx)
 	if err != nil {
-		return nil, errors.Wrap(err, "getting zones")
+		return nil, provider.NewSoftError(fmt.Errorf("getting zones: %w", err))
 	}
 
 	endpoints := []*endpoint.Endpoint{}
@@ -175,7 +225,7 @@ func (p *OCIProvider) Records(ctx context.Context) ([]*endpoint.Endpoint, error)
 				CompartmentId: &p.cfg.CompartmentID,
 			})
 			if err != nil {
-				return nil, errors.Wrapf(err, "getting records for zone %q", *zone.Id)
+				return nil, provider.NewSoftError(fmt.Errorf("getting records for zone %q: %w", *zone.Id, err))
 			}
 
 			for _, record := range resp.Items {
@@ -220,7 +270,7 @@ func (p *OCIProvider) ApplyChanges(ctx context.Context, changes *plan.Changes) e
 
 	zones, err := p.zones(ctx)
 	if err != nil {
-		return errors.Wrap(err, "fetching zones")
+		return provider.NewSoftError(fmt.Errorf("fetching zones: %w", err))
 	}
 
 	// Separate into per-zone change sets to be passed to OCI API.
@@ -242,7 +292,7 @@ func (p *OCIProvider) ApplyChanges(ctx context.Context, changes *plan.Changes) e
 			ZoneNameOrId:            &zoneID,
 			PatchZoneRecordsDetails: dns.PatchZoneRecordsDetails{Items: ops},
 		}); err != nil {
-			return err
+			return provider.NewSoftError(err)
 		}
 	}
 
@@ -252,7 +302,7 @@ func (p *OCIProvider) ApplyChanges(ctx context.Context, changes *plan.Changes) e
 // newRecordOperation returns a RecordOperation based on a given endpoint.
 func newRecordOperation(ep *endpoint.Endpoint, opType dns.RecordOperationOperationEnum) dns.RecordOperation {
 	targets := make([]string, len(ep.Targets))
-	copy(targets, []string(ep.Targets))
+	copy(targets, ep.Targets)
 	if ep.RecordType == endpoint.RecordTypeCNAME {
 		targets[0] = provider.EnsureTrailingDot(targets[0])
 	}

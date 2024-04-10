@@ -1,35 +1,11 @@
 package livedns
 
-import "github.com/go-gandi/go-gandi/internal/client"
+import (
+	"fmt"
+	"strings"
 
-// SigningKey holds data about a DNSSEC signing key
-type SigningKey struct {
-	Status        string `json:"status,omitempty"`
-	UUID          string `json:"id,omitempty"`
-	Algorithm     int    `json:"algorithm,omitempty"`
-	Deleted       *bool  `json:"deleted"`
-	AlgorithmName string `json:"algorithm_name,omitempty"`
-	FQDN          string `json:"fqdn,omitempty"`
-	Flags         int    `json:"flags,omitempty"`
-	DS            string `json:"ds,omitempty"`
-	KeyHref       string `json:"key_href,omitempty"`
-}
-
-type configSamples struct {
-	Bind     string `json:"bind,omitempty"`
-	Knot     string `json:"knot,omitempty"`
-	NSD      string `json:"nsd,omitempty"`
-	PowerDNS string `json:"powerdns,omitempty"`
-}
-
-// TSIGKey describes the TSIG key associated with an AXFR secondary
-type TSIGKey struct {
-	KeyHREF       string        `json:"href,omitempty"`
-	ID            string        `json:"id,omitempty"`
-	KeyName       string        `json:"key_name,omitempty"`
-	Secret        string        `json:"secret,omitempty"`
-	ConfigSamples configSamples `json:"config_samples,omitempty"`
-}
+	"github.com/go-gandi/go-gandi/types"
+)
 
 // GetTSIGKeys retrieves all the TSIG keys for the account
 func (g *LiveDNS) GetTSIGKeys() (response []TSIGKey, err error) {
@@ -56,7 +32,7 @@ func (g *LiveDNS) GetDomainTSIGKeys(fqdn string) (response []TSIGKey, err error)
 }
 
 // AssociateTSIGKeyWithDomain retrieves the specified TSIG key
-func (g *LiveDNS) AssociateTSIGKeyWithDomain(fqdn string, id string) (response client.StandardResponse, err error) {
+func (g *LiveDNS) AssociateTSIGKeyWithDomain(fqdn string, id string) (response types.StandardResponse, err error) {
 	_, err = g.client.Put("domains/"+fqdn+"/axfr/tsig/"+id, nil, &response)
 	return
 }
@@ -67,10 +43,22 @@ func (g *LiveDNS) RemoveTSIGKeyFromDomain(fqdn string, id string) (err error) {
 	return
 }
 
-// SignDomain creates a DNSKEY and asks Gandi servers to automatically sign the domain
-func (g *LiveDNS) SignDomain(fqdn string) (response client.StandardResponse, err error) {
+// SignDomain creates a DNSKEY and asks Gandi servers to automatically
+// sign the domain. The UUID of the created key is stored into the
+// response.UUID field.
+func (g *LiveDNS) SignDomain(fqdn string) (response types.StandardResponse, err error) {
 	f := SigningKey{Flags: 257}
-	_, err = g.client.Post("domains/"+fqdn+"/keys", f, &response)
+	header, err := g.client.Post("domains/"+fqdn+"/keys", f, &response)
+	if err != nil {
+		return
+	}
+	location := header.Get("location")
+	endpoint := g.client.GetEndpoint() + "domains/" + fqdn + "/keys/"
+	if strings.HasPrefix(location, endpoint) {
+		response.UUID = strings.TrimPrefix(location, endpoint)
+		return
+	}
+	err = fmt.Errorf("Could not extract DNS key UUID from '%s'", location)
 	return
 }
 
@@ -80,7 +68,7 @@ func (g *LiveDNS) GetDomainKeys(fqdn string) (keys []SigningKey, err error) {
 	return
 }
 
-// GetDomainKey deletes a signing key from a domain
+// GetDomainKey return a specific signing key from a domain
 func (g *LiveDNS) GetDomainKey(fqdn, uuid string) (key SigningKey, err error) {
 	_, err = g.client.Get("domains/"+fqdn+"/keys/"+uuid, nil, &key)
 	return

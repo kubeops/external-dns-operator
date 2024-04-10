@@ -104,6 +104,9 @@ type TargetGroup struct {
 	Source                   string                   `json:"source"`
 	TimeoutsConnect          int                      `json:"timeouts_connect"`
 	TimeoutsServer           int                      `json:"timeouts_server"`
+	TimeoutsHTTPRequest      int                      `json:"timeouts_http_request"`
+	TimeoutsCheck            int                      `json:"timeouts_check"`
+	TimeoutsTunnel           int                      `json:"timeouts_tunnel"`
 	CustomOptions            string                   `json:"custom_options"`
 	MonitorURL               string                   `json:"monitor_url"`
 	MonitorMethod            TargetGroupMonitorMethod `json:"monitor_method"`
@@ -188,8 +191,43 @@ type Listener struct {
 	DisableHTTP2         bool                `json:"disable_http2"`
 	HTTP2Only            bool                `json:"http2_only"`
 	CustomCiphers        string              `json:"custom_ciphers"`
+	CustomOptions        string              `json:"custom_options"`
+	TimeoutsClient       int                 `json:"timeouts_client"`
+	GeoIP                *ListenerGeoIP      `json:"geoip"`
 	CreatedAt            connection.DateTime `json:"created_at"`
 	UpdatedAt            connection.DateTime `json:"updated_at"`
+}
+type ListenerGeoIPRestriction string
+
+const (
+	ListenerGeoIPRestrictionAllow ListenerGeoIPRestriction = "allow"
+	ListenerGeoIPRestrictionDeny  ListenerGeoIPRestriction = "deny"
+)
+
+// ParseListenerGeoIPRestriction attempts to parse a ListenerGeoIPRestriction from string
+func ParseListenerGeoIPRestriction(s string) (ListenerGeoIPRestriction, error) {
+	e, err := connection.ParseEnum(s, ListenerGeoIPRestrictionEnum)
+	if err != nil {
+		return "", err
+	}
+
+	return e.(ListenerGeoIPRestriction), err
+}
+
+func (s ListenerGeoIPRestriction) String() string {
+	return string(s)
+}
+
+var ListenerGeoIPRestrictionEnum connection.EnumSlice = []connection.Enum{
+	ListenerGeoIPRestrictionAllow,
+	ListenerGeoIPRestrictionDeny,
+}
+
+type ListenerGeoIP struct {
+	Restriction   ListenerGeoIPRestriction `json:"restriction"`
+	Continents    []string                 `json:"continents"`
+	Countries     []string                 `json:"countries"`
+	EuropeanUnion bool                     `json:"european_union"`
 }
 
 // AccessIP represents an access IP
@@ -215,13 +253,9 @@ type Certificate struct {
 	ID         int                 `json:"id"`
 	ListenerID int                 `json:"listener_id"`
 	Name       string              `json:"name"`
+	ExpiresAt  connection.DateTime `json:"expires_at"`
 	CreatedAt  connection.DateTime `json:"created_at"`
 	UpdatedAt  connection.DateTime `json:"updated_at"`
-}
-
-// Header represents a header
-type Header struct {
-	Header string `json:"header"`
 }
 
 // ACL represents an ACL
@@ -278,4 +312,16 @@ type ACLTemplateArgument struct {
 	Description string      `json:"description"`
 	Example     interface{} `json:"example"`
 	Values      []string    `json:"values"`
+}
+
+// Deployment represents a load balancer deployment
+type Deployment struct {
+	ID              int                 `json:"id"`
+	ClusterID       int                 `json:"cluster_id"`
+	Successful      bool                `json:"successful"`
+	RequestedByType string              `json:"requested_by_type"`
+	RequestedByID   string              `json:"requested_by_id"`
+	PSSID           int                 `json:"pss_id"`
+	CreatedAt       connection.DateTime `json:"created_at"`
+	UpdatedAt       connection.DateTime `json:"updated_at"`
 }

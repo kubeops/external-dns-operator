@@ -140,9 +140,6 @@ func (sc *httpProxySource) Endpoints(ctx context.Context) ([]*endpoint.Endpoint,
 			log.Debugf("Skipping HTTPProxy %s/%s because controller value does not match, found: %s, required: %s",
 				hp.Namespace, hp.Name, controller, controllerAnnotationValue)
 			continue
-		} else if hp.Status.CurrentStatus != "valid" {
-			log.Debugf("Skipping HTTPProxy %s/%s because it is not valid", hp.Namespace, hp.Name)
-			continue
 		}
 
 		hpEndpoints, err := sc.endpointsFromHTTPProxy(hp)
@@ -170,7 +167,6 @@ func (sc *httpProxySource) Endpoints(ctx context.Context) ([]*endpoint.Endpoint,
 		}
 
 		log.Debugf("Endpoints generated from HTTPProxy: %s/%s: %v", hp.Namespace, hp.Name, hpEndpoints)
-		sc.setResourceLabel(hp, hpEndpoints)
 		endpoints = append(endpoints, hpEndpoints...)
 	}
 
@@ -187,10 +183,9 @@ func (sc *httpProxySource) endpointsFromTemplate(httpProxy *projectcontour.HTTPP
 		return nil, err
 	}
 
-	ttl, err := getTTLFromAnnotations(httpProxy.Annotations)
-	if err != nil {
-		log.Warn(err)
-	}
+	resource := fmt.Sprintf("HTTPProxy/%s/%s", httpProxy.Namespace, httpProxy.Name)
+
+	ttl := getTTLFromAnnotations(httpProxy.Annotations, resource)
 
 	targets := getTargetsFromTargetAnnotation(httpProxy.Annotations)
 	if len(targets) == 0 {
@@ -208,7 +203,7 @@ func (sc *httpProxySource) endpointsFromTemplate(httpProxy *projectcontour.HTTPP
 
 	var endpoints []*endpoint.Endpoint
 	for _, hostname := range hostnames {
-		endpoints = append(endpoints, endpointsForHostname(hostname, targets, ttl, providerSpecific, setIdentifier)...)
+		endpoints = append(endpoints, endpointsForHostname(hostname, targets, ttl, providerSpecific, setIdentifier, resource)...)
 	}
 	return endpoints, nil
 }
@@ -244,25 +239,11 @@ func (sc *httpProxySource) filterByAnnotations(httpProxies []*projectcontour.HTT
 	return filteredList, nil
 }
 
-func (sc *httpProxySource) setResourceLabel(httpProxy *projectcontour.HTTPProxy, endpoints []*endpoint.Endpoint) {
-	for _, ep := range endpoints {
-		ep.Labels[endpoint.ResourceLabelKey] = fmt.Sprintf("HTTPProxy/%s/%s", httpProxy.Namespace, httpProxy.Name)
-	}
-}
-
 // endpointsFromHTTPProxyConfig extracts the endpoints from a Contour HTTPProxy object
 func (sc *httpProxySource) endpointsFromHTTPProxy(httpProxy *projectcontour.HTTPProxy) ([]*endpoint.Endpoint, error) {
-	if httpProxy.Status.CurrentStatus != "valid" {
-		log.Warn(errors.Errorf("cannot generate endpoints for HTTPProxy with status %s", httpProxy.Status.CurrentStatus))
-		return nil, nil
-	}
+	resource := fmt.Sprintf("HTTPProxy/%s/%s", httpProxy.Namespace, httpProxy.Name)
 
-	var endpoints []*endpoint.Endpoint
-
-	ttl, err := getTTLFromAnnotations(httpProxy.Annotations)
-	if err != nil {
-		log.Warn(err)
-	}
+	ttl := getTTLFromAnnotations(httpProxy.Annotations, resource)
 
 	targets := getTargetsFromTargetAnnotation(httpProxy.Annotations)
 
@@ -279,9 +260,11 @@ func (sc *httpProxySource) endpointsFromHTTPProxy(httpProxy *projectcontour.HTTP
 
 	providerSpecific, setIdentifier := getProviderSpecificAnnotations(httpProxy.Annotations)
 
+	var endpoints []*endpoint.Endpoint
+
 	if virtualHost := httpProxy.Spec.VirtualHost; virtualHost != nil {
 		if fqdn := virtualHost.Fqdn; fqdn != "" {
-			endpoints = append(endpoints, endpointsForHostname(fqdn, targets, ttl, providerSpecific, setIdentifier)...)
+			endpoints = append(endpoints, endpointsForHostname(fqdn, targets, ttl, providerSpecific, setIdentifier, resource)...)
 		}
 	}
 
@@ -289,7 +272,7 @@ func (sc *httpProxySource) endpointsFromHTTPProxy(httpProxy *projectcontour.HTTP
 	if !sc.ignoreHostnameAnnotation {
 		hostnameList := getHostnamesFromAnnotations(httpProxy.Annotations)
 		for _, hostname := range hostnameList {
-			endpoints = append(endpoints, endpointsForHostname(hostname, targets, ttl, providerSpecific, setIdentifier)...)
+			endpoints = append(endpoints, endpointsForHostname(hostname, targets, ttl, providerSpecific, setIdentifier, resource)...)
 		}
 	}
 

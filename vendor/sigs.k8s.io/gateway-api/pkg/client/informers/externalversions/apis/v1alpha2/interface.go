@@ -24,6 +24,10 @@ import (
 
 // Interface provides access to all the informers in this group version.
 type Interface interface {
+	// BackendTLSPolicies returns a BackendTLSPolicyInformer.
+	BackendTLSPolicies() BackendTLSPolicyInformer
+	// GRPCRoutes returns a GRPCRouteInformer.
+	GRPCRoutes() GRPCRouteInformer
 	// Gateways returns a GatewayInformer.
 	Gateways() GatewayInformer
 	// GatewayClasses returns a GatewayClassInformer.
@@ -32,8 +36,6 @@ type Interface interface {
 	HTTPRoutes() HTTPRouteInformer
 	// ReferenceGrants returns a ReferenceGrantInformer.
 	ReferenceGrants() ReferenceGrantInformer
-	// ReferencePolicies returns a ReferencePolicyInformer.
-	ReferencePolicies() ReferencePolicyInformer
 	// TCPRoutes returns a TCPRouteInformer.
 	TCPRoutes() TCPRouteInformer
 	// TLSRoutes returns a TLSRouteInformer.
@@ -51,6 +53,16 @@ type version struct {
 // New returns a new Interface.
 func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakListOptions internalinterfaces.TweakListOptionsFunc) Interface {
 	return &version{factory: f, namespace: namespace, tweakListOptions: tweakListOptions}
+}
+
+// BackendTLSPolicies returns a BackendTLSPolicyInformer.
+func (v *version) BackendTLSPolicies() BackendTLSPolicyInformer {
+	return &backendTLSPolicyInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
+// GRPCRoutes returns a GRPCRouteInformer.
+func (v *version) GRPCRoutes() GRPCRouteInformer {
+	return &gRPCRouteInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
 // Gateways returns a GatewayInformer.
@@ -71,11 +83,6 @@ func (v *version) HTTPRoutes() HTTPRouteInformer {
 // ReferenceGrants returns a ReferenceGrantInformer.
 func (v *version) ReferenceGrants() ReferenceGrantInformer {
 	return &referenceGrantInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
-}
-
-// ReferencePolicies returns a ReferencePolicyInformer.
-func (v *version) ReferencePolicies() ReferencePolicyInformer {
-	return &referencePolicyInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
 // TCPRoutes returns a TCPRouteInformer.

@@ -474,8 +474,8 @@ func (c *Route53) ChangeResourceRecordSetsRequest(input *ChangeResourceRecordSet
 //   - DELETE: Deletes an existing resource record set that has the specified
 //     values.
 //
-//   - UPSERT: If a resource set exists Route 53 updates it with the values
-//     in the request.
+//   - UPSERT: If a resource set doesn't exist, Route 53 creates it. If a resource
+//     set exists Route 53 updates it with the values in the request.
 //
 // # Syntaxes for Creating, Updating, and Deleting Resource Record Sets
 //
@@ -492,11 +492,11 @@ func (c *Route53) ChangeResourceRecordSetsRequest(input *ChangeResourceRecordSet
 // # Change Propagation to Route 53 DNS Servers
 //
 // When you submit a ChangeResourceRecordSets request, Route 53 propagates your
-// changes to all of the Route 53 authoritative DNS servers. While your changes
-// are propagating, GetChange returns a status of PENDING. When propagation
-// is complete, GetChange returns a status of INSYNC. Changes generally propagate
-// to all Route 53 name servers within 60 seconds. For more information, see
-// GetChange (https://docs.aws.amazon.com/Route53/latest/APIReference/API_GetChange.html).
+// changes to all of the Route 53 authoritative DNS servers managing the hosted
+// zone. While your changes are propagating, GetChange returns a status of PENDING.
+// When propagation is complete, GetChange returns a status of INSYNC. Changes
+// generally propagate to all Route 53 name servers managing the hosted zone
+// within 60 seconds. For more information, see GetChange (https://docs.aws.amazon.com/Route53/latest/APIReference/API_GetChange.html).
 //
 // # Limits on ChangeResourceRecordSets Requests
 //
@@ -1400,6 +1400,10 @@ func (c *Route53) CreateQueryLoggingConfigRequest(input *CreateQueryLoggingConfi
 //     it can’t be used with the log group associated with query log. Update
 //     or provide a resource policy to grant permissions for the KMS key.
 //
+//   - The Key management service (KMS) key you specified is marked as disabled
+//     for the log group associated with query log. Update or provide a resource
+//     policy to grant permissions for the KMS key.
+//
 // See also, https://docs.aws.amazon.com/goto/WebAPI/route53-2013-04-01/CreateQueryLoggingConfig
 func (c *Route53) CreateQueryLoggingConfig(input *CreateQueryLoggingConfigInput) (*CreateQueryLoggingConfigOutput, error) {
 	req, out := c.CreateQueryLoggingConfigRequest(input)
@@ -1723,6 +1727,13 @@ func (c *Route53) CreateTrafficPolicyInstanceRequest(input *CreateTrafficPolicyI
 // example.com) or subdomain name (such as www.example.com). Amazon Route 53
 // responds to DNS queries for the domain or subdomain name by using the resource
 // record sets that CreateTrafficPolicyInstance created.
+//
+// After you submit an CreateTrafficPolicyInstance request, there's a brief
+// delay while Amazon Route 53 creates the resource record sets that are specified
+// in the traffic policy definition. Use GetTrafficPolicyInstance with the id
+// of new traffic policy instance to confirm that the CreateTrafficPolicyInstance
+// request completed successfully. For more information, see the State response
+// element.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -3496,11 +3507,11 @@ func (c *Route53) GetChangeRequest(input *GetChangeInput) (req *request.Request,
 // the following values:
 //
 //   - PENDING indicates that the changes in this request have not propagated
-//     to all Amazon Route 53 DNS servers. This is the initial status of all
-//     change batch requests.
+//     to all Amazon Route 53 DNS servers managing the hosted zone. This is the
+//     initial status of all change batch requests.
 //
 //   - INSYNC indicates that the changes have propagated to all Route 53 DNS
-//     servers.
+//     servers managing the hosted zone.
 //
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
@@ -4776,10 +4787,10 @@ func (c *Route53) GetTrafficPolicyInstanceRequest(input *GetTrafficPolicyInstanc
 //
 // Gets information about a specified traffic policy instance.
 //
-// After you submit a CreateTrafficPolicyInstance or an UpdateTrafficPolicyInstance
-// request, there's a brief delay while Amazon Route 53 creates the resource
-// record sets that are specified in the traffic policy definition. For more
-// information, see the State response element.
+// Use GetTrafficPolicyInstance with the id of new traffic policy instance to
+// confirm that the CreateTrafficPolicyInstance or an UpdateTrafficPolicyInstance
+// request completed successfully. For more information, see the State response
+// element.
 //
 // In the Route 53 console, traffic policy instances are known as policy records.
 //
@@ -7151,6 +7162,11 @@ func (c *Route53) TestDNSAnswerRequest(input *TestDNSAnswerInput) (req *request.
 //
 // This call only supports querying public hosted zones.
 //
+// The TestDnsAnswer returns information similar to what you would expect from
+// the answer section of the dig command. Therefore, if you query for the name
+// servers of a subdomain that point to the parent name servers, those will
+// not be returned.
+//
 // Returns awserr.Error for service API and SDK errors. Use runtime type assertions
 // with awserr.Error's Code and Message methods to get detailed information about
 // the error.
@@ -7495,6 +7511,12 @@ func (c *Route53) UpdateTrafficPolicyInstanceRequest(input *UpdateTrafficPolicyI
 }
 
 // UpdateTrafficPolicyInstance API operation for Amazon Route 53.
+//
+// After you submit a UpdateTrafficPolicyInstance request, there's a brief delay
+// while Route 53 creates the resource record sets that are specified in the
+// traffic policy definition. Use GetTrafficPolicyInstance with the id of updated
+// traffic policy instance confirm that the UpdateTrafficPolicyInstance request
+// completed successfully. For more information, see the State response element.
 //
 // Updates the resource record sets in a specified hosted zone that were created
 // based on the settings in a specified traffic policy version.
@@ -8064,7 +8086,7 @@ type AliasTarget struct {
 	// in. The environment must have a regionalized subdomain. For a list of regions
 	// and the corresponding hosted zone IDs, see Elastic Beanstalk endpoints and
 	// quotas (https://docs.aws.amazon.com/general/latest/gr/elasticbeanstalk.html)
-	// in the the Amazon Web Services General Reference.
+	// in the Amazon Web Services General Reference.
 	//
 	// ELB load balancer
 	//
@@ -9310,6 +9332,75 @@ func (s *CollectionSummary) SetVersion(v int64) *CollectionSummary {
 	return s
 }
 
+// A complex type that lists the coordinates for a geoproximity resource record.
+type Coordinates struct {
+	_ struct{} `type:"structure"`
+
+	// Specifies a coordinate of the north–south position of a geographic point
+	// on the surface of the Earth (-90 - 90).
+	//
+	// Latitude is a required field
+	Latitude *string `min:"1" type:"string" required:"true"`
+
+	// Specifies a coordinate of the east–west position of a geographic point
+	// on the surface of the Earth (-180 - 180).
+	//
+	// Longitude is a required field
+	Longitude *string `min:"1" type:"string" required:"true"`
+}
+
+// String returns the string representation.
+//
+// API parameter values that are decorated as "sensitive" in the API will not
+// be included in the string output. The member name will be present, but the
+// value will be replaced with "sensitive".
+func (s Coordinates) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation.
+//
+// API parameter values that are decorated as "sensitive" in the API will not
+// be included in the string output. The member name will be present, but the
+// value will be replaced with "sensitive".
+func (s Coordinates) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *Coordinates) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "Coordinates"}
+	if s.Latitude == nil {
+		invalidParams.Add(request.NewErrParamRequired("Latitude"))
+	}
+	if s.Latitude != nil && len(*s.Latitude) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("Latitude", 1))
+	}
+	if s.Longitude == nil {
+		invalidParams.Add(request.NewErrParamRequired("Longitude"))
+	}
+	if s.Longitude != nil && len(*s.Longitude) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("Longitude", 1))
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetLatitude sets the Latitude field's value.
+func (s *Coordinates) SetLatitude(v string) *Coordinates {
+	s.Latitude = &v
+	return s
+}
+
+// SetLongitude sets the Longitude field's value.
+func (s *Coordinates) SetLongitude(v string) *Coordinates {
+	s.Longitude = &v
+	return s
+}
+
 type CreateCidrCollectionInput struct {
 	_ struct{} `locationName:"CreateCidrCollectionRequest" type:"structure" xmlURI:"https://route53.amazonaws.com/doc/2013-04-01/"`
 
@@ -9444,6 +9535,10 @@ type CreateHealthCheckInput struct {
 	//    but settings identical to an existing health check, Route 53 creates the
 	//    health check.
 	//
+	// Route 53 does not store the CallerReference for a deleted health check indefinitely.
+	// The CallerReference for a deleted health check will be deleted after a number
+	// of days.
+	//
 	// CallerReference is a required field
 	CallerReference *string `min:"1" type:"string" required:"true"`
 
@@ -9570,6 +9665,11 @@ type CreateHostedZoneInput struct {
 	// the ID that Amazon Route 53 assigned to the reusable delegation set when
 	// you created it. For more information about reusable delegation sets, see
 	// CreateReusableDelegationSet (https://docs.aws.amazon.com/Route53/latest/APIReference/API_CreateReusableDelegationSet.html).
+	//
+	// If you are using a reusable delegation set to create a public hosted zone
+	// for a subdomain, make sure that the parent hosted zone doesn't use one or
+	// more of the same name servers. If you have overlapping nameservers, the operation
+	// will cause a ConflictingDomainsExist error.
 	DelegationSetId *string `type:"string"`
 
 	// (Optional) A complex type that contains the following optional values:
@@ -10707,7 +10807,7 @@ func (s *CreateVPCAssociationAuthorizationOutput) SetVPC(v *VPC) *CreateVPCAssoc
 	return s
 }
 
-// A string repesenting the status of DNSSEC signing.
+// A string representing the status of DNSSEC signing.
 type DNSSECStatus struct {
 	_ struct{} `type:"structure"`
 
@@ -12031,6 +12131,8 @@ type GeoLocation struct {
 	//
 	// Amazon Route 53 uses the two-letter country codes that are specified in ISO
 	// standard 3166-1 alpha-2 (https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2).
+	//
+	// Route 53 also supports the country code UA for Ukraine.
 	CountryCode *string `min:"1" type:"string"`
 
 	// For geolocation resource record sets, the two-letter code for a state of
@@ -12179,6 +12281,119 @@ func (s *GeoLocationDetails) SetSubdivisionCode(v string) *GeoLocationDetails {
 // SetSubdivisionName sets the SubdivisionName field's value.
 func (s *GeoLocationDetails) SetSubdivisionName(v string) *GeoLocationDetails {
 	s.SubdivisionName = &v
+	return s
+}
+
+// (Resource record sets only): A complex type that lets you specify where your
+// resources are located. Only one of LocalZoneGroup, Coordinates, or Amazon
+// Web ServicesRegion is allowed per request at a time.
+//
+// For more information about geoproximity routing, see Geoproximity routing
+// (https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/routing-policy-geoproximity.html)
+// in the Amazon Route 53 Developer Guide.
+type GeoProximityLocation struct {
+	_ struct{} `type:"structure"`
+
+	// The Amazon Web Services Region the resource you are directing DNS traffic
+	// to, is in.
+	AWSRegion *string `min:"1" type:"string"`
+
+	// The bias increases or decreases the size of the geographic region from which
+	// Route 53 routes traffic to a resource.
+	//
+	// To use Bias to change the size of the geographic region, specify the applicable
+	// value for the bias:
+	//
+	//    * To expand the size of the geographic region from which Route 53 routes
+	//    traffic to a resource, specify a positive integer from 1 to 99 for the
+	//    bias. Route 53 shrinks the size of adjacent regions.
+	//
+	//    * To shrink the size of the geographic region from which Route 53 routes
+	//    traffic to a resource, specify a negative bias of -1 to -99. Route 53
+	//    expands the size of adjacent regions.
+	Bias *int64 `type:"integer"`
+
+	// Contains the longitude and latitude for a geographic region.
+	Coordinates *Coordinates `type:"structure"`
+
+	// Specifies an Amazon Web Services Local Zone Group.
+	//
+	// A local Zone Group is usually the Local Zone code without the ending character.
+	// For example, if the Local Zone is us-east-1-bue-1a the Local Zone Group is
+	// us-east-1-bue-1.
+	//
+	// You can identify the Local Zones Group for a specific Local Zone by using
+	// the describe-availability-zones (https://docs.aws.amazon.com/cli/latest/reference/ec2/describe-availability-zones.html)
+	// CLI command:
+	//
+	// This command returns: "GroupName": "us-west-2-den-1", specifying that the
+	// Local Zone us-west-2-den-1a belongs to the Local Zone Group us-west-2-den-1.
+	LocalZoneGroup *string `min:"1" type:"string"`
+}
+
+// String returns the string representation.
+//
+// API parameter values that are decorated as "sensitive" in the API will not
+// be included in the string output. The member name will be present, but the
+// value will be replaced with "sensitive".
+func (s GeoProximityLocation) String() string {
+	return awsutil.Prettify(s)
+}
+
+// GoString returns the string representation.
+//
+// API parameter values that are decorated as "sensitive" in the API will not
+// be included in the string output. The member name will be present, but the
+// value will be replaced with "sensitive".
+func (s GeoProximityLocation) GoString() string {
+	return s.String()
+}
+
+// Validate inspects the fields of the type to determine if they are valid.
+func (s *GeoProximityLocation) Validate() error {
+	invalidParams := request.ErrInvalidParams{Context: "GeoProximityLocation"}
+	if s.AWSRegion != nil && len(*s.AWSRegion) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("AWSRegion", 1))
+	}
+	if s.Bias != nil && *s.Bias < -99 {
+		invalidParams.Add(request.NewErrParamMinValue("Bias", -99))
+	}
+	if s.LocalZoneGroup != nil && len(*s.LocalZoneGroup) < 1 {
+		invalidParams.Add(request.NewErrParamMinLen("LocalZoneGroup", 1))
+	}
+	if s.Coordinates != nil {
+		if err := s.Coordinates.Validate(); err != nil {
+			invalidParams.AddNested("Coordinates", err.(request.ErrInvalidParams))
+		}
+	}
+
+	if invalidParams.Len() > 0 {
+		return invalidParams
+	}
+	return nil
+}
+
+// SetAWSRegion sets the AWSRegion field's value.
+func (s *GeoProximityLocation) SetAWSRegion(v string) *GeoProximityLocation {
+	s.AWSRegion = &v
+	return s
+}
+
+// SetBias sets the Bias field's value.
+func (s *GeoProximityLocation) SetBias(v int64) *GeoProximityLocation {
+	s.Bias = &v
+	return s
+}
+
+// SetCoordinates sets the Coordinates field's value.
+func (s *GeoProximityLocation) SetCoordinates(v *Coordinates) *GeoProximityLocation {
+	s.Coordinates = v
+	return s
+}
+
+// SetLocalZoneGroup sets the LocalZoneGroup field's value.
+func (s *GeoProximityLocation) SetLocalZoneGroup(v string) *GeoProximityLocation {
+	s.LocalZoneGroup = &v
 	return s
 }
 
@@ -12502,7 +12717,7 @@ type GetDNSSECOutput struct {
 	// KeySigningKeys is a required field
 	KeySigningKeys []*KeySigningKey `type:"list" required:"true"`
 
-	// A string repesenting the status of DNSSEC.
+	// A string representing the status of DNSSEC.
 	//
 	// Status is a required field
 	Status *DNSSECStatus `type:"structure" required:"true"`
@@ -12563,6 +12778,8 @@ type GetGeoLocationInput struct {
 
 	// Amazon Route 53 uses the two-letter country codes that are specified in ISO
 	// standard 3166-1 alpha-2 (https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2).
+	//
+	// Route 53 also supports the country code UA for Ukraine.
 	CountryCode *string `location:"querystring" locationName:"countrycode" min:"1" type:"string"`
 
 	// The code for the subdivision, such as a particular state within the United
@@ -14207,7 +14424,7 @@ type HealthCheckConfig struct {
 	//    checkers consider to be healthy and compares that number with the value
 	//    of HealthThreshold.
 	//
-	//    * RECOVERY_CONTROL: The health check is assocated with a Route53 Application
+	//    * RECOVERY_CONTROL: The health check is associated with a Route53 Application
 	//    Recovery Controller routing control. If the routing control state is ON,
 	//    the health check is considered healthy. If the state is OFF, the health
 	//    check is considered unhealthy.
@@ -15565,8 +15782,8 @@ type ListHealthChecksInput struct {
 
 	// The maximum number of health checks that you want ListHealthChecks to return
 	// in response to the current request. Amazon Route 53 returns a maximum of
-	// 100 items. If you set MaxItems to a value greater than 100, Route 53 returns
-	// only the first 100 health checks.
+	// 1000 items. If you set MaxItems to a value greater than 1000, Route 53 returns
+	// only the first 1000 health checks.
 	MaxItems *string `location:"querystring" locationName:"maxitems" type:"string"`
 }
 
@@ -16026,6 +16243,9 @@ type ListHostedZonesInput struct {
 	// the ID of that reusable delegation set.
 	DelegationSetId *string `location:"querystring" locationName:"delegationsetid" type:"string"`
 
+	// (Optional) Specifies if the hosted zone is private.
+	HostedZoneType *string `location:"querystring" locationName:"hostedzonetype" type:"string" enum:"HostedZoneType"`
+
 	// If the value of IsTruncated in the previous response was true, you have more
 	// hosted zones. To get more hosted zones, submit another ListHostedZones request.
 	//
@@ -16066,6 +16286,12 @@ func (s ListHostedZonesInput) GoString() string {
 // SetDelegationSetId sets the DelegationSetId field's value.
 func (s *ListHostedZonesInput) SetDelegationSetId(v string) *ListHostedZonesInput {
 	s.DelegationSetId = &v
+	return s
+}
+
+// SetHostedZoneType sets the HostedZoneType field's value.
+func (s *ListHostedZonesInput) SetHostedZoneType(v string) *ListHostedZonesInput {
+	s.HostedZoneType = &v
 	return s
 }
 
@@ -18109,9 +18335,6 @@ type ResourceRecordSet struct {
 	// to a web server with an IP address of 192.0.2.111, create a resource record
 	// set with a Type of A and a ContinentCode of AF.
 	//
-	// Although creating geolocation and geolocation alias resource record sets
-	// in a private hosted zone is allowed, it's not supported.
-	//
 	// If you create separate resource record sets for overlapping geographic regions
 	// (for example, one resource record set for a continent and one for a country
 	// on the same continent), priority goes to the smallest geographic region.
@@ -18139,6 +18362,11 @@ type ResourceRecordSet struct {
 	// You can't create non-geolocation resource record sets that have the same
 	// values for the Name and Type elements as geolocation resource record sets.
 	GeoLocation *GeoLocation `type:"structure"`
+
+	//  GeoproximityLocation resource record sets only: A complex type that lets
+	//  you control how Route 53 responds to DNS queries based on the geographic
+	//  origin of the query and your resources.
+	GeoProximityLocation *GeoProximityLocation `type:"structure"`
 
 	// If you want Amazon Route 53 to return this resource record set in response
 	// to a DNS query only when the status of a health check is healthy, include
@@ -18298,11 +18526,6 @@ type ResourceRecordSet struct {
 	//    You can't use the * wildcard for resource records sets that have a type
 	//    of NS.
 	//
-	// You can use the * wildcard as the leftmost label in a domain name, for example,
-	// *.example.com. You can't use an * for one of the middle labels, for example,
-	// marketing.*.example.com. In addition, the * must replace the entire label;
-	// for example, you can't specify prod*.example.com.
-	//
 	// Name is a required field
 	Name *string `type:"string" required:"true"`
 
@@ -18311,9 +18534,6 @@ type ResourceRecordSet struct {
 	// typically is an Amazon Web Services resource, such as an EC2 instance or
 	// an ELB load balancer, and is referred to by an IP address or a DNS domain
 	// name, depending on the record type.
-	//
-	// Although creating latency and latency alias resource record sets in a private
-	// hosted zone is allowed, it's not supported.
 	//
 	// When Amazon Route 53 receives a DNS query for a domain name and type for
 	// which you have created latency resource record sets, Route 53 selects the
@@ -18525,6 +18745,11 @@ func (s *ResourceRecordSet) Validate() error {
 			invalidParams.AddNested("GeoLocation", err.(request.ErrInvalidParams))
 		}
 	}
+	if s.GeoProximityLocation != nil {
+		if err := s.GeoProximityLocation.Validate(); err != nil {
+			invalidParams.AddNested("GeoProximityLocation", err.(request.ErrInvalidParams))
+		}
+	}
 	if s.ResourceRecords != nil {
 		for i, v := range s.ResourceRecords {
 			if v == nil {
@@ -18563,6 +18788,12 @@ func (s *ResourceRecordSet) SetFailover(v string) *ResourceRecordSet {
 // SetGeoLocation sets the GeoLocation field's value.
 func (s *ResourceRecordSet) SetGeoLocation(v *GeoLocation) *ResourceRecordSet {
 	s.GeoLocation = v
+	return s
+}
+
+// SetGeoProximityLocation sets the GeoProximityLocation field's value.
+func (s *ResourceRecordSet) SetGeoProximityLocation(v *GeoProximityLocation) *ResourceRecordSet {
+	s.GeoProximityLocation = v
 	return s
 }
 
@@ -19476,6 +19707,10 @@ type UpdateHealthCheckInput struct {
 	// you specify in RequestInterval. Using an IPv4 address that is returned by
 	// DNS, Route 53 then checks the health of the endpoint.
 	//
+	// If you don't specify a value for IPAddress, you can’t update the health
+	// check to remove the FullyQualifiedDomainName; if you don’t specify a value
+	// for IPAddress on creation, a FullyQualifiedDomainName is required.
+	//
 	// If you don't specify a value for IPAddress, Route 53 uses only IPv4 to send
 	// health checks to the endpoint. If there's no resource record set with a type
 	// of A for the name that you specify for FullyQualifiedDomainName, the health
@@ -20343,6 +20578,9 @@ const (
 	// CloudWatchRegionEuCentral1 is a CloudWatchRegion enum value
 	CloudWatchRegionEuCentral1 = "eu-central-1"
 
+	// CloudWatchRegionEuCentral2 is a CloudWatchRegion enum value
+	CloudWatchRegionEuCentral2 = "eu-central-2"
+
 	// CloudWatchRegionEuWest1 is a CloudWatchRegion enum value
 	CloudWatchRegionEuWest1 = "eu-west-1"
 
@@ -20363,6 +20601,9 @@ const (
 
 	// CloudWatchRegionApSouth1 is a CloudWatchRegion enum value
 	CloudWatchRegionApSouth1 = "ap-south-1"
+
+	// CloudWatchRegionApSouth2 is a CloudWatchRegion enum value
+	CloudWatchRegionApSouth2 = "ap-south-2"
 
 	// CloudWatchRegionApSoutheast1 is a CloudWatchRegion enum value
 	CloudWatchRegionApSoutheast1 = "ap-southeast-1"
@@ -20400,6 +20641,9 @@ const (
 	// CloudWatchRegionEuSouth1 is a CloudWatchRegion enum value
 	CloudWatchRegionEuSouth1 = "eu-south-1"
 
+	// CloudWatchRegionEuSouth2 is a CloudWatchRegion enum value
+	CloudWatchRegionEuSouth2 = "eu-south-2"
+
 	// CloudWatchRegionUsGovWest1 is a CloudWatchRegion enum value
 	CloudWatchRegionUsGovWest1 = "us-gov-west-1"
 
@@ -20414,6 +20658,15 @@ const (
 
 	// CloudWatchRegionUsIsobEast1 is a CloudWatchRegion enum value
 	CloudWatchRegionUsIsobEast1 = "us-isob-east-1"
+
+	// CloudWatchRegionApSoutheast4 is a CloudWatchRegion enum value
+	CloudWatchRegionApSoutheast4 = "ap-southeast-4"
+
+	// CloudWatchRegionIlCentral1 is a CloudWatchRegion enum value
+	CloudWatchRegionIlCentral1 = "il-central-1"
+
+	// CloudWatchRegionCaWest1 is a CloudWatchRegion enum value
+	CloudWatchRegionCaWest1 = "ca-west-1"
 )
 
 // CloudWatchRegion_Values returns all elements of the CloudWatchRegion enum
@@ -20425,6 +20678,7 @@ func CloudWatchRegion_Values() []string {
 		CloudWatchRegionUsWest2,
 		CloudWatchRegionCaCentral1,
 		CloudWatchRegionEuCentral1,
+		CloudWatchRegionEuCentral2,
 		CloudWatchRegionEuWest1,
 		CloudWatchRegionEuWest2,
 		CloudWatchRegionEuWest3,
@@ -20432,6 +20686,7 @@ func CloudWatchRegion_Values() []string {
 		CloudWatchRegionMeSouth1,
 		CloudWatchRegionMeCentral1,
 		CloudWatchRegionApSouth1,
+		CloudWatchRegionApSouth2,
 		CloudWatchRegionApSoutheast1,
 		CloudWatchRegionApSoutheast2,
 		CloudWatchRegionApSoutheast3,
@@ -20444,11 +20699,15 @@ func CloudWatchRegion_Values() []string {
 		CloudWatchRegionCnNorth1,
 		CloudWatchRegionAfSouth1,
 		CloudWatchRegionEuSouth1,
+		CloudWatchRegionEuSouth2,
 		CloudWatchRegionUsGovWest1,
 		CloudWatchRegionUsGovEast1,
 		CloudWatchRegionUsIsoEast1,
 		CloudWatchRegionUsIsoWest1,
 		CloudWatchRegionUsIsobEast1,
+		CloudWatchRegionApSoutheast4,
+		CloudWatchRegionIlCentral1,
+		CloudWatchRegionCaWest1,
 	}
 }
 
@@ -20569,6 +20828,18 @@ func HostedZoneLimitType_Values() []string {
 	return []string{
 		HostedZoneLimitTypeMaxRrsetsByZone,
 		HostedZoneLimitTypeMaxVpcsAssociatedByZone,
+	}
+}
+
+const (
+	// HostedZoneTypePrivateHostedZone is a HostedZoneType enum value
+	HostedZoneTypePrivateHostedZone = "PrivateHostedZone"
+)
+
+// HostedZoneType_Values returns all elements of the HostedZoneType enum
+func HostedZoneType_Values() []string {
+	return []string{
+		HostedZoneTypePrivateHostedZone,
 	}
 }
 
@@ -20720,6 +20991,9 @@ const (
 	// ResourceRecordSetRegionEuCentral1 is a ResourceRecordSetRegion enum value
 	ResourceRecordSetRegionEuCentral1 = "eu-central-1"
 
+	// ResourceRecordSetRegionEuCentral2 is a ResourceRecordSetRegion enum value
+	ResourceRecordSetRegionEuCentral2 = "eu-central-2"
+
 	// ResourceRecordSetRegionApSoutheast1 is a ResourceRecordSetRegion enum value
 	ResourceRecordSetRegionApSoutheast1 = "ap-southeast-1"
 
@@ -20756,14 +21030,32 @@ const (
 	// ResourceRecordSetRegionMeSouth1 is a ResourceRecordSetRegion enum value
 	ResourceRecordSetRegionMeSouth1 = "me-south-1"
 
+	// ResourceRecordSetRegionMeCentral1 is a ResourceRecordSetRegion enum value
+	ResourceRecordSetRegionMeCentral1 = "me-central-1"
+
 	// ResourceRecordSetRegionApSouth1 is a ResourceRecordSetRegion enum value
 	ResourceRecordSetRegionApSouth1 = "ap-south-1"
+
+	// ResourceRecordSetRegionApSouth2 is a ResourceRecordSetRegion enum value
+	ResourceRecordSetRegionApSouth2 = "ap-south-2"
 
 	// ResourceRecordSetRegionAfSouth1 is a ResourceRecordSetRegion enum value
 	ResourceRecordSetRegionAfSouth1 = "af-south-1"
 
 	// ResourceRecordSetRegionEuSouth1 is a ResourceRecordSetRegion enum value
 	ResourceRecordSetRegionEuSouth1 = "eu-south-1"
+
+	// ResourceRecordSetRegionEuSouth2 is a ResourceRecordSetRegion enum value
+	ResourceRecordSetRegionEuSouth2 = "eu-south-2"
+
+	// ResourceRecordSetRegionApSoutheast4 is a ResourceRecordSetRegion enum value
+	ResourceRecordSetRegionApSoutheast4 = "ap-southeast-4"
+
+	// ResourceRecordSetRegionIlCentral1 is a ResourceRecordSetRegion enum value
+	ResourceRecordSetRegionIlCentral1 = "il-central-1"
+
+	// ResourceRecordSetRegionCaWest1 is a ResourceRecordSetRegion enum value
+	ResourceRecordSetRegionCaWest1 = "ca-west-1"
 )
 
 // ResourceRecordSetRegion_Values returns all elements of the ResourceRecordSetRegion enum
@@ -20778,6 +21070,7 @@ func ResourceRecordSetRegion_Values() []string {
 		ResourceRecordSetRegionEuWest2,
 		ResourceRecordSetRegionEuWest3,
 		ResourceRecordSetRegionEuCentral1,
+		ResourceRecordSetRegionEuCentral2,
 		ResourceRecordSetRegionApSoutheast1,
 		ResourceRecordSetRegionApSoutheast2,
 		ResourceRecordSetRegionApSoutheast3,
@@ -20790,9 +21083,15 @@ func ResourceRecordSetRegion_Values() []string {
 		ResourceRecordSetRegionCnNorthwest1,
 		ResourceRecordSetRegionApEast1,
 		ResourceRecordSetRegionMeSouth1,
+		ResourceRecordSetRegionMeCentral1,
 		ResourceRecordSetRegionApSouth1,
+		ResourceRecordSetRegionApSouth2,
 		ResourceRecordSetRegionAfSouth1,
 		ResourceRecordSetRegionEuSouth1,
+		ResourceRecordSetRegionEuSouth2,
+		ResourceRecordSetRegionApSoutheast4,
+		ResourceRecordSetRegionIlCentral1,
+		ResourceRecordSetRegionCaWest1,
 	}
 }
 
@@ -20877,6 +21176,9 @@ const (
 	// VPCRegionEuCentral1 is a VPCRegion enum value
 	VPCRegionEuCentral1 = "eu-central-1"
 
+	// VPCRegionEuCentral2 is a VPCRegion enum value
+	VPCRegionEuCentral2 = "eu-central-2"
+
 	// VPCRegionApEast1 is a VPCRegion enum value
 	VPCRegionApEast1 = "ap-east-1"
 
@@ -20913,6 +21215,9 @@ const (
 	// VPCRegionApSouth1 is a VPCRegion enum value
 	VPCRegionApSouth1 = "ap-south-1"
 
+	// VPCRegionApSouth2 is a VPCRegion enum value
+	VPCRegionApSouth2 = "ap-south-2"
+
 	// VPCRegionApNortheast1 is a VPCRegion enum value
 	VPCRegionApNortheast1 = "ap-northeast-1"
 
@@ -20939,6 +21244,18 @@ const (
 
 	// VPCRegionEuSouth1 is a VPCRegion enum value
 	VPCRegionEuSouth1 = "eu-south-1"
+
+	// VPCRegionEuSouth2 is a VPCRegion enum value
+	VPCRegionEuSouth2 = "eu-south-2"
+
+	// VPCRegionApSoutheast4 is a VPCRegion enum value
+	VPCRegionApSoutheast4 = "ap-southeast-4"
+
+	// VPCRegionIlCentral1 is a VPCRegion enum value
+	VPCRegionIlCentral1 = "il-central-1"
+
+	// VPCRegionCaWest1 is a VPCRegion enum value
+	VPCRegionCaWest1 = "ca-west-1"
 )
 
 // VPCRegion_Values returns all elements of the VPCRegion enum
@@ -20952,6 +21269,7 @@ func VPCRegion_Values() []string {
 		VPCRegionEuWest2,
 		VPCRegionEuWest3,
 		VPCRegionEuCentral1,
+		VPCRegionEuCentral2,
 		VPCRegionApEast1,
 		VPCRegionMeSouth1,
 		VPCRegionUsGovWest1,
@@ -20964,6 +21282,7 @@ func VPCRegion_Values() []string {
 		VPCRegionApSoutheast2,
 		VPCRegionApSoutheast3,
 		VPCRegionApSouth1,
+		VPCRegionApSouth2,
 		VPCRegionApNortheast1,
 		VPCRegionApNortheast2,
 		VPCRegionApNortheast3,
@@ -20973,5 +21292,9 @@ func VPCRegion_Values() []string {
 		VPCRegionCnNorth1,
 		VPCRegionAfSouth1,
 		VPCRegionEuSouth1,
+		VPCRegionEuSouth2,
+		VPCRegionApSoutheast4,
+		VPCRegionIlCentral1,
+		VPCRegionCaWest1,
 	}
 }

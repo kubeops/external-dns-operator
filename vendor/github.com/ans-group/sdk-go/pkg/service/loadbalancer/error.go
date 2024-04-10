@@ -82,3 +82,12 @@ type ACLNotFoundError struct {
 func (e *ACLNotFoundError) Error() string {
 	return fmt.Sprintf("ACL not found with ID [%d]", e.ID)
 }
+
+// DeploymentNotFoundError indicates a deployment was not found
+type DeploymentNotFoundError struct {
+	ID int
+}
+
+func (e *DeploymentNotFoundError) Error() string {
+	return fmt.Sprintf("Deployment not found with ID [%d]", e.ID)
+}

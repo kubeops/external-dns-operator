@@ -1322,7 +1322,6 @@ func (s *Service) DownloadDomainVerificationFileStream(domainName string) (conte
 }
 
 func (s *Service) downloadDomainVerificationFileResponse(domainName string) (*connection.APIResponse, error) {
-	body := &connection.APIResponseBody{}
 	response := &connection.APIResponse{}
 
 	if domainName == "" {
@@ -1338,7 +1337,7 @@ func (s *Service) downloadDomainVerificationFileResponse(domainName string) (*co
 		return response, &DomainNotFoundError{Name: domainName}
 	}
 
-	return response, response.ValidateStatusCode([]int{}, body)
+	return response, response.HandleResponse(nil)
 }
 
 // VerifyDomainDNS verifies a domain via DNS method

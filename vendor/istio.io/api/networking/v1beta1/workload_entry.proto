@@ -14,13 +14,12 @@
 
 syntax = "proto3";
 
-import "google/api/field_behavior.proto";
-
 // $schema: istio.networking.v1beta1.WorkloadEntry
 // $title: Workload Entry
 // $description: Configuration affecting VMs onboarded into the mesh.
 // $location: https://istio.io/docs/reference/config/networking/workload-entry.html
 // $aliases: [/docs/reference/config/networking/v1beta1/workload-entry]
+// $mode: none
 
 // `WorkloadEntry` enables operators to describe the properties of a
 // single non-Kubernetes workload such as a VM or a bare metal server
@@ -228,6 +227,44 @@ import "google/api/field_behavior.proto";
 // {{</tab>}}
 // {{</tabset>}}
 //
+//
+// The following example declares a VM workload without an address.
+// An alternative to having istiod read from remote API servers is 
+// to write a `WorkloadEntry` in the local cluster that represents 
+// the Workload(s) in the remote network with the given labels. A 
+// single `WorkloadEntry` with weights represent the aggregate of all
+// the actual workloads in a given remote network.
+//
+// {{<tabset category-name="example">}}
+// {{<tab name="v1alpha3" category-value="v1alpha3">}}
+// ```yaml
+// apiVersion: networking.istio.io/v1alpha3
+// kind: WorkloadEntry
+// metadata:
+//   name: foo-workloads-cluster-2
+// spec:
+//   serviceAccount: foo
+//   network: cluster-2-network
+//   labels:
+//     app: foo
+// ```
+// {{</tab>}}
+//
+// {{<tab name="v1beta1" category-value="v1beta1">}}
+// ```yaml
+// apiVersion: networking.istio.io/v1beta1
+// kind: WorkloadEntry
+// metadata:
+//   name: foo-workloads-cluster-2
+// spec:
+//   serviceAccount: foo
+//   network: cluster-2-network
+//   labels:
+//     app: foo
+// ```
+// {{</tab>}}
+// {{</tabset>}}
+//
 package istio.networking.v1beta1;
 
 option go_package = "istio.io/api/networking/v1beta1";
@@ -247,6 +284,7 @@ option go_package = "istio.io/api/networking/v1beta1";
 // Clients may not set this value. It is represented in RFC3339 form and is in UTC.
 // Populated by the system. Read-only. Null for lists. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#metadata"
 // +cue-gen:WorkloadEntry:printerColumn:name=Address,type=string,JSONPath=.spec.address,description="Address associated with the network endpoint."
+// +cue-gen:WorkloadEntry:preserveUnknownFields:false
 // -->
 //
 // <!-- go code generation tags
@@ -255,12 +293,16 @@ option go_package = "istio.io/api/networking/v1beta1";
 // +genclient
 // +k8s:deepcopy-gen=true
 // -->
+// <!-- istio code generation tags
+// +istio.io/sync-from:networking/v1alpha3/workload_entry.proto
+// -->
 message WorkloadEntry {
   // Address associated with the network endpoint without the
   // port.  Domain names can be used if and only if the resolution is set
   // to DNS, and must be fully-qualified without wildcards. Use the form
   // unix:///absolute/path/to/socket for Unix domain socket endpoints.
-  string address = 1 [(google.api.field_behavior) = REQUIRED];
+  // If address is empty, network must be specified.
+  string address = 1;
 
   // Set of ports associated with the endpoint. If the port map is
   // specified, it must be a map of servicePortName to this endpoint's
@@ -288,7 +330,7 @@ message WorkloadEntry {
   // used to establish connectivity (usually using the
   // `AUTO_PASSTHROUGH` mode in a Gateway Server). This is
   // an advanced configuration used typically for spanning an Istio mesh
-  // over multiple clusters.
+  // over multiple clusters. Required if address is not provided.
   string network = 4;
 
   // The locality associated with the endpoint. A locality corresponds
@@ -320,4 +362,3 @@ message WorkloadEntry {
   // ServiceEntry)
   string service_account = 7;
 };
-

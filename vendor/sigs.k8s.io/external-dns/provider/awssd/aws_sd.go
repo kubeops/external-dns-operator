@@ -25,15 +25,11 @@ import (
 	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials/stscreds"
 	"github.com/aws/aws-sdk-go/aws/request"
-	"github.com/aws/aws-sdk-go/aws/session"
 	sd "github.com/aws/aws-sdk-go/service/servicediscovery"
-	"github.com/linki/instrumented_http"
 	log "github.com/sirupsen/logrus"
 
 	"sigs.k8s.io/external-dns/endpoint"
-	"sigs.k8s.io/external-dns/pkg/apis/externaldns"
 	"sigs.k8s.io/external-dns/plan"
 	"sigs.k8s.io/external-dns/provider"
 )
@@ -62,7 +58,7 @@ var (
 type AWSSDClient interface {
 	CreateService(input *sd.CreateServiceInput) (*sd.CreateServiceOutput, error)
 	DeregisterInstance(input *sd.DeregisterInstanceInput) (*sd.DeregisterInstanceOutput, error)
-	ListInstancesPages(input *sd.ListInstancesInput, fn func(*sd.ListInstancesOutput, bool) bool) error
+	DiscoverInstancesWithContext(ctx aws.Context, input *sd.DiscoverInstancesInput, opts ...request.Option) (*sd.DiscoverInstancesOutput, error)
 	ListNamespacesPages(input *sd.ListNamespacesInput, fn func(*sd.ListNamespacesOutput, bool) bool) error
 	ListServicesPages(input *sd.ListServicesInput, fn func(*sd.ListServicesOutput, bool) bool) error
 	RegisterInstance(input *sd.RegisterInstanceInput) (*sd.RegisterInstanceOutput, error)
@@ -86,42 +82,9 @@ type AWSSDProvider struct {
 }
 
 // NewAWSSDProvider initializes a new AWS Cloud Map based Provider.
-func NewAWSSDProvider(domainFilter endpoint.DomainFilter, namespaceType string, assumeRole string, assumeRoleExternalID string, dryRun, cleanEmptyService bool, ownerID string) (*AWSSDProvider, error) {
-	config := aws.NewConfig()
-
-	config = config.WithHTTPClient(
-		instrumented_http.NewClient(config.HTTPClient, &instrumented_http.Callbacks{
-			PathProcessor: func(path string) string {
-				parts := strings.Split(path, "/")
-				return parts[len(parts)-1]
-			},
-		}),
-	)
-
-	sess, err := session.NewSessionWithOptions(session.Options{
-		Config:            *config,
-		SharedConfigState: session.SharedConfigEnable,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	if assumeRole != "" {
-		if assumeRoleExternalID != "" {
-			log.Infof("Assuming role %q with external ID %q", assumeRole, assumeRoleExternalID)
-			sess.Config.WithCredentials(stscreds.NewCredentials(sess, assumeRole, func(p *stscreds.AssumeRoleProvider) {
-				p.ExternalID = &assumeRoleExternalID
-			}))
-		} else {
-			log.Infof("Assuming role: %s", assumeRole)
-			sess.Config.WithCredentials(stscreds.NewCredentials(sess, assumeRole))
-		}
-	}
-
-	sess.Handlers.Build.PushBack(request.MakeAddToUserAgentHandler("ExternalDNS", externaldns.Version))
-
+func NewAWSSDProvider(domainFilter endpoint.DomainFilter, namespaceType string, dryRun, cleanEmptyService bool, ownerID string, client AWSSDClient) (*AWSSDProvider, error) {
 	provider := &AWSSDProvider{
-		client:              sd.New(sess),
+		client:              client,
 		dryRun:              dryRun,
 		namespaceFilter:     domainFilter,
 		namespaceTypeFilter: newSdNamespaceFilter(namespaceType),
@@ -164,28 +127,29 @@ func (p *AWSSDProvider) Records(ctx context.Context) (endpoints []*endpoint.Endp
 		}
 
 		for _, srv := range services {
-			instances, err := p.ListInstancesByServiceID(srv.Id)
+			resp, err := p.client.DiscoverInstancesWithContext(ctx, &sd.DiscoverInstancesInput{
+				NamespaceName: ns.Name,
+				ServiceName:   srv.Name,
+			})
 			if err != nil {
 				return nil, err
 			}
 
-			if len(instances) > 0 {
-				ep := p.instancesToEndpoint(ns, srv, instances)
-				endpoints = append(endpoints, ep)
-			}
-			if len(instances) == 0 {
-				err = p.DeleteService(srv)
-				if err != nil {
-					log.Warnf("Failed to delete service \"%s\", error: %s", aws.StringValue(srv.Name), err)
+			if len(resp.Instances) == 0 {
+				if err := p.DeleteService(srv); err != nil {
+					log.Errorf("Failed to delete service %q, error: %s", aws.StringValue(srv.Name), err)
 				}
+				continue
 			}
+
+			endpoints = append(endpoints, p.instancesToEndpoint(ns, srv, resp.Instances))
 		}
 	}
 
 	return endpoints, nil
 }
 
-func (p *AWSSDProvider) instancesToEndpoint(ns *sd.NamespaceSummary, srv *sd.Service, instances []*sd.InstanceSummary) *endpoint.Endpoint {
+func (p *AWSSDProvider) instancesToEndpoint(ns *sd.NamespaceSummary, srv *sd.Service, instances []*sd.HttpInstanceSummary) *endpoint.Endpoint {
 	// DNS name of the record is a concatenation of service and namespace
 	recordName := *srv.Name + "." + *ns.Name
 
@@ -414,26 +378,6 @@ func (p *AWSSDProvider) ListServicesByNamespaceID(namespaceID *string) (map[stri
 	return servicesMap, nil
 }
 
-// ListInstancesByServiceID returns list of instances registered in given service.
-func (p *AWSSDProvider) ListInstancesByServiceID(serviceID *string) ([]*sd.InstanceSummary, error) {
-	instances := make([]*sd.InstanceSummary, 0)
-
-	f := func(resp *sd.ListInstancesOutput, lastPage bool) bool {
-		instances = append(instances, resp.Instances...)
-
-		return true
-	}
-
-	err := p.client.ListInstancesPages(&sd.ListInstancesInput{
-		ServiceId: serviceID,
-	}, f)
-	if err != nil {
-		return nil, err
-	}
-
-	return instances, nil
-}
-
 // CreateService creates a new service in AWS API. Returns the created service.
 func (p *AWSSDProvider) CreateService(namespaceID *string, srvName *string, ep *endpoint.Endpoint) (*sd.Service, error) {
 	log.Infof("Creating a new service \"%s\" in \"%s\" namespace", *srvName, *namespaceID)
@@ -509,9 +453,9 @@ func (p *AWSSDProvider) DeleteService(service *sd.Service) error {
 		// convert ownerID string to service description format
 		label := endpoint.NewLabels()
 		label[endpoint.OwnerLabelKey] = p.ownerID
-		label[endpoint.AWSSDDescriptionLabel] = label.Serialize(false)
+		label[endpoint.AWSSDDescriptionLabel] = label.SerializePlain(false)
 
-		if aws.StringValue(service.Description) == label[endpoint.AWSSDDescriptionLabel] {
+		if strings.HasPrefix(aws.StringValue(service.Description), label[endpoint.AWSSDDescriptionLabel]) {
 			log.Infof("Deleting service \"%s\"", *service.Name)
 			_, err := p.client.DeleteService(&sd.DeleteServiceInput{
 				Id: aws.String(*service.Id),
@@ -620,19 +564,6 @@ func serviceToServiceSummary(service *sd.Service) *sd.ServiceSummary {
 		InstanceCount:           service.InstanceCount,
 		Name:                    service.Name,
 		Type:                    service.Type,
-	}
-}
-
-// nolint: deadcode
-// used from unit test
-func instanceToInstanceSummary(instance *sd.Instance) *sd.InstanceSummary {
-	if instance == nil {
-		return nil
-	}
-
-	return &sd.InstanceSummary{
-		Id:         instance.Id,
-		Attributes: instance.Attributes,
 	}
 }
 

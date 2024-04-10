@@ -42,8 +42,12 @@ func NewAWSSDRegistry(provider provider.Provider, ownerID string) (*AWSSDRegistr
 	}, nil
 }
 
-func (sdr *AWSSDRegistry) GetDomainFilter() endpoint.DomainFilterInterface {
+func (sdr *AWSSDRegistry) GetDomainFilter() endpoint.DomainFilter {
 	return sdr.provider.GetDomainFilter()
+}
+
+func (im *AWSSDRegistry) OwnerID() string {
+	return im.ownerID
 }
 
 // Records calls AWS SD API and expects AWS SD provider to provider Owner/Resource information as a serialized
@@ -55,7 +59,7 @@ func (sdr *AWSSDRegistry) Records(ctx context.Context) ([]*endpoint.Endpoint, er
 	}
 
 	for _, record := range records {
-		labels, err := endpoint.NewLabelsFromString(record.Labels[endpoint.AWSSDDescriptionLabel])
+		labels, err := endpoint.NewLabelsFromStringPlain(record.Labels[endpoint.AWSSDDescriptionLabel])
 		if err != nil {
 			// if we fail to parse the output then simply assume the endpoint is not managed by any instance of External DNS
 			record.Labels = endpoint.NewLabels()
@@ -67,19 +71,14 @@ func (sdr *AWSSDRegistry) Records(ctx context.Context) ([]*endpoint.Endpoint, er
 	return records, nil
 }
 
-// MissingRecords returns nil because there is no missing records for AWSSD registry
-func (sdr *AWSSDRegistry) MissingRecords() []*endpoint.Endpoint {
-	return nil
-}
-
 // ApplyChanges filters out records not owned the External-DNS, additionally it adds the required label
 // inserted in the AWS SD instance as a CreateID field
 func (sdr *AWSSDRegistry) ApplyChanges(ctx context.Context, changes *plan.Changes) error {
 	filteredChanges := &plan.Changes{
 		Create:    changes.Create,
-		UpdateNew: filterOwnedRecords(sdr.ownerID, changes.UpdateNew),
-		UpdateOld: filterOwnedRecords(sdr.ownerID, changes.UpdateOld),
-		Delete:    filterOwnedRecords(sdr.ownerID, changes.Delete),
+		UpdateNew: endpoint.FilterEndpointsByOwnerID(sdr.ownerID, changes.UpdateNew),
+		UpdateOld: endpoint.FilterEndpointsByOwnerID(sdr.ownerID, changes.UpdateOld),
+		Delete:    endpoint.FilterEndpointsByOwnerID(sdr.ownerID, changes.Delete),
 	}
 
 	sdr.updateLabels(filteredChanges.Create)
@@ -96,15 +95,11 @@ func (sdr *AWSSDRegistry) updateLabels(endpoints []*endpoint.Endpoint) {
 			ep.Labels = make(map[string]string)
 		}
 		ep.Labels[endpoint.OwnerLabelKey] = sdr.ownerID
-		ep.Labels[endpoint.AWSSDDescriptionLabel] = ep.Labels.Serialize(false)
+		ep.Labels[endpoint.AWSSDDescriptionLabel] = ep.Labels.SerializePlain(false)
 	}
 }
 
-func (sdr *AWSSDRegistry) PropertyValuesEqual(name string, previous string, current string) bool {
-	return sdr.provider.PropertyValuesEqual(name, previous, current)
-}
-
 // AdjustEndpoints modifies the endpoints as needed by the specific provider
-func (sdr *AWSSDRegistry) AdjustEndpoints(endpoints []*endpoint.Endpoint) []*endpoint.Endpoint {
+func (sdr *AWSSDRegistry) AdjustEndpoints(endpoints []*endpoint.Endpoint) ([]*endpoint.Endpoint, error) {
 	return sdr.provider.AdjustEndpoints(endpoints)
 }
