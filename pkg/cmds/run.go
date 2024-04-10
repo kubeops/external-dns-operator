@@ -28,14 +28,13 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
-	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	"k8s.io/klog/v2"
 	"k8s.io/klog/v2/klogr"
 	"kmodules.xyz/client-go/meta"
-	_ "kmodules.xyz/client-go/meta"
 	"kmodules.xyz/client-go/tools/clusterid"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
+	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 )
 
 var (
@@ -72,8 +71,7 @@ func NewCmdRun() *cobra.Command {
 
 			mgr, err := ctrl.NewManager(cfg, ctrl.Options{
 				Scheme:                 scheme,
-				MetricsBindAddress:     metricsAddr,
-				Port:                   9443,
+				Metrics:                metricsserver.Options{BindAddress: metricsAddr},
 				HealthProbeBindAddress: probeAddr,
 				LeaderElection:         enableLeaderElection,
 				LeaderElectionID:       "4de9ad66.appscode.com",

@@ -32,6 +32,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
@@ -40,6 +41,7 @@ import (
 type ObjectTracker struct {
 	m sync.Map
 
+	Manager manager.Manager
 	controller.Controller
 }
 
@@ -60,7 +62,7 @@ func (o *ObjectTracker) Watch(obj runtime.Object, handler handler.EventHandler) 
 
 	// adding watcher to an external object
 	err := o.Controller.Watch(
-		&source.Kind{Type: u},
+		source.Kind(o.Manager.GetCache(), u),
 		handler,
 		predicate.Funcs{UpdateFunc: func(e event.UpdateEvent) bool {
 			if e.ObjectOld.GetObjectKind().GroupVersionKind().Kind != "Node" {
@@ -109,7 +111,7 @@ func getRuntimeObject(gvk schema.GroupVersionKind) runtime.Object {
 }
 
 func RegisterWatcher(ctx context.Context, crd *api.ExternalDNS, watcher *ObjectTracker, r client.Client) error {
-	sourceHandler := func(object client.Object) []reconcile.Request {
+	sourceHandler := func(ctx context.Context, object client.Object) []reconcile.Request {
 		reconcileReq := make([]reconcile.Request, 0)
 
 		dnsList := &api.ExternalDNSList{}
