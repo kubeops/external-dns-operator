@@ -26,6 +26,9 @@ import (
 
 	api "kubeops.dev/external-dns-operator/apis/external/v1alpha1"
 
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/route53"
+	sd "github.com/aws/aws-sdk-go/service/servicediscovery"
 	"github.com/sirupsen/logrus"
 	"gomodules.xyz/sets"
 	"k8s.io/apimachinery/pkg/labels"
@@ -46,7 +49,6 @@ import (
 	"sigs.k8s.io/external-dns/provider/digitalocean"
 	"sigs.k8s.io/external-dns/provider/dnsimple"
 	"sigs.k8s.io/external-dns/provider/dyn"
-	"sigs.k8s.io/external-dns/provider/exoscale"
 	"sigs.k8s.io/external-dns/provider/gandi"
 	"sigs.k8s.io/external-dns/provider/godaddy"
 	"sigs.k8s.io/external-dns/provider/google"
@@ -220,7 +222,7 @@ func SetDNSRecords(ctx context.Context, edns *api.ExternalDNS) ([]api.DNSRecord,
 		return nil, err
 	}
 
-	reg, err := createRegistry(cfg, *pvdr)
+	reg, err := createRegistry(cfg, pvdr)
 	if err != nil {
 		klog.Errorf("failed to create Registry.", err.Error())
 		return nil, err
@@ -588,7 +590,7 @@ func createEndpointsSource(ctx context.Context, cfg *externaldns.Config) (source
 	return endpointsSource, nil
 }
 
-func createProviderFromCfg(ctx context.Context, cfg *externaldns.Config, endpointsSource source.Source) (*provider.Provider, error) {
+func createProviderFromCfg(ctx context.Context, cfg *externaldns.Config, endpointsSource source.Source) (provider.Provider, error) {
 	var p provider.Provider
 	var err error
 
@@ -603,6 +605,20 @@ func createProviderFromCfg(ctx context.Context, cfg *externaldns.Config, endpoin
 	zoneIDFilter := provider.NewZoneIDFilter(cfg.ZoneIDFilter)
 	zoneTypeFilter := provider.NewZoneTypeFilter(cfg.AWSZoneType)
 	zoneTagFilter := provider.NewZoneTagFilter(cfg.AWSZoneTagFilter)
+
+	var awsSession *session.Session
+	if cfg.Provider == "aws" || cfg.Provider == "aws-sd" {
+		awsSession, err = aws.NewSession(
+			aws.AWSSessionConfig{
+				AssumeRole:           cfg.AWSAssumeRole,
+				AssumeRoleExternalID: cfg.AWSAssumeRoleExternalID,
+				APIRetries:           cfg.AWSAPIRetries,
+			},
+		)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
 
 	switch cfg.Provider {
 	case "akamai":
@@ -623,27 +639,27 @@ func createProviderFromCfg(ctx context.Context, cfg *externaldns.Config, endpoin
 	case "aws":
 		p, err = aws.NewAWSProvider(
 			aws.AWSConfig{
-				DomainFilter:         domainFilter,
-				ZoneIDFilter:         zoneIDFilter,
-				ZoneTypeFilter:       zoneTypeFilter,
-				ZoneTagFilter:        zoneTagFilter,
-				BatchChangeSize:      cfg.AWSBatchChangeSize,
-				BatchChangeInterval:  cfg.AWSBatchChangeInterval,
-				EvaluateTargetHealth: cfg.AWSEvaluateTargetHealth,
-				// FIX
-				// 	AssumeRole:           cfg.AWSAssumeRole,
-				// 	APIRetries:           cfg.AWSAPIRetries,
-				PreferCNAME:       cfg.AWSPreferCNAME,
-				DryRun:            cfg.DryRun,
-				ZoneCacheDuration: cfg.AWSZoneCacheDuration,
+				DomainFilter:          domainFilter,
+				ZoneIDFilter:          zoneIDFilter,
+				ZoneTypeFilter:        zoneTypeFilter,
+				ZoneTagFilter:         zoneTagFilter,
+				ZoneMatchParent:       cfg.AWSZoneMatchParent,
+				BatchChangeSize:       cfg.AWSBatchChangeSize,
+				BatchChangeSizeBytes:  cfg.AWSBatchChangeSizeBytes,
+				BatchChangeSizeValues: cfg.AWSBatchChangeSizeValues,
+				BatchChangeInterval:   cfg.AWSBatchChangeInterval,
+				EvaluateTargetHealth:  cfg.AWSEvaluateTargetHealth,
+				PreferCNAME:           cfg.AWSPreferCNAME,
+				DryRun:                cfg.DryRun,
+				ZoneCacheDuration:     cfg.AWSZoneCacheDuration,
 			},
-			nil, // FIX
+			route53.New(awsSession),
 		)
 	case providerAWSSD:
 		if cfg.Registry != "noop" && cfg.Registry != providerAWSSD {
 			cfg.Registry = providerAWSSD
 		}
-		p, err = awssd.NewAWSSDProvider(domainFilter, cfg.AWSZoneType, cfg.DryRun, cfg.AWSSDServiceCleanup, cfg.TXTOwnerID /* FIX */, nil)
+		p, err = awssd.NewAWSSDProvider(domainFilter, cfg.AWSZoneType, cfg.DryRun, cfg.AWSSDServiceCleanup, cfg.TXTOwnerID, sd.New(awsSession))
 	case "azure-dns", "azure":
 		p, err = azure.NewAzureProvider(cfg.AzureConfigFile, domainFilter, zoneNameFilter, zoneIDFilter, "FIX -- subscriptionID", cfg.AzureResourceGroup, cfg.AzureUserAssignedIdentityClientID, cfg.DryRun)
 	case "azure-private-dns":
@@ -711,8 +727,6 @@ func createProviderFromCfg(ctx context.Context, cfg *externaldns.Config, endpoin
 				DryRun:       cfg.DryRun,
 			},
 		)
-	case "exoscale":
-		p, err = exoscale.NewExoscaleProvider(cfg.ExoscaleAPIEnvironment, cfg.ExoscaleAPIZone, cfg.ExoscaleAPIKey, cfg.ExoscaleAPISecret, cfg.DryRun, exoscale.ExoscaleWithDomain(domainFilter), exoscale.ExoscaleWithLogging()), nil
 	case "inmemory":
 		p, err = inmemory.NewInMemoryProvider(inmemory.InMemoryInitZones(cfg.InMemoryZones), inmemory.InMemoryWithDomain(domainFilter), inmemory.InMemoryWithLogging()), nil
 	case "designate":
@@ -767,7 +781,7 @@ func createProviderFromCfg(ctx context.Context, cfg *externaldns.Config, endpoin
 		log.Fatalf("unknown dns provider: %s", cfg.Provider)
 	}
 
-	return &p, err
+	return p, err
 }
 
 func createRegistry(cfg *externaldns.Config, p provider.Provider) (registry.Registry, error) {

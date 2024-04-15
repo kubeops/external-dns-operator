@@ -143,11 +143,6 @@ func (in *CloudflareProvider) DeepCopyInto(out *CloudflareProvider) {
 		*out = new(bool)
 		**out = **in
 	}
-	if in.ZonesPerPage != nil {
-		in, out := &in.ZonesPerPage, &out.ZonesPerPage
-		*out = new(int)
-		**out = **in
-	}
 	if in.SecretRef != nil {
 		in, out := &in.SecretRef, &out.SecretRef
 		*out = new(CloudflareSecretReference)
