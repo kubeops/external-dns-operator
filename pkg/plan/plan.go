@@ -212,26 +212,26 @@ func SetDNSRecords(ctx context.Context, edns *api.ExternalDNS) ([]api.DNSRecord,
 
 	endpointsSource, err := createEndpointsSource(ctx, cfg)
 	if err != nil {
-		klog.Error("failed to create endpoints source.", err.Error())
+		klog.Error(err.Error())
 		return nil, err
 	}
 
 	pvdr, err := createProviderFromCfg(ctx, cfg, endpointsSource)
 	if err != nil {
-		klog.Error("failed to create provider: ", err.Error())
+		klog.Error(err.Error())
 		return nil, err
 	}
 
 	reg, err := createRegistry(cfg, pvdr)
 	if err != nil {
-		klog.Errorf("failed to create Registry.", err.Error())
+		klog.Errorf(err.Error())
 		return nil, err
 	}
 
-	dnsRecs, e := createAndApplyPlan(ctx, cfg, reg, endpointsSource)
-	if e != nil {
-		klog.Errorf("failed to create and apply plan: %s", e.Error())
-		return nil, e
+	dnsRecs, err := createAndApplyPlan(ctx, cfg, reg, endpointsSource)
+	if err != nil {
+		klog.Errorf(err.Error())
+		return nil, err
 	}
 
 	return dnsRecs, nil
@@ -279,11 +279,10 @@ func createAndApplyPlan(ctx context.Context, cfg *externaldns.Config, r registry
 	if pln.Changes.HasChanges() {
 		err = r.ApplyChanges(ctx, pln.Changes)
 		if err != nil {
-			klog.Error("failed to apply plan")
+			klog.Error(err.Error())
 			return nil, err
 		}
 		klog.Info("plan applied")
-
 	} else {
 		klog.Info("all records are already up to date")
 	}
@@ -426,7 +425,6 @@ func convertEDNSObjectToCfg(edns *api.ExternalDNS) *externaldns.Config {
 
 	// for aws provider
 	if edns.Spec.AWS != nil {
-
 		if edns.Spec.AWS.ZoneTagFilter != nil {
 			config.AWSZoneTagFilter = edns.Spec.AWS.ZoneTagFilter
 		}
@@ -472,7 +470,6 @@ func convertEDNSObjectToCfg(edns *api.ExternalDNS) *externaldns.Config {
 		config.AzureConfigFile = fmt.Sprintf("/tmp/%s-%s-credential", edns.Namespace, edns.Name)
 	}
 	if edns.Spec.Azure != nil {
-
 		if edns.Spec.Azure.SubscriptionId != nil {
 			config.AzureSubscriptionID = *edns.Spec.Azure.SubscriptionId
 		}
@@ -580,7 +577,7 @@ func createEndpointsSource(ctx context.Context, cfg *externaldns.Config) (source
 		}(),
 	}, cfg.Sources, sourceCfg)
 	if err != nil {
-		klog.Error("failed to get the source")
+		klog.Error(err.Error())
 		return nil, err
 	}
 
