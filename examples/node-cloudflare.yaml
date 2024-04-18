@@ -10,9 +10,9 @@ spec:
       version: v1
       kind: Node
     node:
-      labelFilter: app=demo-node
-      annotationFilter: lke.linode.com/wgip=0.0.0.0
-      fqdnTemplate: "{{.Name}}.example.com"
+#      labelFilter: app=demo-node
+#      annotationFilter: lke.linode.com/wgip=0.0.0.0
+      fqdnTemplate: "nodes.example.com"
   registry: txt
   txtOwnerID: external-dns
   txtPrefix: xyz
@@ -21,5 +21,5 @@ spec:
   provider: cloudflare
   cloudflare:
     secretRef:
-      name: cloudflare-credentials
-      apiToken: CF_API_TOKEN
+      name: cloudflare-credential
+      apiTokenKey: CF_API_TOKEN
