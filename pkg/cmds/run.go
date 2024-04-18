@@ -63,7 +63,7 @@ func NewCmdRun() *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			klog.Infof("Starting binary version %s+%s ...", v.Version.Version, v.Version.CommitHash)
 
-			ctrl.SetLogger(klogr.New())
+			ctrl.SetLogger(klogr.New()) // nolint:staticcheck
 
 			cfg := ctrl.GetConfigOrDie()
 			cfg.QPS = QPS
