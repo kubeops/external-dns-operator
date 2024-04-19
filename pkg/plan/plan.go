@@ -26,6 +26,9 @@ import (
 
 	api "kubeops.dev/external-dns-operator/apis/external/v1alpha1"
 
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/route53"
+	sd "github.com/aws/aws-sdk-go/service/servicediscovery"
 	"github.com/sirupsen/logrus"
 	"gomodules.xyz/sets"
 	"k8s.io/apimachinery/pkg/labels"
@@ -46,7 +49,6 @@ import (
 	"sigs.k8s.io/external-dns/provider/digitalocean"
 	"sigs.k8s.io/external-dns/provider/dnsimple"
 	"sigs.k8s.io/external-dns/provider/dyn"
-	"sigs.k8s.io/external-dns/provider/exoscale"
 	"sigs.k8s.io/external-dns/provider/gandi"
 	"sigs.k8s.io/external-dns/provider/godaddy"
 	"sigs.k8s.io/external-dns/provider/google"
@@ -80,8 +82,7 @@ var defaultConfig = externaldns.Config{
 	KubeConfig:                  "",
 	RequestTimeout:              time.Second * 30,
 	DefaultTargets:              []string{},
-	ContourLoadBalancerService:  "heptio-contour/contour",
-	GlooNamespace:               "gloo-system",
+	GlooNamespaces:              []string{"gloo-system"},
 	SkipperRouteGroupVersion:    "zalando.org/v1",
 	Sources:                     nil,
 	Namespace:                   "",
@@ -124,7 +125,7 @@ var defaultConfig = externaldns.Config{
 	BluecatConfigFile:           "/etc/kubernetes/bluecat.json",
 	BluecatDNSDeployType:        "no-deploy",
 	CloudflareProxied:           false,
-	CloudflareZonesPerPage:      50,
+	CloudflareDNSRecordsPerPage: 50,
 	CoreDNSPrefix:               "/skydns/",
 	RcodezeroTXTEncrypt:         false,
 	AkamaiServiceConsumerDomain: "",
@@ -150,7 +151,7 @@ var defaultConfig = externaldns.Config{
 	OVHApiRateLimit:             20,
 	PDNSServer:                  "http://localhost:8081",
 	PDNSAPIKey:                  "",
-	PDNSTLSEnabled:              false,
+	PDNSSkipTLSVerify:           false,
 	TLSCA:                       "",
 	TLSClientCert:               "",
 	TLSClientCertKey:            "",
@@ -180,7 +181,7 @@ var defaultConfig = externaldns.Config{
 	CFPassword:                  "",
 	RFC2136Host:                 "",
 	RFC2136Port:                 0,
-	RFC2136Zone:                 "",
+	RFC2136Zone:                 []string{},
 	RFC2136Insecure:             false,
 	RFC2136GSSTSIG:              false,
 	RFC2136KerberosRealm:        "",
@@ -211,26 +212,26 @@ func SetDNSRecords(ctx context.Context, edns *api.ExternalDNS) ([]api.DNSRecord,
 
 	endpointsSource, err := createEndpointsSource(ctx, cfg)
 	if err != nil {
-		klog.Error("failed to create endpoints source.", err.Error())
+		klog.Error(err.Error())
 		return nil, err
 	}
 
 	pvdr, err := createProviderFromCfg(ctx, cfg, endpointsSource)
 	if err != nil {
-		klog.Error("failed to create provider: ", err.Error())
+		klog.Error(err.Error())
 		return nil, err
 	}
 
-	reg, err := createRegistry(cfg, *pvdr)
+	reg, err := createRegistry(cfg, pvdr)
 	if err != nil {
-		klog.Errorf("failed to create Registry.", err.Error())
+		klog.Errorf(err.Error())
 		return nil, err
 	}
 
-	dnsRecs, e := createAndApplyPlan(ctx, cfg, reg, endpointsSource)
-	if e != nil {
-		klog.Errorf("failed to create and apply plan: %s", e.Error())
-		return nil, e
+	dnsRecs, err := createAndApplyPlan(ctx, cfg, reg, endpointsSource)
+	if err != nil {
+		klog.Errorf(err.Error())
+		return nil, err
 	}
 
 	return dnsRecs, nil
@@ -250,42 +251,23 @@ func createAndApplyPlan(ctx context.Context, cfg *externaldns.Config, r registry
 		return nil, err
 	}
 
-	missingRecords := r.MissingRecords()
-
 	ctx = context.WithValue(ctx, provider.RecordsContextKey, records)
 	endpoints, err := endpointSource.Endpoints(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	endpoints = r.AdjustEndpoints(endpoints)
-
-	if len(missingRecords) > 0 {
-		missingRecordsPlan := &plan.Plan{
-			Policies:           []plan.Policy{plan.Policies[cfg.Policy]},
-			Missing:            missingRecords,
-			DomainFilter:       domainFilter,
-			PropertyComparator: r.PropertyValuesEqual,
-			ManagedRecords:     cfg.ManagedDNSRecordTypes,
-		}
-
-		missingRecordsPlan = missingRecordsPlan.Calculate()
-		if missingRecordsPlan.Changes.HasChanges() {
-			err = r.ApplyChanges(ctx, missingRecordsPlan.Changes)
-			if err != nil {
-				return nil, err
-			}
-			klog.Info("all missing records are created")
-		}
+	endpoints, err = r.AdjustEndpoints(endpoints)
+	if err != nil {
+		return nil, err
 	}
 
 	pln := &plan.Plan{
-		Policies:           []plan.Policy{plan.Policies[cfg.Policy]},
-		Current:            records,
-		Desired:            endpoints,
-		DomainFilter:       domainFilter,
-		PropertyComparator: r.PropertyValuesEqual,
-		ManagedRecords:     cfg.ManagedDNSRecordTypes,
+		Policies:       []plan.Policy{plan.Policies[cfg.Policy]},
+		Current:        records,
+		Desired:        endpoints,
+		DomainFilter:   endpoint.MatchAllDomainFilters{&domainFilter},
+		ManagedRecords: cfg.ManagedDNSRecordTypes,
 	}
 
 	pln = pln.Calculate()
@@ -297,11 +279,10 @@ func createAndApplyPlan(ctx context.Context, cfg *externaldns.Config, r registry
 	if pln.Changes.HasChanges() {
 		err = r.ApplyChanges(ctx, pln.Changes)
 		if err != nil {
-			klog.Error("failed to apply plan")
+			klog.Error(err.Error())
 			return nil, err
 		}
 		klog.Info("plan applied")
-
 	} else {
 		klog.Info("all records are already up to date")
 	}
@@ -444,7 +425,6 @@ func convertEDNSObjectToCfg(edns *api.ExternalDNS) *externaldns.Config {
 
 	// for aws provider
 	if edns.Spec.AWS != nil {
-
 		if edns.Spec.AWS.ZoneTagFilter != nil {
 			config.AWSZoneTagFilter = edns.Spec.AWS.ZoneTagFilter
 		}
@@ -479,13 +459,8 @@ func convertEDNSObjectToCfg(edns *api.ExternalDNS) *externaldns.Config {
 
 	// for cloudflare provider
 	if edns.Spec.Cloudflare != nil {
-
 		if edns.Spec.Cloudflare.Proxied != nil {
 			config.CloudflareProxied = *edns.Spec.Cloudflare.Proxied
-		}
-
-		if edns.Spec.Cloudflare.ZonesPerPage != nil {
-			config.CloudflareZonesPerPage = *edns.Spec.Cloudflare.ZonesPerPage
 		}
 	}
 
@@ -495,7 +470,6 @@ func convertEDNSObjectToCfg(edns *api.ExternalDNS) *externaldns.Config {
 		config.AzureConfigFile = fmt.Sprintf("/tmp/%s-%s-credential", edns.Namespace, edns.Name)
 	}
 	if edns.Spec.Azure != nil {
-
 		if edns.Spec.Azure.SubscriptionId != nil {
 			config.AzureSubscriptionID = *edns.Spec.Azure.SubscriptionId
 		}
@@ -583,8 +557,7 @@ func createEndpointsSource(ctx context.Context, cfg *externaldns.Config) (source
 		CFAPIEndpoint:                  cfg.CFAPIEndpoint,
 		CFUsername:                     cfg.CFUsername,
 		CFPassword:                     cfg.CFPassword,
-		ContourLoadBalancerService:     cfg.ContourLoadBalancerService,
-		GlooNamespace:                  cfg.GlooNamespace,
+		GlooNamespaces:                 cfg.GlooNamespaces,
 		SkipperRouteGroupVersion:       cfg.SkipperRouteGroupVersion,
 		RequestTimeout:                 cfg.RequestTimeout,
 		DefaultTargets:                 cfg.DefaultTargets,
@@ -604,7 +577,7 @@ func createEndpointsSource(ctx context.Context, cfg *externaldns.Config) (source
 		}(),
 	}, cfg.Sources, sourceCfg)
 	if err != nil {
-		klog.Error("failed to get the source")
+		klog.Error(err.Error())
 		return nil, err
 	}
 
@@ -614,7 +587,7 @@ func createEndpointsSource(ctx context.Context, cfg *externaldns.Config) (source
 	return endpointsSource, nil
 }
 
-func createProviderFromCfg(ctx context.Context, cfg *externaldns.Config, endpointsSource source.Source) (*provider.Provider, error) {
+func createProviderFromCfg(ctx context.Context, cfg *externaldns.Config, endpointsSource source.Source) (provider.Provider, error) {
 	var p provider.Provider
 	var err error
 
@@ -629,6 +602,20 @@ func createProviderFromCfg(ctx context.Context, cfg *externaldns.Config, endpoin
 	zoneIDFilter := provider.NewZoneIDFilter(cfg.ZoneIDFilter)
 	zoneTypeFilter := provider.NewZoneTypeFilter(cfg.AWSZoneType)
 	zoneTagFilter := provider.NewZoneTagFilter(cfg.AWSZoneTagFilter)
+
+	var awsSession *session.Session
+	if cfg.Provider == "aws" || cfg.Provider == "aws-sd" {
+		awsSession, err = aws.NewSession(
+			aws.AWSSessionConfig{
+				AssumeRole:           cfg.AWSAssumeRole,
+				AssumeRoleExternalID: cfg.AWSAssumeRoleExternalID,
+				APIRetries:           cfg.AWSAPIRetries,
+			},
+		)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
 
 	switch cfg.Provider {
 	case "akamai":
@@ -649,29 +636,31 @@ func createProviderFromCfg(ctx context.Context, cfg *externaldns.Config, endpoin
 	case "aws":
 		p, err = aws.NewAWSProvider(
 			aws.AWSConfig{
-				DomainFilter:         domainFilter,
-				ZoneIDFilter:         zoneIDFilter,
-				ZoneTypeFilter:       zoneTypeFilter,
-				ZoneTagFilter:        zoneTagFilter,
-				BatchChangeSize:      cfg.AWSBatchChangeSize,
-				BatchChangeInterval:  cfg.AWSBatchChangeInterval,
-				EvaluateTargetHealth: cfg.AWSEvaluateTargetHealth,
-				AssumeRole:           cfg.AWSAssumeRole,
-				APIRetries:           cfg.AWSAPIRetries,
-				PreferCNAME:          cfg.AWSPreferCNAME,
-				DryRun:               cfg.DryRun,
-				ZoneCacheDuration:    cfg.AWSZoneCacheDuration,
+				DomainFilter:          domainFilter,
+				ZoneIDFilter:          zoneIDFilter,
+				ZoneTypeFilter:        zoneTypeFilter,
+				ZoneTagFilter:         zoneTagFilter,
+				ZoneMatchParent:       cfg.AWSZoneMatchParent,
+				BatchChangeSize:       cfg.AWSBatchChangeSize,
+				BatchChangeSizeBytes:  cfg.AWSBatchChangeSizeBytes,
+				BatchChangeSizeValues: cfg.AWSBatchChangeSizeValues,
+				BatchChangeInterval:   cfg.AWSBatchChangeInterval,
+				EvaluateTargetHealth:  cfg.AWSEvaluateTargetHealth,
+				PreferCNAME:           cfg.AWSPreferCNAME,
+				DryRun:                cfg.DryRun,
+				ZoneCacheDuration:     cfg.AWSZoneCacheDuration,
 			},
+			route53.New(awsSession),
 		)
 	case providerAWSSD:
 		if cfg.Registry != "noop" && cfg.Registry != providerAWSSD {
 			cfg.Registry = providerAWSSD
 		}
-		p, err = awssd.NewAWSSDProvider(domainFilter, cfg.AWSZoneType, cfg.AWSAssumeRole, cfg.AWSAssumeRoleExternalID, cfg.DryRun, cfg.AWSSDServiceCleanup, cfg.TXTOwnerID)
+		p, err = awssd.NewAWSSDProvider(domainFilter, cfg.AWSZoneType, cfg.DryRun, cfg.AWSSDServiceCleanup, cfg.TXTOwnerID, sd.New(awsSession))
 	case "azure-dns", "azure":
-		p, err = azure.NewAzureProvider(cfg.AzureConfigFile, domainFilter, zoneNameFilter, zoneIDFilter, cfg.AzureResourceGroup, cfg.AzureUserAssignedIdentityClientID, cfg.DryRun)
+		p, err = azure.NewAzureProvider(cfg.AzureConfigFile, domainFilter, zoneNameFilter, zoneIDFilter, cfg.AzureSubscriptionID, cfg.AzureResourceGroup, cfg.AzureUserAssignedIdentityClientID, cfg.DryRun)
 	case "azure-private-dns":
-		p, err = azure.NewAzurePrivateDNSProvider(cfg.AzureConfigFile, domainFilter, zoneIDFilter, cfg.AzureResourceGroup, cfg.AzureUserAssignedIdentityClientID, cfg.DryRun)
+		p, err = azure.NewAzurePrivateDNSProvider(cfg.AzureConfigFile, domainFilter, zoneIDFilter, cfg.AzureSubscriptionID, cfg.AzureResourceGroup, cfg.AzureUserAssignedIdentityClientID, cfg.DryRun)
 	case "bluecat":
 		p, err = bluecat.NewBluecatProvider(cfg.BluecatConfigFile, cfg.BluecatDNSConfiguration, cfg.BluecatDNSServerName, cfg.BluecatDNSDeployType, cfg.BluecatDNSView, cfg.BluecatGatewayHost, cfg.BluecatRootZone, cfg.TXTPrefix, cfg.TXTSuffix, domainFilter, zoneIDFilter, cfg.DryRun, cfg.BluecatSkipTLSVerify)
 	case "vinyldns":
@@ -681,7 +670,7 @@ func createProviderFromCfg(ctx context.Context, cfg *externaldns.Config, endpoin
 	case "ultradns":
 		p, err = ultradns.NewUltraDNSProvider(domainFilter, cfg.DryRun)
 	case "cloudflare":
-		p, err = cloudflare.NewCloudFlareProvider(domainFilter, zoneIDFilter, cfg.CloudflareZonesPerPage, cfg.CloudflareProxied, cfg.DryRun)
+		p, err = cloudflare.NewCloudFlareProvider(domainFilter, zoneIDFilter, cfg.CloudflareProxied, cfg.DryRun, cfg.CloudflareDNSRecordsPerPage)
 	case "rcodezero":
 		p, err = rcode0.NewRcodeZeroProvider(domainFilter, cfg.DryRun, cfg.RcodezeroTXTEncrypt)
 	case "google":
@@ -708,7 +697,7 @@ func createProviderFromCfg(ctx context.Context, cfg *externaldns.Config, endpoin
 				View:          cfg.InfobloxView,
 				MaxResults:    cfg.InfobloxMaxResults,
 				DryRun:        cfg.DryRun,
-				FQDNRexEx:     cfg.InfobloxFQDNRegEx,
+				FQDNRegEx:     cfg.InfobloxFQDNRegEx,
 				CreatePTR:     cfg.InfobloxCreatePTR,
 				CacheDuration: cfg.InfobloxCacheDuration,
 			},
@@ -735,8 +724,6 @@ func createProviderFromCfg(ctx context.Context, cfg *externaldns.Config, endpoin
 				DryRun:       cfg.DryRun,
 			},
 		)
-	case "exoscale":
-		p, err = exoscale.NewExoscaleProvider(cfg.ExoscaleEndpoint, cfg.ExoscaleAPIKey, cfg.ExoscaleAPISecret, cfg.DryRun, exoscale.ExoscaleWithDomain(domainFilter), exoscale.ExoscaleWithLogging()), nil
 	case "inmemory":
 		p, err = inmemory.NewInMemoryProvider(inmemory.InMemoryInitZones(cfg.InMemoryZones), inmemory.InMemoryWithDomain(domainFilter), inmemory.InMemoryWithLogging()), nil
 	case "designate":
@@ -750,7 +737,6 @@ func createProviderFromCfg(ctx context.Context, cfg *externaldns.Config, endpoin
 				Server:       cfg.PDNSServer,
 				APIKey:       cfg.PDNSAPIKey,
 				TLSConfig: pdns.TLSConfig{
-					TLSEnabled:            cfg.PDNSTLSEnabled,
 					CAFilePath:            cfg.TLSCA,
 					ClientCertFilePath:    cfg.TLSClientCert,
 					ClientCertKeyFilePath: cfg.TLSClientCertKey,
@@ -761,10 +747,18 @@ func createProviderFromCfg(ctx context.Context, cfg *externaldns.Config, endpoin
 		var config *oci.OCIConfig
 		config, err = oci.LoadOCIConfig(cfg.OCIConfigFile)
 		if err == nil {
-			p, err = oci.NewOCIProvider(*config, domainFilter, zoneIDFilter, cfg.DryRun)
+			p, err = oci.NewOCIProvider(*config, domainFilter, zoneIDFilter, cfg.OCIZoneScope, cfg.DryRun)
 		}
 	case "rfc2136":
-		p, err = rfc2136.NewRfc2136Provider(cfg.RFC2136Host, cfg.RFC2136Port, cfg.RFC2136Zone, cfg.RFC2136Insecure, cfg.RFC2136TSIGKeyName, cfg.RFC2136TSIGSecret, cfg.RFC2136TSIGSecretAlg, cfg.RFC2136TAXFR, domainFilter, cfg.DryRun, cfg.RFC2136MinTTL, cfg.RFC2136GSSTSIG, cfg.RFC2136KerberosUsername, cfg.RFC2136KerberosPassword, cfg.RFC2136KerberosRealm, cfg.RFC2136BatchChangeSize, nil)
+		tlsConfig := rfc2136.TLSConfig{
+			UseTLS:                cfg.RFC2136UseTLS,
+			SkipTLSVerify:         cfg.RFC2136SkipTLSVerify,
+			CAFilePath:            cfg.TLSCA,
+			ClientCertFilePath:    cfg.TLSClientCert,
+			ClientCertKeyFilePath: cfg.TLSClientCertKey,
+			ServerName:            "",
+		}
+		p, err = rfc2136.NewRfc2136Provider(cfg.RFC2136Host, cfg.RFC2136Port, cfg.RFC2136Zone, cfg.RFC2136Insecure, cfg.RFC2136TSIGKeyName, cfg.RFC2136TSIGSecret, cfg.RFC2136TSIGSecretAlg, cfg.RFC2136TAXFR, domainFilter, cfg.DryRun, cfg.RFC2136MinTTL, cfg.RFC2136GSSTSIG, cfg.RFC2136KerberosUsername, cfg.RFC2136KerberosPassword, cfg.RFC2136KerberosRealm, cfg.RFC2136BatchChangeSize, tlsConfig, nil)
 	case "ns1":
 		p, err = ns1.NewNS1Provider(
 			ns1.NS1Config{
@@ -792,7 +786,7 @@ func createProviderFromCfg(ctx context.Context, cfg *externaldns.Config, endpoin
 		log.Fatalf("unknown dns provider: %s", cfg.Provider)
 	}
 
-	return &p, err
+	return p, err
 }
 
 func createRegistry(cfg *externaldns.Config, p provider.Provider) (registry.Registry, error) {
@@ -803,7 +797,7 @@ func createRegistry(cfg *externaldns.Config, p provider.Provider) (registry.Regi
 	case "noop":
 		r, err = registry.NewNoopRegistry(p)
 	case "txt":
-		r, err = registry.NewTXTRegistry(p, cfg.TXTPrefix, cfg.TXTSuffix, cfg.TXTOwnerID, cfg.TXTCacheInterval, cfg.TXTWildcardReplacement, cfg.ManagedDNSRecordTypes)
+		r, err = registry.NewTXTRegistry(p, cfg.TXTPrefix, cfg.TXTSuffix, cfg.TXTOwnerID, cfg.TXTCacheInterval, cfg.TXTWildcardReplacement, cfg.ManagedDNSRecordTypes, cfg.ExcludeDNSRecordTypes, cfg.TXTEncryptEnabled, []byte(cfg.TXTEncryptAESKey))
 	case "aws-sd":
 		r, err = registry.NewAWSSDRegistry(p.(*awssd.AWSSDProvider), cfg.TXTOwnerID)
 	default:

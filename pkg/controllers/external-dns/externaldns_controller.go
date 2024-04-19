@@ -37,7 +37,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
 var mutex sync.Mutex
@@ -187,9 +186,8 @@ func (r *ExternalDNSReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *ExternalDNSReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	secretToEdns := handler.EnqueueRequestsFromMapFunc(func(object client.Object) []reconcile.Request {
+	secretToEdns := handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, object client.Object) []reconcile.Request {
 		reconcileReq := make([]reconcile.Request, 0)
-		ctx := context.TODO()
 		ednsList := &api.ExternalDNSList{}
 
 		if err := mgr.GetClient().List(ctx, ednsList, client.InNamespace(object.GetNamespace())); err != nil {
@@ -226,7 +224,7 @@ func (r *ExternalDNSReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	// for dynamic watcher
 	controller, err := ctrl.NewControllerManagedBy(mgr).
 		For(&api.ExternalDNS{}).
-		Watches(&source.Kind{Type: &core.Secret{}}, secretToEdns).
+		Watches(&core.Secret{}, secretToEdns).
 		Build(r)
 	if err != nil {
 		klog.Error("failed to build controller.", err.Error())
@@ -234,6 +232,7 @@ func (r *ExternalDNSReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	}
 
 	r.watcher = &informers.ObjectTracker{
+		Manager:    mgr,
 		Controller: controller,
 	}
 

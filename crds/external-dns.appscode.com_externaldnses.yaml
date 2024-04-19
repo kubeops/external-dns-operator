@@ -162,10 +162,6 @@ spec:
                     required:
                     - name
                     type: object
-                  zonesPerPage:
-                    description: 'When using the Cloudflare provider, specify how
-                      many zones per page listed, max. possible 50 (default: 50)'
-                    type: integer
                 type: object
               connectorSourceServer:
                 description: The server to connect for connector source, valid only

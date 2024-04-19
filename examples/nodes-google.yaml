@@ -4,8 +4,6 @@ metadata:
   name: google-nodes
   namespace: demo
 spec:
-  providerSecretRef:
-    name: google-credential
   source:
     type:
       group: ""
@@ -13,8 +11,8 @@ spec:
       kind: Node
     node:
       #multiple label filter, comma separated
-      labelFilter: "node-pool-id=123xyz,beta.kubernetes.io/arch=amd64"
-      annotationFilter: lke.linode.com/wgip=0.0.0.1
+#      labelFilter: "node-pool-id=123xyz,beta.kubernetes.io/arch=amd64"
+#      annotationFilter: lke.linode.com/wgip=0.0.0.1
       fqdnTemplate: node.example.com
   registry: txt
   txtOwnerID: external-dns

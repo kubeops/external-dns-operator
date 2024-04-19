@@ -18530,13 +18530,6 @@ func schema_external_dns_operator_apis_external_v1alpha1_CloudflareProvider(ref 
 							Format:      "",
 						},
 					},
-					"zonesPerPage": {
-						SchemaProps: spec.SchemaProps{
-							Description: "When using the Cloudflare provider, specify how many zones per page listed, max. possible 50 (default: 50)",
-							Type:        []string{"integer"},
-							Format:      "int32",
-						},
-					},
 					"baseURL": {
 						SchemaProps: spec.SchemaProps{
 							Type:   []string{"string"},

@@ -91,10 +91,6 @@ type CloudflareProvider struct {
 	// +optional
 	Proxied *bool `json:"proxied,omitempty"`
 
-	// When using the Cloudflare provider, specify how many zones per page listed, max. possible 50 (default: 50)
-	// +optional
-	ZonesPerPage *int `json:"zonesPerPage,omitempty"`
-
 	// +optional
 	BaseURL string `json:"baseURL,omitempty"`
 
