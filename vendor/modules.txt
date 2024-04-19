@@ -234,10 +234,6 @@ github.com/datawire/ambassador/pkg/api/getambassador.io/v2
 # github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
 ## explicit
 github.com/davecgh/go-spew/spew
-# github.com/deepmap/oapi-codegen v1.9.1
-## explicit; go 1.16
-github.com/deepmap/oapi-codegen/pkg/runtime
-github.com/deepmap/oapi-codegen/pkg/types
 # github.com/denverdino/aliyungo v0.0.0-20230411124812-ab98a9173ace
 ## explicit; go 1.15
 github.com/denverdino/aliyungo/metadata
@@ -260,12 +256,6 @@ github.com/evanphx/json-patch
 ## explicit; go 1.18
 github.com/evanphx/json-patch/v5
 github.com/evanphx/json-patch/v5/internal/json
-# github.com/exoscale/egoscale v0.102.3
-## explicit; go 1.20
-github.com/exoscale/egoscale/v2
-github.com/exoscale/egoscale/v2/api
-github.com/exoscale/egoscale/v2/oapi
-github.com/exoscale/egoscale/version
 # github.com/fatih/structs v1.1.0
 ## explicit
 github.com/fatih/structs
@@ -349,9 +339,6 @@ github.com/goccy/go-json/internal/runtime
 # github.com/gofrs/flock v0.8.1
 ## explicit
 github.com/gofrs/flock
-# github.com/gofrs/uuid v4.4.0+incompatible
-## explicit
-github.com/gofrs/uuid
 # github.com/gogo/protobuf v1.3.2
 ## explicit; go 1.15
 github.com/gogo/protobuf/gogoproto
@@ -450,6 +437,8 @@ github.com/gophercloud/gophercloud/openstack/identity/v3/extensions/oauth1
 github.com/gophercloud/gophercloud/openstack/identity/v3/tokens
 github.com/gophercloud/gophercloud/openstack/utils
 github.com/gophercloud/gophercloud/pagination
+# github.com/gorilla/mux v1.8.0
+## explicit; go 1.12
 # github.com/hashicorp/errwrap v1.1.0
 ## explicit
 github.com/hashicorp/errwrap
@@ -702,9 +691,6 @@ github.com/pkg/browser
 # github.com/pkg/errors v0.9.1
 ## explicit
 github.com/pkg/errors
-# github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2
-## explicit
-github.com/pmezard/go-difflib/difflib
 # github.com/projectcontour/contour v1.28.2
 ## explicit; go 1.21
 github.com/projectcontour/contour/apis/projectcontour/v1
@@ -795,13 +781,6 @@ github.com/spf13/viper/internal/encoding/javaproperties
 github.com/spf13/viper/internal/encoding/json
 github.com/spf13/viper/internal/encoding/toml
 github.com/spf13/viper/internal/encoding/yaml
-# github.com/stretchr/objx v0.5.2
-## explicit; go 1.20
-github.com/stretchr/objx
-# github.com/stretchr/testify v1.9.0
-## explicit; go 1.17
-github.com/stretchr/testify/assert
-github.com/stretchr/testify/mock
 # github.com/subosito/gotenv v1.6.0
 ## explicit; go 1.18
 github.com/subosito/gotenv
@@ -1847,7 +1826,6 @@ sigs.k8s.io/external-dns/provider/digitalocean
 sigs.k8s.io/external-dns/provider/dnsimple
 sigs.k8s.io/external-dns/provider/dyn
 sigs.k8s.io/external-dns/provider/dyn/soap
-sigs.k8s.io/external-dns/provider/exoscale
 sigs.k8s.io/external-dns/provider/gandi
 sigs.k8s.io/external-dns/provider/godaddy
 sigs.k8s.io/external-dns/provider/google
