@@ -385,8 +385,6 @@ github.com/google/go-querystring/query
 ## explicit; go 1.12
 github.com/google/gofuzz
 github.com/google/gofuzz/bytesource
-# github.com/google/pprof v0.0.0-20221118152302-e6195bd50e26
-## explicit; go 1.18
 # github.com/google/s2a-go v0.1.7
 ## explicit; go 1.19
 github.com/google/s2a-go
@@ -437,8 +435,6 @@ github.com/gophercloud/gophercloud/openstack/identity/v3/extensions/oauth1
 github.com/gophercloud/gophercloud/openstack/identity/v3/tokens
 github.com/gophercloud/gophercloud/openstack/utils
 github.com/gophercloud/gophercloud/pagination
-# github.com/gorilla/mux v1.8.0
-## explicit; go 1.12
 # github.com/hashicorp/errwrap v1.1.0
 ## explicit
 github.com/hashicorp/errwrap
@@ -593,7 +589,7 @@ github.com/nesv/go-dynect/dynect
 # github.com/nic-at/rc0go v1.1.1
 ## explicit
 github.com/nic-at/rc0go
-# github.com/nxadm/tail v1.4.11
+# github.com/nxadm/tail v1.4.8
 ## explicit; go 1.13
 github.com/nxadm/tail
 github.com/nxadm/tail/ratelimiter
@@ -1753,7 +1749,7 @@ kmodules.xyz/client-go/tools/clusterid
 # moul.io/http2curl v1.0.0
 ## explicit
 moul.io/http2curl
-# sigs.k8s.io/controller-runtime v0.17.3 => github.com/kmodules/controller-runtime v0.17.4-0.20240410011645-f1b2f533ea66
+# sigs.k8s.io/controller-runtime v0.17.2 => github.com/kmodules/controller-runtime v0.17.4-0.20240410011645-f1b2f533ea66
 ## explicit; go 1.21
 sigs.k8s.io/controller-runtime
 sigs.k8s.io/controller-runtime/pkg/builder
@@ -1804,7 +1800,7 @@ sigs.k8s.io/controller-runtime/pkg/webhook
 sigs.k8s.io/controller-runtime/pkg/webhook/admission
 sigs.k8s.io/controller-runtime/pkg/webhook/conversion
 sigs.k8s.io/controller-runtime/pkg/webhook/internal/metrics
-# sigs.k8s.io/external-dns v0.13.1 => github.com/kubeops/external-dns v0.14.2-0.20240410014852-72743e265ef6
+# sigs.k8s.io/external-dns v0.14.1 => github.com/kubeops/external-dns v0.14.2-0.20240410014852-72743e265ef6
 ## explicit; go 1.22
 sigs.k8s.io/external-dns/endpoint
 sigs.k8s.io/external-dns/pkg/apis/externaldns
