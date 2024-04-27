@@ -245,15 +245,15 @@ type SourceConfig struct {
 
 	// For source type Node
 	// +optional
-	Node *NodeConfig `json:"node"`
+	Node *NodeConfig `json:"node,omitempty"`
 
 	// For source type Service
 	// +optional
-	Service *ServiceConfig `json:"service"`
+	Service *ServiceConfig `json:"service,omitempty"`
 
 	// For source type Ingress
 	// +optional
-	Ingress *IngressConfig `json:"ingress"`
+	Ingress *IngressConfig `json:"ingress,omitempty"`
 }
 
 // GenericSecretReference contains the information of the provider secret. Name is for secret name and CredentialKey is for specifying the key of the secret.
@@ -356,7 +356,7 @@ type ExternalDNSSpec struct {
 
 	// Google provider
 	// +optional
-	Google *GoogleProvider `json:"google"`
+	Google *GoogleProvider `json:"google,omitempty"`
 
 	//
 	//POLICY INFORMATION
