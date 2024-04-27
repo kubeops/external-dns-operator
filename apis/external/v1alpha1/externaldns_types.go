@@ -176,7 +176,7 @@ type ServiceConfig struct {
 
 	// Always publish also not ready addresses for headless services
 	// +optional
-	AlwaysPublishNotReadyAddresses *bool `json:"alwaysPublishNotReadyAddresses"`
+	AlwaysPublishNotReadyAddresses *bool `json:"alwaysPublishNotReadyAddresses,omitempty"`
 
 	// The service types to take care about (default all, expected: ClusterIP, NodePort, LoadBalancer or ExternalName)
 	// +optional
