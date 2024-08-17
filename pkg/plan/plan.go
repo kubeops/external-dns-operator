@@ -224,13 +224,13 @@ func SetDNSRecords(ctx context.Context, edns *api.ExternalDNS) ([]api.DNSRecord,
 
 	reg, err := createRegistry(cfg, pvdr)
 	if err != nil {
-		klog.Errorf(err.Error())
+		klog.Errorln(err)
 		return nil, err
 	}
 
 	dnsRecs, err := createAndApplyPlan(ctx, cfg, reg, endpointsSource)
 	if err != nil {
-		klog.Errorf(err.Error())
+		klog.Errorln(err)
 		return nil, err
 	}
 
