@@ -18,6 +18,7 @@ package plan
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"regexp"
@@ -88,6 +89,7 @@ var defaultConfig = externaldns.Config{
 	Namespace:                   "",
 	AnnotationFilter:            "",
 	LabelFilter:                 labels.Everything().String(),
+	IngressClassNames:           nil,
 	FQDNTemplate:                "",
 	CombineFQDNAndAnnotation:    false,
 	IgnoreHostnameAnnotation:    false,
@@ -105,27 +107,36 @@ var defaultConfig = externaldns.Config{
 	GoogleBatchChangeInterval:   time.Second,
 	GoogleZoneVisibility:        "",
 	DomainFilter:                []string{},
+	ZoneIDFilter:                []string{},
 	ExcludeDomains:              []string{},
 	RegexDomainFilter:           regexp.MustCompile(""),
 	RegexDomainExclusion:        regexp.MustCompile(""),
+	TargetNetFilter:             []string{},
+	ExcludeTargetNets:           []string{},
 	AlibabaCloudConfigFile:      "/etc/kubernetes/alibaba-cloud.json",
 	AWSZoneType:                 "",
 	AWSZoneTagFilter:            []string{},
+	AWSZoneMatchParent:          false,
 	AWSAssumeRole:               "",
+	AWSAssumeRoleExternalID:     "",
 	AWSBatchChangeSize:          1000,
+	AWSBatchChangeSizeBytes:     32000,
+	AWSBatchChangeSizeValues:    1000,
 	AWSBatchChangeInterval:      time.Second,
 	AWSEvaluateTargetHealth:     true,
 	AWSAPIRetries:               3,
 	AWSPreferCNAME:              false,
 	AWSZoneCacheDuration:        0 * time.Second,
 	AWSSDServiceCleanup:         false,
+	AWSDynamoDBRegion:           "",
+	AWSDynamoDBTable:            "external-dns",
 	AzureConfigFile:             "/etc/kubernetes/azure.json",
 	AzureResourceGroup:          "",
 	AzureSubscriptionID:         "",
 	BluecatConfigFile:           "/etc/kubernetes/bluecat.json",
 	BluecatDNSDeployType:        "no-deploy",
 	CloudflareProxied:           false,
-	CloudflareDNSRecordsPerPage: 50,
+	CloudflareDNSRecordsPerPage: 100,
 	CoreDNSPrefix:               "/skydns/",
 	RcodezeroTXTEncrypt:         false,
 	AkamaiServiceConsumerDomain: "",
@@ -146,6 +157,8 @@ var defaultConfig = externaldns.Config{
 	InfobloxCreatePTR:           false,
 	InfobloxCacheDuration:       0,
 	OCIConfigFile:               "/etc/kubernetes/oci.yaml",
+	OCIZoneScope:                "GLOBAL",
+	OCIZoneCacheDuration:        0 * time.Second,
 	InMemoryZones:               []string{},
 	OVHEndpoint:                 "ovh-eu",
 	OVHApiRateLimit:             20,
@@ -163,6 +176,8 @@ var defaultConfig = externaldns.Config{
 	TXTCacheInterval:            0,
 	TXTWildcardReplacement:      "",
 	MinEventSyncInterval:        5 * time.Second,
+	TXTEncryptEnabled:           false,
+	TXTEncryptAESKey:            "",
 	Interval:                    time.Minute,
 	Once:                        false,
 	DryRun:                      false,
@@ -170,7 +185,9 @@ var defaultConfig = externaldns.Config{
 	LogFormat:                   "text",
 	MetricsAddress:              ":7979",
 	LogLevel:                    logrus.InfoLevel.String(),
+	ExoscaleAPIEnvironment:      "api",
 	ExoscaleEndpoint:            "https://api.exoscale.ch/dns",
+	ExoscaleAPIZone:             "ch-gva-2",
 	ExoscaleAPIKey:              "",
 	ExoscaleAPISecret:           "",
 	CRDSourceAPIVersion:         "externaldns.k8s.io/v1alpha1",
@@ -193,12 +210,15 @@ var defaultConfig = externaldns.Config{
 	RFC2136TAXFR:                true,
 	RFC2136MinTTL:               0,
 	RFC2136BatchChangeSize:      50,
+	RFC2136UseTLS:               false,
+	RFC2136SkipTLSVerify:        false,
 	NS1Endpoint:                 "",
 	NS1IgnoreSSL:                false,
 	TransIPAccountName:          "",
 	TransIPPrivateKeyFile:       "",
 	DigitalOceanAPIPageSize:     50,
-	ManagedDNSRecordTypes:       []string{endpoint.RecordTypeA, endpoint.RecordTypeCNAME},
+	ManagedDNSRecordTypes:       []string{endpoint.RecordTypeA, endpoint.RecordTypeAAAA, endpoint.RecordTypeCNAME},
+	ExcludeDNSRecordTypes:       []string{},
 	GoDaddyAPIKey:               "",
 	GoDaddySecretKey:            "",
 	GoDaddyTTL:                  600,
@@ -248,18 +268,18 @@ func createAndApplyPlan(ctx context.Context, cfg *externaldns.Config, r registry
 
 	records, err := r.Records(ctx)
 	if err != nil {
-		return nil, err
+		return nil, errors.New("failed to list records, " + err.Error())
 	}
 
 	ctx = context.WithValue(ctx, provider.RecordsContextKey, records)
 	endpoints, err := endpointSource.Endpoints(ctx)
 	if err != nil {
-		return nil, err
+		return nil, errors.New("failed to list source endpoints, " + err.Error())
 	}
 
 	endpoints, err = r.AdjustEndpoints(endpoints)
 	if err != nil {
-		return nil, err
+		return nil, errors.New("failed to adjust source endpoints, " + err.Error())
 	}
 
 	pln := &plan.Plan{
