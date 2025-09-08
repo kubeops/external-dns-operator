@@ -2,8 +2,6 @@ package linodego
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 )
 
 // InstanceConfigInterface contains information about a configuration's network interface
@@ -52,6 +50,7 @@ func getInstanceConfigInterfacesCreateOptionsList(
 	for index, configInterface := range interfaces {
 		interfaceOptsList[index] = configInterface.GetCreateOptions()
 	}
+
 	return interfaceOptsList
 }
 
@@ -109,19 +108,8 @@ func (c *Client) AppendInstanceConfigInterface(
 	configID int,
 	opts InstanceConfigInterfaceCreateOptions,
 ) (*InstanceConfigInterface, error) {
-	body, err := json.Marshal(opts)
-	if err != nil {
-		return nil, err
-	}
-
-	req := c.R(ctx).SetResult(&InstanceConfigInterface{}).SetBody(string(body))
-	e := fmt.Sprintf("/linode/instances/%d/configs/%d/interfaces", linodeID, configID)
-	r, err := coupleAPIErrors(req.Post(e))
-	if err != nil {
-		return nil, err
-	}
-
-	return r.Result().(*InstanceConfigInterface), nil
+	e := formatAPIPath("/linode/instances/%d/configs/%d/interfaces", linodeID, configID)
+	return doPOSTRequest[InstanceConfigInterface](ctx, c, e, opts)
 }
 
 func (c *Client) GetInstanceConfigInterface(
@@ -130,18 +118,14 @@ func (c *Client) GetInstanceConfigInterface(
 	configID int,
 	interfaceID int,
 ) (*InstanceConfigInterface, error) {
-	e := fmt.Sprintf(
+	e := formatAPIPath(
 		"linode/instances/%d/configs/%d/interfaces/%d",
 		linodeID,
 		configID,
 		interfaceID,
 	)
-	req := c.R(ctx).SetResult(&InstanceConfigInterface{})
-	r, err := coupleAPIErrors(req.Get(e))
-	if err != nil {
-		return nil, err
-	}
-	return r.Result().(*InstanceConfigInterface), nil
+
+	return doGETRequest[InstanceConfigInterface](ctx, c, e)
 }
 
 func (c *Client) ListInstanceConfigInterfaces(
@@ -149,17 +133,18 @@ func (c *Client) ListInstanceConfigInterfaces(
 	linodeID int,
 	configID int,
 ) ([]InstanceConfigInterface, error) {
-	e := fmt.Sprintf(
+	e := formatAPIPath(
 		"linode/instances/%d/configs/%d/interfaces",
 		linodeID,
 		configID,
 	)
-	req := c.R(ctx).SetResult([]InstanceConfigInterface{})
-	r, err := coupleAPIErrors(req.Get(e))
+
+	response, err := doGETRequest[[]InstanceConfigInterface](ctx, c, e)
 	if err != nil {
 		return nil, err
 	}
-	return *r.Result().(*[]InstanceConfigInterface), nil
+
+	return *response, nil
 }
 
 func (c *Client) UpdateInstanceConfigInterface(
@@ -169,23 +154,14 @@ func (c *Client) UpdateInstanceConfigInterface(
 	interfaceID int,
 	opts InstanceConfigInterfaceUpdateOptions,
 ) (*InstanceConfigInterface, error) {
-	body, err := json.Marshal(opts)
-	if err != nil {
-		return nil, err
-	}
-
-	e := fmt.Sprintf(
+	e := formatAPIPath(
 		"linode/instances/%d/configs/%d/interfaces/%d",
 		linodeID,
 		configID,
 		interfaceID,
 	)
-	req := c.R(ctx).SetResult(&InstanceConfigInterface{}).SetBody(string(body))
-	r, err := coupleAPIErrors(req.Put(e))
-	if err != nil {
-		return nil, err
-	}
-	return r.Result().(*InstanceConfigInterface), nil
+
+	return doPUTRequest[InstanceConfigInterface](ctx, c, e, opts)
 }
 
 func (c *Client) DeleteInstanceConfigInterface(
@@ -194,14 +170,14 @@ func (c *Client) DeleteInstanceConfigInterface(
 	configID int,
 	interfaceID int,
 ) error {
-	e := fmt.Sprintf(
+	e := formatAPIPath(
 		"linode/instances/%d/configs/%d/interfaces/%d",
 		linodeID,
 		configID,
 		interfaceID,
 	)
-	_, err := coupleAPIErrors(c.R(ctx).Delete(e))
-	return err
+
+	return doDELETERequest(ctx, c, e)
 }
 
 func (c *Client) ReorderInstanceConfigInterfaces(
@@ -210,18 +186,11 @@ func (c *Client) ReorderInstanceConfigInterfaces(
 	configID int,
 	opts InstanceConfigInterfacesReorderOptions,
 ) error {
-	body, err := json.Marshal(opts)
-	if err != nil {
-		return err
-	}
-	e := fmt.Sprintf(
+	e := formatAPIPath(
 		"linode/instances/%d/configs/%d/interfaces/order",
 		linodeID,
 		configID,
 	)
 
-	req := c.R(ctx).SetBody(string(body))
-	_, err = coupleAPIErrors(req.Post(e))
-
-	return err
+	return doPOSTRequestNoResponseBody(ctx, c, e, opts)
 }

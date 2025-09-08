@@ -33,7 +33,7 @@ const (
 	gandiCreate          = "CREATE"
 	gandiDelete          = "DELETE"
 	gandiUpdate          = "UPDATE"
-	gandiTTL             = 600
+	defaultTTL           = 600
 	gandiLiveDNSProvider = "livedns"
 )
 
@@ -47,14 +47,14 @@ type GandiProvider struct {
 	provider.BaseProvider
 	LiveDNSClient LiveDNSClientAdapter
 	DomainClient  DomainClientAdapter
-	domainFilter  endpoint.DomainFilter
+	domainFilter  *endpoint.DomainFilter
 	DryRun        bool
 }
 
-func NewGandiProvider(ctx context.Context, domainFilter endpoint.DomainFilter, dryRun bool) (*GandiProvider, error) {
+func NewGandiProvider(ctx context.Context, domainFilter *endpoint.DomainFilter, dryRun bool) (*GandiProvider, error) {
 	key, ok_key := os.LookupEnv("GANDI_KEY")
 	pat, ok_pat := os.LookupEnv("GANDI_PAT")
-	if !(ok_key || ok_pat) {
+	if !ok_key && !ok_pat {
 		return nil, errors.New("no environment variable GANDI_KEY or GANDI_PAT provided")
 	}
 	if ok_key {
@@ -83,12 +83,12 @@ func NewGandiProvider(ctx context.Context, domainFilter endpoint.DomainFilter, d
 	return gandiProvider, nil
 }
 
-func (p *GandiProvider) Zones() (zones []string, err error) {
+func (p *GandiProvider) Zones() ([]string, error) {
 	availableDomains, err := p.DomainClient.ListDomains()
 	if err != nil {
 		return nil, err
 	}
-	zones = []string{}
+	zones := []string{}
 	for _, domain := range availableDomains {
 		if !p.domainFilter.Match(domain.FQDN) {
 			log.Debugf("Excluding domain %s by domain-filter", domain.FQDN)
@@ -156,7 +156,7 @@ func (p *GandiProvider) ApplyChanges(ctx context.Context, changes *plan.Changes)
 	return p.submitChanges(ctx, combinedChanges)
 }
 
-func (p *GandiProvider) submitChanges(ctx context.Context, changes []*GandiChanges) error {
+func (p *GandiProvider) submitChanges(_ context.Context, changes []*GandiChanges) error {
 	if len(changes) == 0 {
 		log.Infof("All records are already up to date")
 		return nil
@@ -255,7 +255,7 @@ func (p *GandiProvider) submitChanges(ctx context.Context, changes []*GandiChang
 
 func (p *GandiProvider) newGandiChanges(action string, endpoints []*endpoint.Endpoint) []*GandiChanges {
 	changes := make([]*GandiChanges, 0, len(endpoints))
-	ttl := gandiTTL
+	ttl := defaultTTL
 	for _, e := range endpoints {
 		if e.RecordTTL.IsConfigured() {
 			ttl = int(e.RecordTTL)

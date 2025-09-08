@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"slices"
 	"strconv"
 	"time"
 
@@ -44,6 +45,7 @@ func (client Client) WaitForInstanceStatus(ctx context.Context, instanceID int, 
 			if err != nil {
 				return instance, err
 			}
+
 			complete := (instance.Status == status)
 
 			if complete {
@@ -75,7 +77,6 @@ func (client Client) WaitForInstanceDiskStatus(ctx context.Context, instanceID i
 			}
 
 			for _, disk := range disks {
-				disk := disk
 				if disk.ID == diskID {
 					complete := (disk.Status == status)
 					if complete {
@@ -107,6 +108,7 @@ func (client Client) WaitForVolumeStatus(ctx context.Context, volumeID int, stat
 			if err != nil {
 				return volume, err
 			}
+
 			complete := (volume.Status == status)
 
 			if complete {
@@ -120,7 +122,13 @@ func (client Client) WaitForVolumeStatus(ctx context.Context, volumeID int, stat
 
 // WaitForSnapshotStatus waits for the Snapshot to reach the desired state
 // before returning. It will timeout with an error after timeoutSeconds.
-func (client Client) WaitForSnapshotStatus(ctx context.Context, instanceID int, snapshotID int, status InstanceSnapshotStatus, timeoutSeconds int) (*InstanceSnapshot, error) {
+func (client Client) WaitForSnapshotStatus(
+	ctx context.Context,
+	instanceID int,
+	snapshotID int,
+	status InstanceSnapshotStatus,
+	timeoutSeconds int,
+) (*InstanceSnapshot, error) {
 	ctx, cancel := context.WithTimeout(ctx, time.Duration(timeoutSeconds)*time.Second)
 	defer cancel()
 
@@ -134,6 +142,7 @@ func (client Client) WaitForSnapshotStatus(ctx context.Context, instanceID int, 
 			if err != nil {
 				return snapshot, err
 			}
+
 			complete := (snapshot.Status == status)
 
 			if complete {
@@ -194,6 +203,7 @@ func (client Client) WaitForLKEClusterStatus(ctx context.Context, clusterID int,
 			if err != nil {
 				return cluster, err
 			}
+
 			complete := (cluster.Status == status)
 
 			if complete {
@@ -259,6 +269,7 @@ func (client Client) WaitForLKEClusterConditions(
 				result, err := condition(ctx, conditionOptions)
 				if err != nil {
 					log.Printf("[WARN] Ignoring WaitForLKEClusterConditions conditional error: %s", err)
+
 					if !options.Retry {
 						return err
 					}
@@ -273,6 +284,7 @@ func (client Client) WaitForLKEClusterConditions(
 			}
 		}
 	}
+
 	return nil
 }
 
@@ -431,6 +443,7 @@ func (client Client) WaitForImageStatus(ctx context.Context, imageID string, sta
 			if err != nil {
 				return image, err
 			}
+
 			complete := image.Status == status
 
 			if complete {
@@ -442,7 +455,43 @@ func (client Client) WaitForImageStatus(ctx context.Context, imageID string, sta
 	}
 }
 
+// WaitForImageRegionStatus waits for an Image's replica to reach the desired state
+// before returning.
+func (client Client) WaitForImageRegionStatus(ctx context.Context, imageID, region string, status ImageRegionStatus) (*Image, error) {
+	ticker := time.NewTicker(client.pollInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			image, err := client.GetImage(ctx, imageID)
+			if err != nil {
+				return image, err
+			}
+
+			replicaIdx := slices.IndexFunc(
+				image.Regions,
+				func(r ImageRegion) bool {
+					return r.Region == region
+				},
+			)
+
+			// If no replica was found or the status doesn't match, try again
+			if replicaIdx < 0 || image.Regions[replicaIdx].Status != status {
+				continue
+			}
+
+			return image, nil
+
+		case <-ctx.Done():
+			return nil, fmt.Errorf("failed to wait for Image %s status %s: %w", imageID, status, ctx.Err())
+		}
+	}
+}
+
 // WaitForMySQLDatabaseBackup waits for the backup with the given label to be available.
+// Deprecated: WaitForMySQLDatabaseBackup is a deprecated method, as the backup endpoints are no longer supported in DBaaS V2.
+// In DBaaS V2, databases can be backed up via database forking.
 func (client Client) WaitForMySQLDatabaseBackup(ctx context.Context, dbID int, label string, timeoutSeconds int) (*MySQLDatabaseBackup, error) {
 	ctx, cancel := context.WithTimeout(ctx, time.Duration(timeoutSeconds)*time.Second)
 	defer cancel()
@@ -470,6 +519,8 @@ func (client Client) WaitForMySQLDatabaseBackup(ctx context.Context, dbID int, l
 }
 
 // WaitForPostgresDatabaseBackup waits for the backup with the given label to be available.
+// Deprecated: WaitForPostgresDatabaseBackup is a deprecated method, as the backup endpoints are no longer supported in DBaaS V2.
+// In DBaaS V2, databases can be backed up via database forking.
 func (client Client) WaitForPostgresDatabaseBackup(ctx context.Context, dbID int, label string, timeoutSeconds int) (*PostgresDatabaseBackup, error) {
 	ctx, cancel := context.WithTimeout(ctx, time.Duration(timeoutSeconds)*time.Second)
 	defer cancel()
@@ -705,7 +756,7 @@ func (p *EventPoller) WaitForFinished(
 	for {
 		select {
 		case <-ticker.C:
-			event, err := p.client.GetEvent(ctx, event.ID)
+			event, err = p.client.GetEvent(ctx, event.ID)
 			if err != nil {
 				return nil, fmt.Errorf("failed to get event: %w", err)
 			}

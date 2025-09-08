@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, 2024, Oracle and/or its affiliates.  All rights reserved.
+// Copyright (c) 2016, 2018, 2025, Oracle and/or its affiliates.  All rights reserved.
 // This software is dual-licensed to you under the Universal Permissive License (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl or Apache License 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose either license.
 
 // Package common provides supporting functions and structs used by service packages
@@ -122,6 +122,9 @@ const (
 
 	//defaultRefreshIntervalForCustomCerts is the default refresh interval in minutes
 	defaultRefreshIntervalForCustomCerts = 30
+
+	// CustomClientTimeoutEnvVar allows the user to set the timeout in seconds to be used by each service client.
+	CustomClientTimeoutEnvVar = "OCI_CUSTOM_CLIENT_TIMEOUT"
 )
 
 // OciGlobalRefreshIntervalForCustomCerts is the global policy for overriding the refresh interval in minutes.
@@ -242,8 +245,21 @@ func defaultHTTPDispatcher() http.Client {
 		RefreshRate:       time.Duration(refreshInterval) * time.Minute,
 		TLSConfigProvider: GetTLSConfigTemplateForTransport(),
 	}
+
+	// Set client timeout to default or value set in environment variable
+	clientTimeout := defaultTimeout
+	if customTimeout := os.Getenv(CustomClientTimeoutEnvVar); customTimeout != "" {
+		if timeInSeconds, err := strconv.Atoi(customTimeout); err != nil || timeInSeconds < 0 {
+			Logf("WARNING: %s set but could not be converted to a postive integer", CustomClientTimeoutEnvVar)
+		} else {
+			Debugf("Using custom client timeout of %s seconds", customTimeout)
+			clientTimeout = time.Duration(timeInSeconds) * time.Second
+		}
+	}
+
+	// Create the underlying HTTP client
 	httpClient = http.Client{
-		Timeout:   defaultTimeout,
+		Timeout:   clientTimeout,
 		Transport: tp,
 	}
 	return httpClient

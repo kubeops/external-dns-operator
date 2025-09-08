@@ -26,13 +26,21 @@ type HyperdriveConfig struct {
 	Caching HyperdriveConfigCaching `json:"caching,omitempty"`
 }
 
+type HyperdriveOriginType string
+
 type HyperdriveConfigOrigin struct {
-	Database string `json:"database,omitempty"`
-	Password string `json:"password"`
-	Host     string `json:"host,omitempty"`
-	Port     int    `json:"port,omitempty"`
-	Scheme   string `json:"scheme,omitempty"`
-	User     string `json:"user,omitempty"`
+	Database       string `json:"database,omitempty"`
+	Host           string `json:"host,omitempty"`
+	Port           int    `json:"port,omitempty"`
+	Scheme         string `json:"scheme,omitempty"`
+	User           string `json:"user,omitempty"`
+	AccessClientID string `json:"access_client_id,omitempty"`
+}
+
+type HyperdriveConfigOriginWithSecrets struct {
+	HyperdriveConfigOrigin
+	Password           string `json:"password"`
+	AccessClientSecret string `json:"access_client_secret,omitempty"`
 }
 
 type HyperdriveConfigCaching struct {
@@ -47,9 +55,9 @@ type HyperdriveConfigListResponse struct {
 }
 
 type CreateHyperdriveConfigParams struct {
-	Name    string                  `json:"name"`
-	Origin  HyperdriveConfigOrigin  `json:"origin"`
-	Caching HyperdriveConfigCaching `json:"caching,omitempty"`
+	Name    string                            `json:"name"`
+	Origin  HyperdriveConfigOriginWithSecrets `json:"origin"`
+	Caching HyperdriveConfigCaching           `json:"caching,omitempty"`
 }
 
 type HyperdriveConfigResponse struct {
@@ -58,17 +66,17 @@ type HyperdriveConfigResponse struct {
 }
 
 type UpdateHyperdriveConfigParams struct {
-	HyperdriveID string                  `json:"-"`
-	Name         string                  `json:"name"`
-	Origin       HyperdriveConfigOrigin  `json:"origin"`
-	Caching      HyperdriveConfigCaching `json:"caching,omitempty"`
+	HyperdriveID string                            `json:"-"`
+	Name         string                            `json:"name"`
+	Origin       HyperdriveConfigOriginWithSecrets `json:"origin"`
+	Caching      HyperdriveConfigCaching           `json:"caching,omitempty"`
 }
 
 type ListHyperdriveConfigParams struct{}
 
 // ListHyperdriveConfigs returns the Hyperdrive configs owned by an account.
 //
-// API reference: https://developers.cloudflare.com/api/operations/list-hyperdrive
+// API reference: https://developers.cloudflare.com/api/resources/hyperdrive/subresources/configs/methods/list/
 func (api *API) ListHyperdriveConfigs(ctx context.Context, rc *ResourceContainer, params ListHyperdriveConfigParams) ([]HyperdriveConfig, error) {
 	if rc.Identifier == "" {
 		return []HyperdriveConfig{}, ErrMissingAccountID
@@ -92,7 +100,7 @@ func (api *API) ListHyperdriveConfigs(ctx context.Context, rc *ResourceContainer
 
 // CreateHyperdriveConfig creates a new Hyperdrive config.
 //
-// API reference: https://developers.cloudflare.com/api/operations/create-hyperdrive
+// API reference: https://developers.cloudflare.com/api/resources/hyperdrive/subresources/configs/methods/create/
 func (api *API) CreateHyperdriveConfig(ctx context.Context, rc *ResourceContainer, params CreateHyperdriveConfigParams) (HyperdriveConfig, error) {
 	if rc.Identifier == "" {
 		return HyperdriveConfig{}, ErrMissingAccountID
@@ -120,7 +128,7 @@ func (api *API) CreateHyperdriveConfig(ctx context.Context, rc *ResourceContaine
 
 // DeleteHyperdriveConfig deletes a Hyperdrive config.
 //
-// API reference: https://developers.cloudflare.com/api/operations/delete-hyperdrive
+// API reference: https://developers.cloudflare.com/api/resources/hyperdrive/subresources/configs/methods/delete/
 func (api *API) DeleteHyperdriveConfig(ctx context.Context, rc *ResourceContainer, hyperdriveID string) error {
 	if rc.Identifier == "" {
 		return ErrMissingAccountID
@@ -140,7 +148,7 @@ func (api *API) DeleteHyperdriveConfig(ctx context.Context, rc *ResourceContaine
 
 // GetHyperdriveConfig returns a single Hyperdrive config based on the ID.
 //
-// API reference: https://developers.cloudflare.com/api/operations/get-hyperdrive
+// API reference: https://developers.cloudflare.com/api/resources/hyperdrive/subresources/configs/methods/get/
 func (api *API) GetHyperdriveConfig(ctx context.Context, rc *ResourceContainer, hyperdriveID string) (HyperdriveConfig, error) {
 	if rc.Identifier == "" {
 		return HyperdriveConfig{}, ErrMissingAccountID
@@ -167,7 +175,7 @@ func (api *API) GetHyperdriveConfig(ctx context.Context, rc *ResourceContainer, 
 
 // UpdateHyperdriveConfig updates a Hyperdrive config.
 //
-// API reference: https://developers.cloudflare.com/api/operations/update-hyperdrive
+// API reference: https://developers.cloudflare.com/api/resources/hyperdrive/subresources/configs/methods/update/
 func (api *API) UpdateHyperdriveConfig(ctx context.Context, rc *ResourceContainer, params UpdateHyperdriveConfigParams) (HyperdriveConfig, error) {
 	if rc.Identifier == "" {
 		return HyperdriveConfig{}, ErrMissingAccountID

@@ -533,12 +533,8 @@ clean:
 .PHONY: run
 run:
 	go run -mod=vendor ./cmd/external-dns-operator run \
-		--v=3 \
-		--secure-port=8443 \
-		--kubeconfig=$(KUBECONFIG) \
-		--authorization-kubeconfig=$(KUBECONFIG) \
-		--authentication-kubeconfig=$(KUBECONFIG) \
-		--authentication-skip-lookup
+    		--v=3 \
+    		--kubeconfig=$(KUBECONFIG)
 
 .PHONY: push-to-kind
 push-to-kind: container
