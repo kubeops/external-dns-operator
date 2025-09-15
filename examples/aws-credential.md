@@ -6,6 +6,7 @@ cat <<-EOF > /local/path/to/credentials
 [default]
 aws_access_key_id = exampleawsaccesskey123
 aws_secret_access_key = exampleawssecretaccesskey456
+region = us-east-1
 EOF
 ```
 
