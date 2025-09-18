@@ -1,24 +1,21 @@
 apiVersion: external-dns.appscode.com/v1alpha1
 kind: ExternalDNS
 metadata:
-  name: aws-edns-node
+  name: aws-edns-svc
   namespace: demo
 spec:
   source:
     type:
       group: ""
       version: v1
-      kind: Node
-    node:
-      #labelFilter: app=demo-node
-      #annotationFilter: lke.linode.com/wgip=0.0.0.0
-      fqdnTemplate: node.prod-test.link
+      kind: Service
+    service:
+      publishInternal: true
   registry: txt
-  txtOwnerID: external-dns
-  txtPrefix: a
+  txtPrefix: abcd
   domainFilter:
     - prod-test.link
-  policy: sync
+  policy: upsert-only
   provider: aws
   aws:
     zoneType: public
