@@ -1,0 +1,20 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: nginx
+  namespace: demo
+  annotations:
+    external-dns.alpha.kubernetes.io/hostname: dmomyapp.prod-test.link
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: server.prod-test.link
+      http:
+        paths:
+          - backend:
+              service:
+                name: nginx
+                port:
+                  number: 80
+            path: /
+            pathType: Prefix

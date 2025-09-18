@@ -1,0 +1,24 @@
+apiVersion: external-dns.appscode.com/v1alpha1
+kind: ExternalDNS
+metadata:
+  name: aws-edns-ing
+  namespace: demo
+spec:
+  source:
+    type:
+      group: networking.k8s.io
+      version: networking.k8s.io/v1
+      kind: Ingress
+    ingress:
+      publishInternal: true
+  registry: txt
+  txtPrefix: xyz
+  domainFilter:
+    - prod-test.link
+  policy: upsert-only
+  provider: aws
+  aws:
+    zoneType: public
+    secretRef:
+      name: aws-credentials
+      credentialKey: credentials

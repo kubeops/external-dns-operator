@@ -1,0 +1,24 @@
+apiVersion: external-dns.appscode.com/v1alpha1
+kind: ExternalDNS
+metadata:
+  name: aws-edns-svc
+  namespace: demo
+spec:
+  source:
+    type:
+      group: ""
+      version: v1
+      kind: Service
+    service:
+      publishInternal: true
+  registry: txt
+  txtPrefix: abcd
+  domainFilter:
+    - prod-test.link
+  policy: upsert-only
+  provider: aws
+  aws:
+    zoneType: public
+    secretRef:
+      name: aws-credentials
+      credentialKey: credentials

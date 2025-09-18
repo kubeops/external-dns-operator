@@ -15,14 +15,16 @@ type VirtualServer struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   VirtualServerSpec   `json:"spec"`
-	Status VirtualServerStatus `json:"status,omitempty"`
+	Spec   VirtualServerSpec    `json:"spec"`
+	Status CustomResourceStatus `json:"status,omitempty"`
 }
 
-// VirtualServerStatus is the status of the VirtualServer resource.
-type VirtualServerStatus struct {
-	VSAddress string `json:"vsAddress,omitempty"`
-	StatusOk  string `json:"status,omitempty"`
+// CustomResourceStatus handles the Resource status for Virtual Server, TransportServer, and Ingresslink
+type CustomResourceStatus struct {
+	VSAddress   string      `json:"vsAddress,omitempty"`
+	Status      string      `json:"status,omitempty"`
+	LastUpdated metav1.Time `json:"lastUpdated,omitempty"`
+	Error       string      `json:"error,omitempty"`
 }
 
 // VirtualServerSpec is the spec of the VirtualServer resource.
@@ -34,6 +36,7 @@ type VirtualServerSpec struct {
 	VirtualServerAddress             string           `json:"virtualServerAddress,omitempty"`
 	AdditionalVirtualServerAddresses []string         `json:"additionalVirtualServerAddresses,omitempty"`
 	IPAMLabel                        string           `json:"ipamLabel,omitempty"`
+	BigIPRouteDomain                 int32            `json:"bigipRouteDomain,omitempty"`
 	VirtualServerName                string           `json:"virtualServerName,omitempty"`
 	VirtualServerHTTPPort            int32            `json:"virtualServerHTTPPort,omitempty"`
 	VirtualServerHTTPSPort           int32            `json:"virtualServerHTTPSPort,omitempty"`
@@ -50,6 +53,7 @@ type VirtualServerSpec struct {
 	ServiceIPAddress                 []ServiceAddress `json:"serviceAddress,omitempty"`
 	PolicyName                       string           `json:"policyName,omitempty"`
 	PersistenceProfile               string           `json:"persistenceProfile,omitempty"`
+	HTTPCompressionProfile           string           `json:"httpCompressionProfile,omitempty"`
 	ProfileMultiplex                 string           `json:"profileMultiplex,omitempty"`
 	DOS                              string           `json:"dos,omitempty"`
 	BotDefense                       string           `json:"botDefense,omitempty"`
@@ -59,6 +63,9 @@ type VirtualServerSpec struct {
 	Partition                        string           `json:"partition,omitempty"`
 	HTMLProfile                      string           `json:"htmlProfile,omitempty"`
 	HostPersistence                  HostPersistence  `json:"hostPersistence,omitempty"`
+	ProfileAccess                    string           `json:"profileAccess,omitempty"`
+	PolicyPerRequestAccess           string           `json:"policyPerRequestAccess,omitempty"`
+	ProfileAdapt                     ProfileAdapt     `json:"profileAdapt,omitempty"`
 }
 
 type HostPersistence struct {
@@ -117,7 +124,7 @@ type VSPool struct {
 	HostRewrite          string                         `json:"hostRewrite,omitempty"`
 	Weight               *int32                         `json:"weight,omitempty"`
 	AlternateBackends    []AlternateBackend             `json:"alternateBackends"`
-	MultiClusterServices []MultiClusterServiceReference `json:"extendedServiceReferences,omitempty"`
+	MultiClusterServices []MultiClusterServiceReference `json:"multiClusterServices,omitempty"`
 }
 
 // TSPool defines a pool object for Transport Server in BIG-IP.
@@ -137,7 +144,8 @@ type TSPool struct {
 	ServiceDownAction    string                         `json:"serviceDownAction,omitempty"`
 	HostRewrite          string                         `json:"hostRewrite,omitempty"`
 	Weight               *int32                         `json:"weight,omitempty"`
-	MultiClusterServices []MultiClusterServiceReference `json:"extendedServiceReferences,omitempty"`
+	AlternateBackends    []AlternateBackend             `json:"alternateBackends,omitempty"`
+	MultiClusterServices []MultiClusterServiceReference `json:"multiClusterServices,omitempty"`
 }
 
 // AlternateBackends lists backend svc of A/B
@@ -157,12 +165,12 @@ type MultiClusterServiceReference struct {
 
 // Monitor defines a monitor object in BIG-IP.
 type Monitor struct {
-	Type       string `json:"type"`
-	Send       string `json:"send"`
-	Recv       string `json:"recv"`
-	Interval   int    `json:"interval"`
-	Timeout    int    `json:"timeout"`
-	TargetPort int32  `json:"targetPort"`
+	Type       string `json:"type,omitempty"`
+	Send       string `json:"send,omitempty"`
+	Recv       string `json:"recv,omitempty"`
+	Interval   int    `json:"interval,omitempty"`
+	Timeout    int    `json:"timeout,omitempty"`
+	TargetPort int32  `json:"targetPort,omitempty"`
 	Name       string `json:"name,omitempty"`
 	Reference  string `json:"reference,omitempty"`
 	SSLProfile string `json:"sslProfile,omitempty"`
@@ -191,20 +199,35 @@ type TLSProfile struct {
 
 // TLSProfileSpec is spec for TLSServer
 type TLSProfileSpec struct {
-	Hosts []string `json:"hosts"`
-	TLS   TLS      `json:"tls"`
+	Hosts     []string         `json:"hosts"`
+	TLS       TLS              `json:"tls"`
+	TLSCipher TLSProfileCipher `json:"tlsCipher"`
+}
+
+// TLSProfileCipher contains required fields for TLSProfileCipher
+type TLSProfileCipher struct {
+	TLSVersion         string   `json:"tlsVersion"`
+	Ciphers            string   `json:"ciphers"`
+	CipherGroup        string   `json:"cipherGroup"`
+	DisableTLSVersions []string `json:"disableTLSVersions"`
+}
+
+type TLSTransportServer struct {
+	ClientSSLs []string `json:"clientSSLs,omitempty"`
+	ServerSSLs []string `json:"serverSSLs,omitempty"`
+	Reference  string   `json:"reference,omitempty"`
 }
 
 // TLS contains required fields for TLS termination
 type TLS struct {
-	Termination     string          `json:"termination"`
-	ClientSSL       string          `json:"clientSSL"`
-	ClientSSLs      []string        `json:"clientSSLs"`
-	ServerSSL       string          `json:"serverSSL"`
-	ServerSSLs      []string        `json:"serverSSLs"`
-	Reference       string          `json:"reference"`
-	ClientSSLParams ClientSSLParams `json:"clientSSLParams"`
-	ServerSSLParams ServerSSLParams `json:"serverSSLParams"`
+	Termination     string          `json:"termination,omitempty"`
+	ClientSSL       string          `json:"clientSSL,omitempty"`
+	ClientSSLs      []string        `json:"clientSSLs,omitempty"`
+	ServerSSL       string          `json:"serverSSL,omitempty"`
+	ServerSSLs      []string        `json:"serverSSLs,omitempty"`
+	Reference       string          `json:"reference,omitempty"`
+	ClientSSLParams ClientSSLParams `json:"clientSSLParams,omitempty"`
+	ServerSSLParams ServerSSLParams `json:"serverSSLParams,omitempty"`
 }
 
 // ClientSSLParams contains required fields for Client SSL
@@ -237,23 +260,22 @@ type IngressLink struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   IngressLinkSpec   `json:"spec"`
-	Status IngressLinkStatus `json:"status,omitempty"`
-}
-
-// IngressLinkStatus is the status of the ingressLink resource.
-type IngressLinkStatus struct {
-	VSAddress string `json:"vsAddress,omitempty"`
+	Spec   IngressLinkSpec      `json:"spec"`
+	Status CustomResourceStatus `json:"status,omitempty"`
 }
 
 // IngressLinkSpec is Spec for IngressLink
 type IngressLinkSpec struct {
-	VirtualServerAddress string                `json:"virtualServerAddress,omitempty"`
-	Host                 string                `json:"host,omitempty"`
-	Selector             *metav1.LabelSelector `json:"selector"`
-	IRules               []string              `json:"iRules,omitempty"`
-	IPAMLabel            string                `json:"ipamLabel"`
-	Partition            string                `json:"partition,omitempty"`
+	VirtualServerAddress string                         `json:"virtualServerAddress,omitempty"`
+	Host                 string                         `json:"host,omitempty"`
+	Selector             *metav1.LabelSelector          `json:"selector"`
+	IRules               []string                       `json:"iRules,omitempty"`
+	IPAMLabel            string                         `json:"ipamLabel"`
+	BigIPRouteDomain     int32                          `json:"bigipRouteDomain,omitempty"`
+	Partition            string                         `json:"partition,omitempty"`
+	MultiClusterServices []MultiClusterServiceReference `json:"multiClusterServices,omitempty"`
+	TLS                  TLSTransportServer             `json:"tls,omitempty"`
+	Monitors             []Monitor                      `json:"monitors,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -276,39 +298,35 @@ type TransportServer struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   TransportServerSpec   `json:"spec"`
-	Status TransportServerStatus `json:"status,omitempty"`
-}
-
-// TransportServerStatus is the status of the VirtualServer resource.
-type TransportServerStatus struct {
-	VSAddress string `json:"vsAddress,omitempty"`
-	StatusOk  string `json:"status,omitempty"`
+	Spec   TransportServerSpec  `json:"spec"`
+	Status CustomResourceStatus `json:"status,omitempty"`
 }
 
 // TransportServerSpec is the spec of the VirtualServer resource.
 type TransportServerSpec struct {
-	VirtualServerAddress string           `json:"virtualServerAddress"`
-	VirtualServerPort    int32            `json:"virtualServerPort"`
-	VirtualServerName    string           `json:"virtualServerName"`
-	Host                 string           `json:"host,omitempty"`
-	HostGroup            string           `json:"hostGroup,omitempty"`
-	Mode                 string           `json:"mode"`
-	SNAT                 string           `json:"snat"`
-	ConnectionMirroring  string           `json:"connectionMirroring,omitempty"`
-	Pool                 TSPool           `json:"pool"`
-	AllowVLANs           []string         `json:"allowVlans,omitempty"`
-	Type                 string           `json:"type,omitempty"`
-	ServiceIPAddress     []ServiceAddress `json:"serviceAddress"`
-	IPAMLabel            string           `json:"ipamLabel"`
-	IRules               []string         `json:"iRules,omitempty"`
-	PolicyName           string           `json:"policyName,omitempty"`
-	PersistenceProfile   string           `json:"persistenceProfile,omitempty"`
-	ProfileL4            string           `json:"profileL4,omitempty"`
-	DOS                  string           `json:"dos,omitempty"`
-	BotDefense           string           `json:"botDefense,omitempty"`
-	Profiles             ProfileTSSpec    `json:"profiles,omitempty"`
-	Partition            string           `json:"partition,omitempty"`
+	VirtualServerAddress string             `json:"virtualServerAddress"`
+	VirtualServerPort    int32              `json:"virtualServerPort"`
+	VirtualServerName    string             `json:"virtualServerName"`
+	Host                 string             `json:"host,omitempty"`
+	HostGroup            string             `json:"hostGroup,omitempty"`
+	Mode                 string             `json:"mode"`
+	SNAT                 string             `json:"snat"`
+	ConnectionMirroring  string             `json:"connectionMirroring,omitempty"`
+	Pool                 TSPool             `json:"pool"`
+	AllowVLANs           []string           `json:"allowVlans,omitempty"`
+	Type                 string             `json:"type,omitempty"`
+	ServiceIPAddress     []ServiceAddress   `json:"serviceAddress"`
+	IPAMLabel            string             `json:"ipamLabel"`
+	BigIPRouteDomain     int32              `json:"bigipRouteDomain,omitempty"`
+	IRules               []string           `json:"iRules,omitempty"`
+	PolicyName           string             `json:"policyName,omitempty"`
+	PersistenceProfile   string             `json:"persistenceProfile,omitempty"`
+	ProfileL4            string             `json:"profileL4,omitempty"`
+	DOS                  string             `json:"dos,omitempty"`
+	BotDefense           string             `json:"botDefense,omitempty"`
+	Profiles             ProfileTSSpec      `json:"profiles,omitempty"`
+	Partition            string             `json:"partition,omitempty"`
+	TLS                  TLSTransportServer `json:"tls,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -396,9 +414,16 @@ type AnalyticsProfiles struct {
 }
 
 type L7PolicySpec struct {
-	WAF string `json:"waf,omitempty"`
+	WAF                    string       `json:"waf,omitempty"`
+	ProfileAccess          string       `json:"profileAccess,omitempty"`
+	PolicyPerRequestAccess string       `json:"policyPerRequestAccess,omitempty"`
+	ProfileAdapt           ProfileAdapt `json:"profileAdapt,omitempty"`
 }
 
+type ProfileAdapt struct {
+	Request  string `json:"request,omitempty"`
+	Response string `json:"response,omitempty"`
+}
 type L3PolicySpec struct {
 	DOS                  string   `json:"dos,omitempty"`
 	BotDefense           string   `json:"botDefense,omitempty"`
@@ -415,20 +440,22 @@ type LtmIRulesSpec struct {
 }
 
 type ProfileSpec struct {
-	TCP                   ProfileTCP        `json:"tcp,omitempty"`
-	UDP                   string            `json:"udp,omitempty"`
-	HTTP                  string            `json:"http,omitempty"`
-	HTTP2                 ProfileHTTP2      `json:"http2,omitempty"`
-	RewriteProfile        string            `json:"rewriteProfile,omitempty"`
-	PersistenceProfile    string            `json:"persistenceProfile,omitempty"`
-	LogProfiles           []string          `json:"logProfiles,omitempty"`
-	ProfileL4             string            `json:"profileL4,omitempty"`
-	ProfileMultiplex      string            `json:"profileMultiplex,omitempty"`
-	HttpMrfRoutingEnabled *bool             `json:"httpMrfRoutingEnabled,omitempty"`
-	SSLProfiles           SSLProfiles       `json:"sslProfiles,omitempty"`
-	AnalyticsProfiles     AnalyticsProfiles `json:"analyticsProfiles,omitempty"`
-	ProfileWebSocket      string            `json:"profileWebSocket,omitempty"`
-	HTMLProfile           string            `json:"htmlProfile,omitempty"`
+	TCP                    ProfileTCP        `json:"tcp,omitempty"`
+	UDP                    string            `json:"udp,omitempty"`
+	HTTP                   string            `json:"http,omitempty"`
+	HTTP2                  ProfileHTTP2      `json:"http2,omitempty"`
+	RewriteProfile         string            `json:"rewriteProfile,omitempty"`
+	PersistenceProfile     string            `json:"persistenceProfile,omitempty"`
+	LogProfiles            []string          `json:"logProfiles,omitempty"`
+	ProfileL4              string            `json:"profileL4,omitempty"`
+	ProfileMultiplex       string            `json:"profileMultiplex,omitempty"`
+	HttpMrfRoutingEnabled  *bool             `json:"httpMrfRoutingEnabled,omitempty"`
+	SSLProfiles            SSLProfiles       `json:"sslProfiles,omitempty"`
+	AnalyticsProfiles      AnalyticsProfiles `json:"analyticsProfiles,omitempty"`
+	ProfileWebSocket       string            `json:"profileWebSocket,omitempty"`
+	HTMLProfile            string            `json:"htmlProfile,omitempty"`
+	FTPProfile             string            `json:"ftpProfile,omitempty"`
+	HTTPCompressionProfile string            `json:"httpCompressionProfile,omitempty"`
 }
 
 type ProfileVSSpec struct {

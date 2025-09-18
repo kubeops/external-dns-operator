@@ -27,14 +27,19 @@ spec:
         description: ExternalDNS is the Schema for the externaldns API
         properties:
           apiVersion:
-            description: 'APIVersion defines the versioned schema of this representation
-              of an object. Servers should convert recognized schemas to the latest
-              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
             type: string
           kind:
-            description: 'Kind is a string value representing the REST resource this
-              object represents. Servers may infer this from the endpoint the client
-              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
             type: string
           metadata:
             type: object
@@ -49,8 +54,8 @@ spec:
                       of retries for API calls before giving up.
                     type: integer
                   assumeRole:
-                    description: When using the AWS provider, assume this IAM role.
-                      Useful for hosted zones in another AWS account. Specify the
+                    description: |-
+                      When using the AWS provider, assume this IAM role. Useful for hosted zones in another AWS account. Specify the
                       full ARN, e.g. `arn:aws:iam::123455567:role/external-dns`
                     type: string
                   batchChangeInterval:
@@ -71,6 +76,10 @@ spec:
                     description: 'When using the AWS provider, prefer using CNAME
                       instead of ALIAS (default: disabled)'
                     type: boolean
+                  sdCreateTag:
+                    additionalProperties:
+                      type: string
+                    type: object
                   sdServiceCleanup:
                     description: 'When using the AWS CloudMap provider, delete empty
                       Services without endpoints (default: disabled)'
@@ -103,10 +112,14 @@ spec:
                     description: 'When using the AWS provider, filter for zones of
                       this type. (support: public, private)'
                     type: string
+                required:
+                - sdCreateTag
                 type: object
               azure:
                 description: Azure provider infomation
                 properties:
+                  maxRetriesCount:
+                    type: integer
                   resourceGroup:
                     description: When using the Azure provider, override the Azure
                       resource group to use (required for azure-private-dns)
@@ -132,22 +145,40 @@ spec:
                     description: When using the Azure provider, override the client
                       id of user assigned identity in config file
                     type: string
+                  zonesCacheDuration:
+                    description: |-
+                      A Duration represents the elapsed time between two instants
+                      as an int64 nanosecond count. The representation limits the
+                      largest representable duration to approximately 290 years.
+                    format: int64
+                    type: integer
+                required:
+                - maxRetriesCount
+                - zonesCacheDuration
                 type: object
               cloudflare:
                 description: Cloudflare provider information
                 properties:
                   baseURL:
                     type: string
+                  customHostnames:
+                    type: boolean
+                  customHostnamesCertificateAuthority:
+                    type: string
+                  customHostnamesMinTLSVersion:
+                    type: string
                   proxied:
                     description: 'When using the Cloudflare provider, specify if the
                       proxy mode must be enabled (default: disabled)'
                     type: boolean
+                  regionKey:
+                    type: string
+                  regionalServices:
+                    type: boolean
                   secretRef:
-                    description: CloudflareSecretReference contains the name of the
-                      provider secret. The secret information may differ with respect
-                      to provider. It is considered optional where workload identity
-                      or IRSA (IAM Role for Service Account) is used, otherwise it
-                      is mandatory
+                    description: |-
+                      CloudflareSecretReference contains the name of the provider secret. The secret information may differ with respect to provider.
+                      It is considered optional where workload identity or IRSA (IAM Role for Service Account) is used, otherwise it is mandatory
                     properties:
                       apiEmailKey:
                         type: string
@@ -162,6 +193,12 @@ spec:
                     required:
                     - name
                     type: object
+                required:
+                - customHostnames
+                - customHostnamesCertificateAuthority
+                - customHostnamesMinTLSVersion
+                - regionKey
+                - regionalServices
                 type: object
               connectorSourceServer:
                 description: The server to connect for connector source, valid only
@@ -231,24 +268,27 @@ spec:
                   type: string
                 type: array
               ocRouterName:
-                description: If source is openshift router then you can pass the ingress
-                  controller name. Based on this name the external dns will select
-                  the respective router from the route status and map that routeCanonicalHostname
+                description: |-
+                  If source is openshift router then you can pass the ingress controller name. Based on this name the
+                  external dns will select the respective router from the route status and map that routeCanonicalHostname
                   to the route host while creating a CNAME record.
                 type: string
               policy:
-                description: "POLICY INFORMATION \n Modify how DNS records are synchronized
-                  between sources and providers (default: sync, options: sync, upsert-only,
-                  create-only)"
+                description: |-
+                  POLICY INFORMATION
+
+                  Modify how DNS records are synchronized between sources and providers (default: sync, options: sync, upsert-only, create-only)
                 type: string
               provider:
-                description: RELATED TO PROVIDERS The DNS provider where the DNS records
-                  will be created. (AWS, Cloudflare)
+                description: |-
+                  RELATED TO PROVIDERS
+                  The DNS provider where the DNS records will be created. (AWS, Cloudflare)
                 type: string
               registry:
-                description: "REGISTRY information \n The registry implementation
-                  to use to keep track of DNS record ownership (default: txt, options:
-                  txt, noop, aws-sd)"
+                description: |-
+                  REGISTRY information
+
+                  The registry implementation to use to keep track of DNS record ownership (default: txt, options: txt, noop, aws-sd)
                 type: string
               requestTimeout:
                 description: Request timeout when calling Kubernetes API. 0s means
@@ -256,9 +296,13 @@ spec:
                 format: int64
                 type: integer
               source:
-                description: 'RELATED TO PROCESSING SOURCE The resource types that
-                  are queried for endpoints; List of source. ex: source, ingress,
-                  node etc. source: group: "" version: v1 kind: Service'
+                description: |-
+                  RELATED TO PROCESSING SOURCE
+                  The resource types that are queried for endpoints; List of source. ex: source, ingress, node etc.
+                  source:
+                     group: ""
+                     version: v1
+                     kind: Service
                 properties:
                   ingress:
                     description: For source type Ingress
@@ -272,9 +316,9 @@ spec:
                           of overwriting
                         type: boolean
                       fqdnTemplate:
-                        description: A templated string that's used to generate DNS
-                          names from source that don't define a hostname themselves,
-                          or to add a hostname suffix when paired with the fake source
+                        description: |-
+                          A templated string that's used to generate DNS names from source that don't define a hostname themselves, or to
+                          add a hostname suffix when paired with the fake source
                         type: string
                       ignoreHostnameAnnotation:
                         description: Ignore hostname annotation when generating DNS
@@ -305,9 +349,9 @@ spec:
                           selector when listing all resources
                         type: string
                       fqdnTemplate:
-                        description: A templated string that's used to generate DNS
-                          names from source that don't define a hostname themselves,
-                          or to add a hostname suffix when paired with the fake source
+                        description: |-
+                          A templated string that's used to generate DNS names from source that don't define a hostname themselves, or to
+                          add a hostname suffix when paired with the fake source
                         type: string
                       labelFilter:
                         description: Filter sources managed by external-dns via annotation
@@ -333,9 +377,9 @@ spec:
                         description: Process  annotation semantics from legacy implementations
                         type: string
                       fqdnTemplate:
-                        description: A templated string that's used to generate DNS
-                          names from source that don't define a hostname themselves,
-                          or to add a hostname suffix when paired with the fake source
+                        description: |-
+                          A templated string that's used to generate DNS names from source that don't define a hostname themselves, or to
+                          add a hostname suffix when paired with the fake source
                         type: string
                       ignoreHostnameAnnotation:
                         description: Ignore hostname annotation when generating DNS
@@ -365,8 +409,8 @@ spec:
                         type: array
                     type: object
                   type:
-                    description: 'TypeInfo contains the source type of the external
-                      dns example: type: group: version: kind:'
+                    description: "TypeInfo contains the source type of the external
+                      dns\nexample:\ntype:\n\t group:\n\t version:\n\t kind:"
                     properties:
                       group:
                         type: string
@@ -387,20 +431,19 @@ spec:
                   this instance of ExternalDNS (default: default)'
                 type: string
               txtPrefix:
-                description: When using the TXT registry, a custom string that's prefixed
-                  to each ownership DNS record (optional). Could contain record type
-                  template like '%{record_type}-prefix-'. Mutual exclusive with txt-suffix!
+                description: |-
+                  When using the TXT registry, a custom string that's prefixed to each ownership DNS record (optional). Could
+                  contain record type template like '%{record_type}-prefix-'. Mutual exclusive with txt-suffix!
                 type: string
               txtSuffix:
-                description: When using the TXT registry, a custom string that's suffixed
-                  to the host portion of each ownership DNS record. Could contain
-                  record type template like '-%{record_type}-suffix'. Mutual exclusive
-                  with txt-prefix!
+                description: |-
+                  When using the TXT registry, a custom string that's suffixed to the host portion of each ownership DNS
+                  record. Could contain record type template like '-%{record_type}-suffix'. Mutual exclusive with txt-prefix!
                 type: string
               txtWildcardReplacement:
-                description: When using the TXT registry, a custom string that's used
-                  instead of an asterisk for TXT records corresponding to wildcard
-                  DNS records
+                description: |-
+                  When using the TXT registry, a custom string that's used instead of an asterisk for TXT records corresponding
+                  to wildcard DNS records
                 type: string
               zoneIDFilter:
                 description: Filter target zones by hosted zone id
@@ -421,43 +464,44 @@ spec:
                     state.
                   properties:
                     lastTransitionTime:
-                      description: Last time the condition transitioned from one status
-                        to another. This should be when the underlying condition changed.
-                        If that is not known, then using the time when the API field
-                        changed is acceptable.
+                      description: |-
+                        Last time the condition transitioned from one status to another.
+                        This should be when the underlying condition changed. If that is not known, then using the time when
+                        the API field changed is acceptable.
                       format: date-time
                       type: string
                     message:
-                      description: A human-readable message indicating details about
-                        the transition. This field may be empty.
+                      description: |-
+                        A human-readable message indicating details about the transition.
+                        This field may be empty.
                       type: string
                     observedGeneration:
-                      description: If set, this represents the .metadata.generation
-                        that the condition was set based upon. For instance, if .metadata.generation
-                        is currently 12, but the .status.condition[x].observedGeneration
-                        is 9, the condition is out of date with respect to the current
-                        state of the instance.
+                      description: |-
+                        If set, this represents the .metadata.generation that the condition was set based upon.
+                        For instance, if .metadata.generation is currently 12, but the .status.condition[x].observedGeneration is 9, the condition is out of date
+                        with respect to the current state of the instance.
                       format: int64
                       type: integer
                     reason:
-                      description: The reason for the condition's last transition
-                        in CamelCase. The specific API may choose whether this field
-                        is considered a guaranteed API. This field may not be empty.
+                      description: |-
+                        The reason for the condition's last transition in CamelCase.
+                        The specific API may choose whether this field is considered a guaranteed API.
+                        This field may not be empty.
                       type: string
                     severity:
-                      description: Severity provides an explicit classification of
-                        Reason code, so the users or machines can immediately understand
-                        the current situation and act accordingly. The Severity field
-                        MUST be set only when Status=False.
+                      description: |-
+                        Severity provides an explicit classification of Reason code, so the users or machines can immediately
+                        understand the current situation and act accordingly.
+                        The Severity field MUST be set only when Status=False.
                       type: string
                     status:
                       description: Status of the condition, one of True, False, Unknown.
                       type: string
                     type:
-                      description: Type of condition in CamelCase or in foo.example.com/CamelCase.
-                        Many .condition.type values are consistent across resources
-                        like Available, but because arbitrary util can be useful (see
-                        .node.status.util), the ability to deconflict is important.
+                      description: |-
+                        Type of condition in CamelCase or in foo.example.com/CamelCase.
+                        Many .condition.type values are consistent across resources like Available, but because arbitrary util
+                        can be useful (see .node.status.util), the ability to deconflict is important.
                       type: string
                   required:
                   - lastTransitionTime

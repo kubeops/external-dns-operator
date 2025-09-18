@@ -20,27 +20,29 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	v1 "sigs.k8s.io/gateway-api/apis/v1"
+	v1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 	informers "sigs.k8s.io/gateway-api/pkg/client/informers/externalversions"
-	informers_v1 "sigs.k8s.io/gateway-api/pkg/client/informers/externalversions/apis/v1"
+	informers_v1beta1 "sigs.k8s.io/gateway-api/pkg/client/informers/externalversions/apis/v1beta1"
 )
 
 // NewGatewayHTTPRouteSource creates a new Gateway HTTPRoute source with the given config.
 func NewGatewayHTTPRouteSource(clients ClientGenerator, config *Config) (Source, error) {
 	return newGatewayRouteSource(clients, config, "HTTPRoute", func(factory informers.SharedInformerFactory) gatewayRouteInformer {
-		return &gatewayHTTPRouteInformer{factory.Gateway().V1().HTTPRoutes()}
+		return &gatewayHTTPRouteInformer{factory.Gateway().V1beta1().HTTPRoutes()}
 	})
 }
 
 type gatewayHTTPRoute struct{ route v1.HTTPRoute } // NOTE: Must update TypeMeta in List when changing the APIVersion.
 
-func (rt *gatewayHTTPRoute) Object() kubeObject           { return &rt.route }
-func (rt *gatewayHTTPRoute) Metadata() *metav1.ObjectMeta { return &rt.route.ObjectMeta }
-func (rt *gatewayHTTPRoute) Hostnames() []v1.Hostname     { return rt.route.Spec.Hostnames }
-func (rt *gatewayHTTPRoute) Protocol() v1.ProtocolType    { return v1.HTTPProtocolType }
-func (rt *gatewayHTTPRoute) RouteStatus() v1.RouteStatus  { return rt.route.Status.RouteStatus }
+func (rt *gatewayHTTPRoute) Object() kubeObject               { return &rt.route }
+func (rt *gatewayHTTPRoute) Metadata() *metav1.ObjectMeta     { return &rt.route.ObjectMeta }
+func (rt *gatewayHTTPRoute) Hostnames() []v1.Hostname         { return rt.route.Spec.Hostnames }
+func (rt *gatewayHTTPRoute) ParentRefs() []v1.ParentReference { return rt.route.Spec.ParentRefs }
+func (rt *gatewayHTTPRoute) Protocol() v1.ProtocolType        { return v1.HTTPProtocolType }
+func (rt *gatewayHTTPRoute) RouteStatus() v1.RouteStatus      { return rt.route.Status.RouteStatus }
 
 type gatewayHTTPRouteInformer struct {
-	informers_v1.HTTPRouteInformer
+	informers_v1beta1.HTTPRouteInformer
 }
 
 func (inf gatewayHTTPRouteInformer) List(namespace string, selector labels.Selector) ([]gatewayRoute, error) {
@@ -54,10 +56,10 @@ func (inf gatewayHTTPRouteInformer) List(namespace string, selector labels.Selec
 		// We make a shallow copy since we're only interested in setting the TypeMeta.
 		clone := *rt
 		clone.TypeMeta = metav1.TypeMeta{
-			APIVersion: v1.GroupVersion.String(),
+			APIVersion: v1beta1.GroupVersion.String(),
 			Kind:       "HTTPRoute",
 		}
-		routes[i] = &gatewayHTTPRoute{clone}
+		routes[i] = &gatewayHTTPRoute{v1.HTTPRoute(clone)}
 	}
 	return routes, nil
 }
