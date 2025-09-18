@@ -1,8 +1,9 @@
 module kubeops.dev/external-dns-operator
 
-go 1.24.2
+go 1.24.0
 
 require (
+	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.49.1
 	github.com/aws/aws-sdk-go-v2/service/route53 v1.56.2
 	github.com/aws/aws-sdk-go-v2/service/servicediscovery v1.39.2
 	github.com/google/gofuzz v1.2.0
@@ -56,7 +57,6 @@ require (
 	github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.4 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.4 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/ini v1.8.3 // indirect
-	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.49.1 // indirect
 	github.com/aws/aws-sdk-go-v2/service/dynamodbstreams v1.30.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.13.0 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/endpoint-discovery v1.11.4 // indirect

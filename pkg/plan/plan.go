@@ -20,17 +20,18 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
-	"k8s.io/apimachinery/pkg/labels"
-	api "kubeops.dev/external-dns-operator/apis/external/v1alpha1"
 	"regexp"
 	"strings"
 	"time"
 
+	api "kubeops.dev/external-dns-operator/apis/external/v1alpha1"
+
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/route53"
 	sd "github.com/aws/aws-sdk-go-v2/service/servicediscovery"
 	log "github.com/sirupsen/logrus"
 	"gomodules.xyz/sets"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/external-dns/endpoint"
 	"sigs.k8s.io/external-dns/pkg/apis/externaldns"
@@ -65,10 +66,6 @@ import (
 	"sigs.k8s.io/external-dns/registry"
 	"sigs.k8s.io/external-dns/source"
 	"sigs.k8s.io/external-dns/source/wrappers"
-)
-
-const (
-	providerAWSSD = "aws-sd"
 )
 
 var defaultConfig = externaldns.Config{
@@ -237,22 +234,11 @@ var defaultConfig = externaldns.Config{
 
 func SetDNSRecords(ctx context.Context, edns *api.ExternalDNS) ([]api.DNSRecord, error) {
 	cfg := convertEDNSObjectToCfg(edns)
-	//fmt.Printf("cfg: %+v\n", cfg)
 
 	endpointsSource, err := createEndpointsSource(ctx, cfg)
 	if err != nil {
 		klog.Error(err.Error())
 		return nil, err
-	}
-
-	eps, err := endpointsSource.Endpoints(ctx)
-	if err != nil {
-		return nil, err
-	}
-	fmt.Printf("endpointSource produced %d endpoints\n", len(eps))
-	for _, e := range eps {
-		fmt.Printf("DNSName=%s, Targets=%v, RecordType=%s\n",
-			e.DNSName, e.Targets, e.RecordType)
 	}
 
 	domainFilter := createDomainFilter(cfg)
@@ -289,17 +275,6 @@ func createDomainFilter(cfg *externaldns.Config) *endpoint.DomainFilter {
 
 // create and apply dns plan, If plan is successfully applied then returns dns record, which defines the desired records of the plan
 func createAndApplyPlan(ctx context.Context, cfg *externaldns.Config, r registry.Registry, endpointSource source.Source, domainFilter *endpoint.DomainFilter) ([]api.DNSRecord, error) {
-
-	eps, err := endpointSource.Endpoints(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	fmt.Printf("total endpoints: %d\n", len(eps))
-	for _, e := range eps {
-		fmt.Printf("Endpoint: DNSName=%s, Targets=%v, RecordType=%s\n",
-			e.DNSName, e.Targets, e.RecordType)
-	}
 
 	records, err := r.Records(ctx)
 	if err != nil {
@@ -512,7 +487,7 @@ func convertEDNSObjectToCfg(edns *api.ExternalDNS) *externaldns.Config {
 		if edns.Spec.AWS.SDServiceCleanup != nil {
 			config.AWSSDServiceCleanup = *edns.Spec.AWS.SDServiceCleanup
 		}
-		if edns.Spec.AWS.SDCreateTag != nil { //new
+		if edns.Spec.AWS.SDCreateTag != nil {
 			config.AWSSDCreateTag = *edns.Spec.AWS.SDCreateTag
 		}
 	}
@@ -522,19 +497,19 @@ func convertEDNSObjectToCfg(edns *api.ExternalDNS) *externaldns.Config {
 		if edns.Spec.Cloudflare.Proxied != nil {
 			config.CloudflareProxied = *edns.Spec.Cloudflare.Proxied
 		}
-		if edns.Spec.Cloudflare.CustomHostnames != nil { //new
+		if edns.Spec.Cloudflare.CustomHostnames != nil {
 			config.CloudflareCustomHostnames = *edns.Spec.Cloudflare.CustomHostnames
 		}
-		if edns.Spec.Cloudflare.CustomHostnamesCertificateAuthority != nil { //new
+		if edns.Spec.Cloudflare.CustomHostnamesCertificateAuthority != nil {
 			config.CloudflareCustomHostnamesCertificateAuthority = *edns.Spec.Cloudflare.CustomHostnamesCertificateAuthority
 		}
-		if edns.Spec.Cloudflare.CustomHostnamesMinTLSVersion != nil { //new
+		if edns.Spec.Cloudflare.CustomHostnamesMinTLSVersion != nil {
 			config.CloudflareCustomHostnamesMinTLSVersion = *edns.Spec.Cloudflare.CustomHostnamesMinTLSVersion
 		}
-		if edns.Spec.Cloudflare.RegionalServices != nil { //new
+		if edns.Spec.Cloudflare.RegionalServices != nil {
 			config.CloudflareRegionalServices = *edns.Spec.Cloudflare.RegionalServices
 		}
-		if edns.Spec.Cloudflare.RegionKey != nil { //new
+		if edns.Spec.Cloudflare.RegionKey != nil {
 			config.CloudflareRegionKey = *edns.Spec.Cloudflare.RegionKey
 		}
 	}
@@ -554,10 +529,10 @@ func convertEDNSObjectToCfg(edns *api.ExternalDNS) *externaldns.Config {
 		if edns.Spec.Azure.UserAssignedIdentityClientID != nil {
 			config.AzureUserAssignedIdentityClientID = *edns.Spec.Azure.UserAssignedIdentityClientID
 		}
-		if edns.Spec.Azure.ZonesCacheDuration != nil { //new
+		if edns.Spec.Azure.ZonesCacheDuration != nil {
 			config.AzureZonesCacheDuration = *edns.Spec.Azure.ZonesCacheDuration
 		}
-		if edns.Spec.Azure.MaxRetriesCount != nil { //new
+		if edns.Spec.Azure.MaxRetriesCount != nil {
 			config.AzureMaxRetriesCount = *edns.Spec.Azure.MaxRetriesCount
 		}
 	}
@@ -610,12 +585,6 @@ func convertEDNSObjectToCfg(edns *api.ExternalDNS) *externaldns.Config {
 func createEndpointsSource(ctx context.Context, cfg *externaldns.Config) (source.Source, error) {
 	sourceCfg := source.NewSourceConfig(cfg)
 
-	// Print basic struct
-	fmt.Printf("sourceCfg: %+v\n", sourceCfg)
-
-	// Print detailed Go-syntax
-	fmt.Printf("sourceCfg detailed: %#v\n", sourceCfg)
-
 	// Lookup all the selected sources by names and pass them the desired configuration.
 	sources, err := source.ByNames(ctx, &source.SingletonClientGenerator{
 		KubeConfig:   cfg.KubeConfig,
@@ -632,24 +601,6 @@ func createEndpointsSource(ctx context.Context, cfg *externaldns.Config) (source
 		return nil, err
 	}
 
-	//pulok
-	// Print each source
-	fmt.Printf("Found %d sources\n", len(sources))
-
-	for i, s := range sources {
-		eps, err := s.Endpoints(ctx)
-		if err != nil {
-			fmt.Printf("[%d] error getting endpoints: %v\n", i, err)
-			continue
-		}
-		fmt.Printf("[%d] produced %d endpoints\n", i, len(eps))
-		for _, e := range eps {
-			fmt.Printf("    DNSName=%s, Targets=%v, RecordType=%s\n",
-				e.DNSName, e.Targets, e.RecordType)
-		}
-	}
-	//*********************
-
 	combinedSource := wrappers.NewDedupSource(wrappers.NewMultiSource(sources, sourceCfg.DefaultTargets, sourceCfg.ForceDefaultTargets))
 	cfg.AddSourceWrapper("dedup")
 	combinedSource = wrappers.NewNAT64Source(combinedSource, cfg.NAT64Networks)
@@ -661,15 +612,6 @@ func createEndpointsSource(ctx context.Context, cfg *externaldns.Config) (source
 		cfg.AddSourceWrapper("target-filter")
 	}
 
-	eps, err := combinedSource.Endpoints(ctx)
-	if err != nil {
-		return nil, err
-	}
-	fmt.Printf("combinedSource produced %d endpoints\n", len(eps))
-	for _, e := range eps {
-		fmt.Printf("DNSName=%s, Targets=%v, RecordType=%s\n",
-			e.DNSName, e.Targets, e.RecordType)
-	}
 	return combinedSource, nil
 }
 

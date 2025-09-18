@@ -3,12 +3,14 @@ package informers
 import (
 	"context"
 	"fmt"
+	"reflect"
+
+	api "kubeops.dev/external-dns-operator/apis/external/v1alpha1"
+
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/klog/v2"
-	api "kubeops.dev/external-dns-operator/apis/external/v1alpha1"
-	"reflect"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"

@@ -22,11 +22,10 @@ import (
 	"fmt"
 	"net/http"
 
-	externaldnsv1alpha1 "kubeops.dev/external-dns-operator/client/clientset/versioned/typed/external/v1alpha1"
-
 	discovery "k8s.io/client-go/discovery"
 	rest "k8s.io/client-go/rest"
 	flowcontrol "k8s.io/client-go/util/flowcontrol"
+	externaldnsv1alpha1 "kubeops.dev/external-dns-operator/client/clientset/versioned/typed/external/v1alpha1"
 )
 
 type Interface interface {

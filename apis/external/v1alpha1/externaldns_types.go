@@ -81,7 +81,7 @@ type AWSProvider struct {
 	// +optional
 	SDServiceCleanup *bool `json:"sdServiceCleanup,omitempty"`
 
-	SDCreateTag *map[string]string `json:"SDCreateTag"`
+	SDCreateTag *map[string]string `json:"sdCreateTag"`
 
 	// provider secret credential information
 	// +optional
@@ -92,11 +92,11 @@ type CloudflareProvider struct {
 	// When using the Cloudflare provider, specify if the proxy mode must be enabled (default: disabled)
 	// +optional
 	Proxied                             *bool   `json:"proxied,omitempty"`
-	CustomHostnames                     *bool   `json:"custom_hostnames"` //new
-	CustomHostnamesCertificateAuthority *string `json:"custom_hostnames_certificate_authority"`
-	CustomHostnamesMinTLSVersion        *string `json:"custom_hostnames_min_tls_version"`
-	RegionalServices                    *bool   `json:"regional_services"`
-	RegionKey                           *string `json:"region_key"`
+	CustomHostnames                     *bool   `json:"customHostnames"` //new
+	CustomHostnamesCertificateAuthority *string `json:"customHostnamesCertificateAuthority"`
+	CustomHostnamesMinTLSVersion        *string `json:"customHostnamesMinTLSVersion"`
+	RegionalServices                    *bool   `json:"regionalServices"`
+	RegionKey                           *string `json:"regionKey"`
 
 	// +optional
 	BaseURL string `json:"baseURL,omitempty"`
@@ -118,8 +118,8 @@ type AzureProvider struct {
 	// +optional
 	UserAssignedIdentityClientID *string `json:"userAssignedIdentityClientID,omitempty"`
 
-	ZonesCacheDuration *time.Duration `json:"zones_cache_duration"` //new
-	MaxRetriesCount    *int           `json:"max_retries_count"`
+	ZonesCacheDuration *time.Duration `json:"zonesCacheDuration"` //new
+	MaxRetriesCount    *int           `json:"maxRetriesCount"`
 
 	// Provider secret credential information
 	SecretRef *GenericSecretReference `json:"secretRef,omitempty"`

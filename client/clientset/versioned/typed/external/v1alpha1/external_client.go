@@ -21,10 +21,9 @@ package v1alpha1
 import (
 	"net/http"
 
+	rest "k8s.io/client-go/rest"
 	v1alpha1 "kubeops.dev/external-dns-operator/apis/external/v1alpha1"
 	"kubeops.dev/external-dns-operator/client/clientset/versioned/scheme"
-
-	rest "k8s.io/client-go/rest"
 )
 
 type ExternalDNSV1alpha1Interface interface {

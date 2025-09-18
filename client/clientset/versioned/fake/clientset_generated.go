@@ -19,15 +19,14 @@ limitations under the License.
 package fake
 
 import (
-	clientset "kubeops.dev/external-dns-operator/client/clientset/versioned"
-	externaldnsv1alpha1 "kubeops.dev/external-dns-operator/client/clientset/versioned/typed/external/v1alpha1"
-	fakeexternaldnsv1alpha1 "kubeops.dev/external-dns-operator/client/clientset/versioned/typed/external/v1alpha1/fake"
-
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/discovery"
 	fakediscovery "k8s.io/client-go/discovery/fake"
 	"k8s.io/client-go/testing"
+	clientset "kubeops.dev/external-dns-operator/client/clientset/versioned"
+	externaldnsv1alpha1 "kubeops.dev/external-dns-operator/client/clientset/versioned/typed/external/v1alpha1"
+	fakeexternaldnsv1alpha1 "kubeops.dev/external-dns-operator/client/clientset/versioned/typed/external/v1alpha1/fake"
 )
 
 // NewSimpleClientset returns a clientset that will respond with the provided objects.
