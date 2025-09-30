@@ -13,9 +13,6 @@
 // limitations under the License.
 syntax = "proto3";
 
-import "google/api/field_behavior.proto";
-import "type/v1beta1/selector.proto";
-
 // $schema: istio.security.v1beta1.AuthorizationPolicy
 // $title: Authorization Policy
 // $description: Configuration for access control on workloads.
@@ -42,7 +39,6 @@ import "type/v1beta1/selector.proto";
 // A request will be internally marked that it should be audited if there is an AUDIT policy on the workload that matches the request.
 // A separate plugin must be configured and enabled to actually fulfill the audit decision and complete the audit behavior.
 // The request will not be audited if there are no such supporting plugins enabled.
-// Currently, the only supported plugin is the [Stackdriver](https://istio.io/latest/docs/reference/config/proxy_extensions/stackdriver/) plugin.
 //
 // Here is an example of Istio Authorization Policy:
 //
@@ -63,36 +59,6 @@ import "type/v1beta1/selector.proto";
 //
 // Any other requests will be denied.
 //
-// {{<tabset category-name="example">}}
-// {{<tab name="v1beta1" category-value="v1beta1">}}
-// ```yaml
-// apiVersion: security.istio.io/v1beta1
-// kind: AuthorizationPolicy
-// metadata:
-//   name: httpbin
-//   namespace: foo
-// spec:
-//   action: ALLOW
-//   rules:
-//   - from:
-//     - source:
-//         principals: ["cluster.local/ns/default/sa/sleep"]
-//     - source:
-//         namespaces: ["test"]
-//     to:
-//     - operation:
-//         methods: ["GET"]
-//         paths: ["/info*"]
-//     - operation:
-//         methods: ["POST"]
-//         paths: ["/data"]
-//     when:
-//     - key: request.auth.claims[iss]
-//       values: ["https://accounts.google.com"]
-// ```
-// {{</tab>}}
-//
-// {{<tab name="v1" category-value="v1">}}
 // ```yaml
 // apiVersion: security.istio.io/v1
 // kind: AuthorizationPolicy
@@ -118,34 +84,11 @@ import "type/v1beta1/selector.proto";
 //     - key: request.auth.claims[iss]
 //       values: ["https://accounts.google.com"]
 // ```
-// {{</tab>}}
-// {{</tabset>}}
 //
 // The following is another example that sets `action` to `DENY` to create a deny policy.
 // It denies requests from the `dev` namespace to the `POST` method on all workloads
 // in the `foo` namespace.
 //
-// {{<tabset category-name="example">}}
-// {{<tab name="v1beta1" category-value="v1beta1">}}
-// ```yaml
-// apiVersion: security.istio.io/v1beta1
-// kind: AuthorizationPolicy
-// metadata:
-//   name: httpbin
-//   namespace: foo
-// spec:
-//   action: DENY
-//   rules:
-//   - from:
-//     - source:
-//         namespaces: ["dev"]
-//     to:
-//     - operation:
-//         methods: ["POST"]
-// ```
-// {{</tab>}}
-//
-// {{<tab name="v1" category-value="v1">}}
 // ```yaml
 // apiVersion: security.istio.io/v1
 // kind: AuthorizationPolicy
@@ -162,32 +105,11 @@ import "type/v1beta1/selector.proto";
 //     - operation:
 //         methods: ["POST"]
 // ```
-// {{</tab>}}
-// {{</tabset>}}
 //
 // The following is another example that sets `action` to `DENY` to create a deny policy.
 // It denies all the requests with `POST` method on port `8080` on all workloads
 // in the `foo` namespace.
 //
-// {{<tabset category-name="example">}}
-// {{<tab name="v1beta1" category-value="v1beta1">}}
-// ```yaml
-// apiVersion: security.istio.io/v1beta1
-// kind: AuthorizationPolicy
-// metadata:
-//   name: httpbin
-//   namespace: foo
-// spec:
-//   action: DENY
-//   rules:
-//   - to:
-//     - operation:
-//         methods: ["POST"]
-//         ports: ["8080"]
-// ```
-// {{</tab>}}
-//
-// {{<tab name="v1" category-value="v1">}}
 // ```yaml
 // apiVersion: security.istio.io/v1
 // kind: AuthorizationPolicy
@@ -202,8 +124,6 @@ import "type/v1beta1/selector.proto";
 //         methods: ["POST"]
 //         ports: ["8080"]
 // ```
-// {{</tab>}}
-// {{</tabset>}}
 //
 // When this rule is applied to TCP traffic, the `method` field (as will all HTTP based attributes) cannot be processed.
 // For a `DENY` rule, missing attributes are treated as matches. This means all TCP traffic on port `8080` would be denied in the example above.
@@ -213,28 +133,6 @@ import "type/v1beta1/selector.proto";
 // The following authorization policy sets the `action` to `AUDIT`. It will audit any `GET` requests to the path with the
 // prefix `/user/profile`.
 //
-// {{<tabset category-name="example">}}
-// {{<tab name="v1beta1" category-value="v1beta1">}}
-// ```yaml
-// apiVersion: security.istio.io/v1beta1
-// kind: AuthorizationPolicy
-// metadata:
-//   namespace: ns1
-//   name: anyname
-// spec:
-//   selector:
-//     matchLabels:
-//       app: myapi
-//   action: AUDIT
-//   rules:
-//   - to:
-//     - operation:
-//         methods: ["GET"]
-//         paths: ["/user/profile/*"]
-// ```
-// {{</tab>}}
-//
-// {{<tab name="v1" category-value="v1">}}
 // ```yaml
 // apiVersion: security.istio.io/v1
 // kind: AuthorizationPolicy
@@ -252,8 +150,6 @@ import "type/v1beta1/selector.proto";
 //         methods: ["GET"]
 //         paths: ["/user/profile/*"]
 // ```
-// {{</tab>}}
-// {{</tabset>}}
 //
 // Authorization Policy scope (target) is determined by "metadata/namespace" and
 // an optional `selector`.
@@ -265,20 +161,6 @@ import "type/v1beta1/selector.proto";
 // For example, the following authorization policy applies to all workloads in namespace `foo`. It allows nothing and effectively denies
 // all requests to workloads in namespace `foo`.
 //
-// {{<tabset category-name="example">}}
-// {{<tab name="v1beta1" category-value="v1beta1">}}
-// ```yaml
-// apiVersion: security.istio.io/v1beta1
-// kind: AuthorizationPolicy
-// metadata:
-//  name: allow-nothing
-//  namespace: foo
-// spec:
-//   {}
-// ```
-// {{</tab>}}
-//
-// {{<tab name="v1" category-value="v1">}}
 // ```yaml
 // apiVersion: security.istio.io/v1
 // kind: AuthorizationPolicy
@@ -288,26 +170,9 @@ import "type/v1beta1/selector.proto";
 // spec:
 //   {}
 // ```
-// {{</tab>}}
-// {{</tabset>}}
 //
 // The following authorization policy allows all requests to workloads in namespace `foo`.
 //
-// {{<tabset category-name="example">}}
-// {{<tab name="v1beta1" category-value="v1beta1">}}
-// ```yaml
-// apiVersion: security.istio.io/v1beta1
-// kind: AuthorizationPolicy
-// metadata:
-//  name: allow-all
-//  namespace: foo
-// spec:
-//  rules:
-//  - {}
-// ```
-// {{</tab>}}
-//
-// {{<tab name="v1" category-value="v1">}}
 // ```yaml
 // apiVersion: security.istio.io/v1
 // kind: AuthorizationPolicy
@@ -318,28 +183,10 @@ import "type/v1beta1/selector.proto";
 //  rules:
 //  - {}
 // ```
-// {{</tab>}}
-// {{</tabset>}}
 //
 // The following authorization policy applies to workloads containing label `app: httpbin` in namespace `bar`. It allows
 // nothing and effectively denies all requests to the selected workloads.
 //
-// {{<tabset category-name="example">}}
-// {{<tab name="v1beta1" category-value="v1beta1">}}
-// ```yaml
-// apiVersion: security.istio.io/v1beta1
-// kind: AuthorizationPolicy
-// metadata:
-//   name: allow-nothing
-//   namespace: bar
-// spec:
-//   selector:
-//     matchLabels:
-//       app: httpbin
-// ```
-// {{</tab>}}
-//
-// {{<tab name="v1" category-value="v1">}}
 // ```yaml
 // apiVersion: security.istio.io/v1
 // kind: AuthorizationPolicy
@@ -351,28 +198,10 @@ import "type/v1beta1/selector.proto";
 //     matchLabels:
 //       app: httpbin
 // ```
-// {{</tab>}}
-// {{</tabset>}}
 //
 // The following authorization policy applies to workloads containing label `version: v1` in all namespaces in the mesh.
 // (Assuming the root namespace is configured to `istio-system`).
 //
-// {{<tabset category-name="example">}}
-// {{<tab name="v1beta1" category-value="v1beta1">}}
-// ```yaml
-// apiVersion: security.istio.io/v1beta1
-// kind: AuthorizationPolicy
-// metadata:
-//  name: allow-nothing
-//  namespace: istio-system
-// spec:
-//  selector:
-//    matchLabels:
-//      version: v1
-// ```
-// {{</tab>}}
-//
-// {{<tab name="v1" category-value="v1">}}
 // ```yaml
 // apiVersion: security.istio.io/v1
 // kind: AuthorizationPolicy
@@ -384,8 +213,6 @@ import "type/v1beta1/selector.proto";
 //    matchLabels:
 //      version: v1
 // ```
-// {{</tab>}}
-// {{</tabset>}}
 //
 // The following example shows you how to set up an authorization policy using an [experimental annotation](https://istio.io/latest/docs/reference/config/annotations/)
 // `istio.io/dry-run` to dry-run the policy without actually enforcing it.
@@ -394,28 +221,6 @@ import "type/v1beta1/selector.proto";
 // This helps to reduce the risk of breaking the production traffic caused by an incorrect authorization policy.
 // For more information, see [dry-run tasks](https://istio.io/latest/docs/tasks/security/authorization/authz-dry-run/).
 //
-// {{<tabset category-name="example">}}
-// {{<tab name="v1beta1" category-value="v1beta1">}}
-// ```yaml
-// apiVersion: security.istio.io/v1beta1
-// kind: AuthorizationPolicy
-// metadata:
-//   name: dry-run-example
-//   annotations:
-//     "istio.io/dry-run": "true"
-// spec:
-//   selector:
-//     matchLabels:
-//       app: httpbin
-//   action: DENY
-//   rules:
-//   - to:
-//     - operation:
-//         paths: ["/headers"]
-// ```
-// {{</tab>}}
-//
-// {{<tab name="v1" category-value="v1">}}
 // ```yaml
 // apiVersion: security.istio.io/v1
 // kind: AuthorizationPolicy
@@ -433,24 +238,30 @@ import "type/v1beta1/selector.proto";
 //     - operation:
 //         paths: ["/headers"]
 // ```
-// {{</tab>}}
-// {{</tabset>}}
 package istio.security.v1beta1;
 
-option go_package="istio.io/api/security/v1beta1";
+import "google/api/field_behavior.proto";
+import "type/v1beta1/selector.proto";
+
+option go_package = "istio.io/api/security/v1beta1";
 
 // AuthorizationPolicy enables access control on workloads.
 //
 // <!-- crd generation tags
 // +cue-gen:AuthorizationPolicy:groupName:security.istio.io
-// +cue-gen:AuthorizationPolicy:version:v1beta1
+// +cue-gen:AuthorizationPolicy:versions:v1beta1,v1
 // +cue-gen:AuthorizationPolicy:storageVersion
 // +cue-gen:AuthorizationPolicy:annotations:helm.sh/resource-policy=keep
 // +cue-gen:AuthorizationPolicy:labels:app=istio-pilot,chart=istio,istio=security,heritage=Tiller,release=istio
 // +cue-gen:AuthorizationPolicy:subresource:status
 // +cue-gen:AuthorizationPolicy:scope:Namespaced
-// +cue-gen:AuthorizationPolicy:resource:categories=istio-io,security-istio-io,plural=authorizationpolicies
+// +cue-gen:AuthorizationPolicy:resource:categories=istio-io,security-istio-io,shortNames=ap,plural=authorizationpolicies
 // +cue-gen:AuthorizationPolicy:preserveUnknownFields:false
+// +cue-gen:AuthorizationPolicy:printerColumn:name=Action,type=string,JSONPath=.spec.action,description="The operation to take."
+// +cue-gen:AuthorizationPolicy:printerColumn:name=Age,type=date,JSONPath=.metadata.creationTimestamp,description="CreationTimestamp is a timestamp
+// representing the server time when this object was created. It is not guaranteed to be set in happens-before order across separate operations.
+// Clients may not set this value. It is represented in RFC3339 form and is in UTC.
+// Populated by the system. Read-only. Null for lists. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#metadata"
 // -->
 //
 // <!-- go code generation tags
@@ -459,37 +270,47 @@ option go_package="istio.io/api/security/v1beta1";
 // +genclient
 // +k8s:deepcopy-gen=true
 // -->
-// <!-- istio code generation tags
-// +istio.io/sync-start
-// -->
+// +kubebuilder:validation:XValidation:message="only one of targetRefs or selector can be set",rule="oneof(self.selector, self.targetRef, self.targetRefs)"
 message AuthorizationPolicy {
   // Optional. The selector decides where to apply the authorization policy. The selector will match with workloads
   // in the same namespace as the authorization policy. If the authorization policy is in the root namespace, the selector
   // will additionally match with workloads in all namespaces.
   //
-  // If the selector and the targetRef are not set, the selector will match all workloads. At most one of the selector
-  // and targetRef can be set.
+  // If the selector and the targetRef are not set, the selector will match all workloads.
+  //
+  // At most one of `selector` or `targetRefs` can be set for a given policy.
   istio.type.v1beta1.WorkloadSelector selector = 1;
 
-  // Optional. The targetRef specifies the gateway the policy should be
-  // applied to. The targeted resource specified will determine which
-  // workloads the authorization policy applies to. The targeted resource
-  // must be a `Gateway` in the group `gateway.networking.k8s.io`. The
-  // gateway must be in the same namespace as the authorization policy.
+  // $hide_from_docs
+  istio.type.v1beta1.PolicyTargetReference targetRef = 5;
+
+  // Optional. The targetRefs specifies a list of resources the policy should be
+  // applied to. The targeted resources specified will determine which workloads
+  // the policy applies to.
+  //
+  // Currently, the following resource attachment types are supported:
+  // * `kind: Gateway` with `group: gateway.networking.k8s.io` in the same namespace.
+  // * `kind: GatewayClass` with `group: gateway.networking.k8s.io` in the root namespace.
+  // * `kind: Service` with `group: ""` or `group: "core"` in the same namespace. This type is only supported for waypoints.
+  // * `kind: ServiceEntry` with `group: networking.istio.io` in the same namespace.
   //
   // If not set, the policy is applied as defined by the selector.
-  // At most one of the selector and targetRef can be set.
+  // At most one of the selector and targetRefs can be set.
   //
-  // NOTE: If you are using the `targetRef` field in a multi-revision environment with Istio versions prior to 1.20,
-  // it is highly recommended that you pin the authorization policy to a revision running 1.20+ via the istio.io/rev label.
-  // This is to prevent proxies connected to older istiod control planes (that don't know about the targetRef field)
+  // NOTE: If you are using the `targetRefs` field in a multi-revision environment with Istio versions prior to 1.22,
+  // it is highly recommended that you pin the policy to a revision running 1.22+ via the `istio.io/rev` label.
+  // This is to prevent proxies connected to older control planes (that don't know about the `targetRefs` field)
   // from misinterpreting the policy as namespace-wide during the upgrade process.
-  istio.type.v1beta1.PolicyTargetReference targetRef = 5;
+  //
+  // NOTE: Waypoint proxies are required to use this field for policies to apply; `selector` policies will be ignored.
+  // +kubebuilder:validation:MaxItems=16
+  repeated istio.type.v1beta1.PolicyTargetReference targetRefs = 6;
 
   // Optional. A list of rules to match the request. A match occurs when at least one rule matches the request.
   //
   // If not set, the match will never occur. This is equivalent to setting a default of deny for the target workloads if
   // the action is ALLOW.
+  // +kubebuilder:validation:MaxItems=512
   repeated Rule rules = 2;
 
   // Action specifies the operation to take.
@@ -520,7 +341,7 @@ message AuthorizationPolicy {
     // `my-custom-authz` if the request path has prefix `/admin/`.
     //
     // ```yaml
-    // apiVersion: security.istio.io/v1beta1
+    // apiVersion: security.istio.io/v1
     // kind: AuthorizationPolicy
     // metadata:
     //   name: ext-authz
@@ -575,6 +396,7 @@ message Rule {
   // Optional. `from` specifies the source of a request.
   //
   // If not set, any source is allowed.
+  // +kubebuilder:validation:MaxItems=512
   repeated From from = 1;
 
   // To includes a list of operations.
@@ -605,10 +427,13 @@ message Rule {
 // namespaces: ["prod", "test"]
 // notIpBlocks: ["203.0.113.4"]
 // ```
+// +kubebuilder:validation:XValidation:message="Cannot set serviceAccounts with namespaces or principals",rule="(has(self.serviceAccounts) || has(self.notServiceAccounts)) ? (!has(self.principals) && !has(self.notPrincipals) && !has(self.namespaces) && !has(self.notNamespaces)) : true"
 message Source {
   // Optional. A list of peer identities derived from the peer certificate. The peer identity is in the format of
   // `"<TRUST_DOMAIN>/ns/<NAMESPACE>/sa/<SERVICE_ACCOUNT>"`, for example, `"cluster.local/ns/default/sa/productpage"`.
   // This field requires mTLS enabled and is the same as the `source.principal` attribute.
+  //
+  // Usage of `serviceAccounts` is typically simpler and offers the same functionality.
   //
   // If not set, any principal is allowed.
   repeated string principals = 1;
@@ -634,6 +459,31 @@ message Source {
 
   // Optional. A list of negative match of namespaces.
   repeated string not_namespaces = 7;
+
+  // Optional. A list of Kubernetes service accounts derived from the peer certificate.
+  // This field requires mTLS enabled and is the same as the `source.serviceaccount` attribute.
+  //
+  // This takes the format `<namespace>/<serviceaccount>`.
+  // `<serviceaccount>` may also be used to use the same namespace as the `AuthorizationPolicy`.
+  //
+  // If not set, any service account is allowed.
+  //
+  // No form of wildcard (`*`) is allowed.
+  // Cannot be set with `principals` or `namespaces`.
+  //
+  // +protoc-gen-crd:list-value-validation:MaxLength=320
+  // +kubebuilder:validation:MaxItems=16
+  repeated string service_accounts = 11;
+
+  // Optional. A list of negative match of Kubernetes service accounts.
+  //
+  // This takes the format `<namespace>/<serviceaccount>`.
+  // `<serviceaccount>` may also be used to use the same namespace as the `AuthorizationPolicy`.
+  //
+  // No form of wildcard (`*`) is allowed.
+  // +protoc-gen-crd:list-value-validation:MaxLength=320
+  // +kubebuilder:validation:MaxItems=16
+  repeated string not_service_accounts = 12;
 
   // Optional. A list of IP blocks, populated from the source address of the IP packet. Single IP (e.g. `203.0.113.4`) and
   // CIDR (e.g. `203.0.113.0/24`) are supported. This is the same as the `source.ip` attribute.
@@ -700,6 +550,20 @@ message Operation {
   // Optional. A list of paths as specified in the HTTP request. See the [Authorization Policy Normalization](https://istio.io/latest/docs/reference/config/security/normalization/)
   // for details of the path normalization.
   // For gRPC service, this will be the fully-qualified name in the form of `/package.service/method`.
+  //
+  // If a path in the list contains the `{*}` or `{**}` path template operator, it will be interpreted as an [Envoy Uri Template](https://www.envoyproxy.io/docs/envoy/latest/api-v3/extensions/path/match/uri_template/v3/uri_template_match.proto).
+  // To be a valid path template, the path must not contain `*`, `{`, or `}` outside of a supported operator. No other characters are allowed in the path segment with the path template operator.
+  // - `{*}` matches a single glob that cannot extend beyond a path segment.
+  // - `{**}` matches zero or more globs. If a path contains `{**}`, it must be the last operator.
+  //
+  // Examples:
+  // - `/foo/{*}` matches `/foo/bar` but not `/foo/bar/baz`
+  // - `/foo/{**}/` matches `/foo/bar/`, `/foo/bar/baz.txt`, and `/foo//` but not `/foo/bar`
+  // - `/foo/{*}/bar/{**}` matches `/foo/buzz/bar/` and `/foo/buzz/bar/baz`
+  // - `/*/baz/{*}` is not a valid path template since it includes `*` outside of a supported operator
+  // - `/**/baz/{*}` is not a valid path template since it includes `**` outside of a supported operator
+  // - `/{**}/foo/{*}` is not a valid path template since `{**}` is not the last operator
+  // - `/foo/{*}.txt` is invalid since there are characters other than `{*}` in the path segment
   //
   // If not set, any path is allowed. Must be used only with HTTP.
   repeated string paths = 4;

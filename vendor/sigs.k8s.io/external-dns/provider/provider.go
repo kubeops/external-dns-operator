@@ -19,6 +19,7 @@ package provider
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net"
 	"strings"
 
@@ -29,7 +30,12 @@ import (
 // SoftError is an error, that provider will only log as error instead
 // of fatal. It is meant for error propagation from providers to tell
 // that this is a transient error.
-var SoftError error = errors.New("soft error")
+var SoftError error = errors.New("soft error") //nolint:staticcheck
+
+// NewSoftErrorf creates a SoftError with formats according to a format specifier and returns the string as a
+func NewSoftErrorf(format string, a ...any) error {
+	return NewSoftError(fmt.Errorf(format, a...))
+}
 
 // NewSoftError creates a SoftError from the given error
 func NewSoftError(err error) error {
@@ -48,7 +54,7 @@ type Provider interface {
 	// unnecessary (potentially failing) changes. It may also modify other fields, add, or remove
 	// Endpoints. It is permitted to modify the supplied endpoints.
 	AdjustEndpoints(endpoints []*endpoint.Endpoint) ([]*endpoint.Endpoint, error)
-	GetDomainFilter() endpoint.DomainFilter
+	GetDomainFilter() endpoint.DomainFilterInterface
 }
 
 type BaseProvider struct{}
@@ -57,8 +63,8 @@ func (b BaseProvider) AdjustEndpoints(endpoints []*endpoint.Endpoint) ([]*endpoi
 	return endpoints, nil
 }
 
-func (b BaseProvider) GetDomainFilter() endpoint.DomainFilter {
-	return endpoint.DomainFilter{}
+func (b BaseProvider) GetDomainFilter() endpoint.DomainFilterInterface {
+	return &endpoint.DomainFilter{}
 }
 
 type contextKey struct {

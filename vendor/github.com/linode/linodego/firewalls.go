@@ -3,10 +3,8 @@ package linodego
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"time"
 
-	"github.com/go-resty/resty/v2"
 	"github.com/linode/linodego/internal/parseabletime"
 )
 
@@ -67,6 +65,7 @@ func (f *Firewall) UnmarshalJSON(b []byte) error {
 
 	p := struct {
 		*Mask
+
 		Created *parseabletime.ParseableTime `json:"created"`
 		Updated *parseabletime.ParseableTime `json:"updated"`
 	}{
@@ -79,90 +78,34 @@ func (f *Firewall) UnmarshalJSON(b []byte) error {
 
 	f.Created = (*time.Time)(p.Created)
 	f.Updated = (*time.Time)(p.Updated)
+
 	return nil
-}
-
-// FirewallsPagedResponse represents a Linode API response for listing of Cloud Firewalls
-type FirewallsPagedResponse struct {
-	*PageOptions
-	Data []Firewall `json:"data"`
-}
-
-func (FirewallsPagedResponse) endpoint(_ ...any) string {
-	return "networking/firewalls"
-}
-
-func (resp *FirewallsPagedResponse) castResult(r *resty.Request, e string) (int, int, error) {
-	res, err := coupleAPIErrors(r.SetResult(FirewallsPagedResponse{}).Get(e))
-	if err != nil {
-		return 0, 0, err
-	}
-	castedRes := res.Result().(*FirewallsPagedResponse)
-	resp.Data = append(resp.Data, castedRes.Data...)
-	return castedRes.Pages, castedRes.Results, nil
 }
 
 // ListFirewalls returns a paginated list of Cloud Firewalls
 func (c *Client) ListFirewalls(ctx context.Context, opts *ListOptions) ([]Firewall, error) {
-	response := FirewallsPagedResponse{}
-
-	err := c.listHelper(ctx, &response, opts)
-	if err != nil {
-		return nil, err
-	}
-
-	return response.Data, nil
+	return getPaginatedResults[Firewall](ctx, c, "networking/firewalls", opts)
 }
 
 // CreateFirewall creates a single Firewall with at least one set of inbound or outbound rules
 func (c *Client) CreateFirewall(ctx context.Context, opts FirewallCreateOptions) (*Firewall, error) {
-	body, err := json.Marshal(opts)
-	if err != nil {
-		return nil, err
-	}
-
-	e := "networking/firewalls"
-	req := c.R(ctx).SetResult(&Firewall{}).SetBody(string(body))
-	r, err := coupleAPIErrors(req.Post(e))
-	if err != nil {
-		return nil, err
-	}
-
-	return r.Result().(*Firewall), nil
+	return doPOSTRequest[Firewall](ctx, c, "networking/firewalls", opts)
 }
 
 // GetFirewall gets a single Firewall with the provided ID
 func (c *Client) GetFirewall(ctx context.Context, firewallID int) (*Firewall, error) {
-	e := fmt.Sprintf("networking/firewalls/%d", firewallID)
-	req := c.R(ctx).SetResult(&Firewall{})
-	r, err := coupleAPIErrors(req.Get(e))
-	if err != nil {
-		return nil, err
-	}
-
-	return r.Result().(*Firewall), nil
+	e := formatAPIPath("networking/firewalls/%d", firewallID)
+	return doGETRequest[Firewall](ctx, c, e)
 }
 
 // UpdateFirewall updates a Firewall with the given ID
 func (c *Client) UpdateFirewall(ctx context.Context, firewallID int, opts FirewallUpdateOptions) (*Firewall, error) {
-	body, err := json.Marshal(opts)
-	if err != nil {
-		return nil, err
-	}
-
-	e := fmt.Sprintf("networking/firewalls/%d", firewallID)
-	req := c.R(ctx).SetResult(&Firewall{}).SetBody(string(body))
-	r, err := coupleAPIErrors(req.Put(e))
-	if err != nil {
-		return nil, err
-	}
-
-	return r.Result().(*Firewall), nil
+	e := formatAPIPath("networking/firewalls/%d", firewallID)
+	return doPUTRequest[Firewall](ctx, c, e, opts)
 }
 
 // DeleteFirewall deletes a single Firewall with the provided ID
 func (c *Client) DeleteFirewall(ctx context.Context, firewallID int) error {
-	e := fmt.Sprintf("networking/firewalls/%d", firewallID)
-	_, err := coupleAPIErrors(c.R(ctx).Delete(e))
-	return err
+	e := formatAPIPath("networking/firewalls/%d", firewallID)
+	return doDELETERequest(ctx, c, e)
 }

@@ -21,6 +21,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 
@@ -34,7 +35,7 @@ import (
 )
 
 const (
-	azureRecordTTL = 300
+	defaultTTL = 300
 )
 
 // ZonesClient is an interface of dns.ZoneClient that can be stubbed for testing.
@@ -52,25 +53,29 @@ type RecordSetsClient interface {
 // AzureProvider implements the DNS provider for Microsoft's Azure cloud platform.
 type AzureProvider struct {
 	provider.BaseProvider
-	domainFilter                 endpoint.DomainFilter
-	zoneNameFilter               endpoint.DomainFilter
+	domainFilter                 *endpoint.DomainFilter
+	zoneNameFilter               *endpoint.DomainFilter
 	zoneIDFilter                 provider.ZoneIDFilter
 	dryRun                       bool
 	resourceGroup                string
 	userAssignedIdentityClientID string
+	activeDirectoryAuthorityHost string
 	zonesClient                  ZonesClient
+	zonesCache                   *zonesCache[dns.Zone]
 	recordSetsClient             RecordSetsClient
+	maxRetriesCount              int
 }
 
 // NewAzureProvider creates a new Azure provider.
 //
 // Returns the provider or an error if a provider could not be created.
-func NewAzureProvider(configFile string, domainFilter endpoint.DomainFilter, zoneNameFilter endpoint.DomainFilter, zoneIDFilter provider.ZoneIDFilter, subscriptionID string, resourceGroup string, userAssignedIdentityClientID string, dryRun bool) (*AzureProvider, error) {
-	cfg, err := getConfig(configFile, subscriptionID, resourceGroup, userAssignedIdentityClientID)
+func NewAzureProvider(configFile string, domainFilter *endpoint.DomainFilter, zoneNameFilter *endpoint.DomainFilter, zoneIDFilter provider.ZoneIDFilter, subscriptionID string, resourceGroup string, userAssignedIdentityClientID string, activeDirectoryAuthorityHost string, zonesCacheDuration time.Duration, maxRetriesCount int, dryRun bool) (*AzureProvider, error) {
+	cfg, err := getConfig(configFile, subscriptionID, resourceGroup, userAssignedIdentityClientID, activeDirectoryAuthorityHost)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read Azure config file '%s': %v", configFile, err)
+		return nil, fmt.Errorf("failed to read Azure config file '%s': %w", configFile, err)
 	}
-	cred, clientOpts, err := getCredentials(*cfg)
+
+	cred, clientOpts, err := getCredentials(*cfg, maxRetriesCount)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get credentials: %w", err)
 	}
@@ -90,19 +95,24 @@ func NewAzureProvider(configFile string, domainFilter endpoint.DomainFilter, zon
 		dryRun:                       dryRun,
 		resourceGroup:                cfg.ResourceGroup,
 		userAssignedIdentityClientID: cfg.UserAssignedIdentityID,
+		activeDirectoryAuthorityHost: cfg.ActiveDirectoryAuthorityHost,
 		zonesClient:                  zonesClient,
+		zonesCache:                   &zonesCache[dns.Zone]{duration: zonesCacheDuration},
 		recordSetsClient:             recordSetsClient,
+		maxRetriesCount:              maxRetriesCount,
 	}, nil
 }
 
 // Records gets the current records.
 //
 // Returns the current records or an error if the operation failed.
-func (p *AzureProvider) Records(ctx context.Context) (endpoints []*endpoint.Endpoint, _ error) {
+func (p *AzureProvider) Records(ctx context.Context) ([]*endpoint.Endpoint, error) {
 	zones, err := p.zones(ctx)
 	if err != nil {
 		return nil, err
 	}
+
+	endpoints := make([]*endpoint.Endpoint, 0)
 
 	for _, zone := range zones {
 		pager := p.recordSetsClient.NewListAllByDNSZonePager(p.resourceGroup, *zone.Name, &dns.RecordSetsClientListAllByDNSZoneOptions{Top: nil})
@@ -165,6 +175,10 @@ func (p *AzureProvider) ApplyChanges(ctx context.Context, changes *plan.Changes)
 
 func (p *AzureProvider) zones(ctx context.Context) ([]dns.Zone, error) {
 	log.Debugf("Retrieving Azure DNS zones for resource group: %s.", p.resourceGroup)
+	if !p.zonesCache.Expired() {
+		log.Debugf("Using cached Azure DNS zones for resource group: %s zone count: %d.", p.resourceGroup, len(p.zonesCache.Get()))
+		return p.zonesCache.Get(), nil
+	}
 	var zones []dns.Zone
 	pager := p.zonesClient.NewListByResourceGroupPager(p.resourceGroup, &dns.ZonesClientListByResourceGroupOptions{Top: nil})
 	for pager.More() {
@@ -181,7 +195,8 @@ func (p *AzureProvider) zones(ctx context.Context) ([]dns.Zone, error) {
 			}
 		}
 	}
-	log.Debugf("Found %d Azure DNS zone(s).", len(zones))
+	log.Debugf("Found %d Azure DNS zone(s). Updating zones cache", len(zones))
+	p.zonesCache.Reset(zones)
 	return zones, nil
 }
 
@@ -327,7 +342,7 @@ func (p *AzureProvider) recordSetNameForZone(zone string, endpoint *endpoint.End
 }
 
 func (p *AzureProvider) newRecordSet(endpoint *endpoint.Endpoint) (dns.RecordSet, error) {
-	var ttl int64 = azureRecordTTL
+	var ttl int64 = defaultTTL
 	if endpoint.RecordTTL.IsConfigured() {
 		ttl = int64(endpoint.RecordTTL)
 	}
@@ -380,6 +395,19 @@ func (p *AzureProvider) newRecordSet(endpoint *endpoint.Endpoint) (dns.RecordSet
 			Properties: &dns.RecordSetProperties{
 				TTL:       to.Ptr(ttl),
 				MxRecords: mxRecords,
+			},
+		}, nil
+	case dns.RecordTypeNS:
+		nsRecords := make([]*dns.NsRecord, len(endpoint.Targets))
+		for i, target := range endpoint.Targets {
+			nsRecords[i] = &dns.NsRecord{
+				Nsdname: to.Ptr(target),
+			}
+		}
+		return dns.RecordSet{
+			Properties: &dns.RecordSetProperties{
+				TTL:       to.Ptr(ttl),
+				NsRecords: nsRecords,
 			},
 		}, nil
 	case dns.RecordTypeTXT:
@@ -446,6 +474,16 @@ func extractAzureTargets(recordSet *dns.RecordSet) []string {
 		targets := make([]string, len(mxRecords))
 		for i, mxRecord := range mxRecords {
 			targets[i] = fmt.Sprintf("%d %s", *mxRecord.Preference, *mxRecord.Exchange)
+		}
+		return targets
+	}
+
+	// Check for NS records
+	nsRecords := properties.NsRecords
+	if len(nsRecords) > 0 && (nsRecords)[0].Nsdname != nil {
+		targets := make([]string, len(nsRecords))
+		for i, nsRecord := range nsRecords {
+			targets[i] = *nsRecord.Nsdname
 		}
 		return targets
 	}

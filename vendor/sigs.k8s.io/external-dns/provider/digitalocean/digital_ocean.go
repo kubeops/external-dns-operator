@@ -33,8 +33,8 @@ import (
 )
 
 const (
-	// digitalOceanRecordTTL is the default TTL value
-	digitalOceanRecordTTL = 300
+	// defaultTTL is the default TTL value
+	defaultTTL = 300
 )
 
 // DigitalOceanProvider is an implementation of Provider for Digital Ocean's DNS.
@@ -42,7 +42,7 @@ type DigitalOceanProvider struct {
 	provider.BaseProvider
 	Client godo.DomainsService
 	// only consider hosted zones managing domains ending in this suffix
-	domainFilter endpoint.DomainFilter
+	domainFilter *endpoint.DomainFilter
 	// page size when querying paginated APIs
 	apiPageSize int
 	DryRun      bool
@@ -76,7 +76,7 @@ func (c *digitalOceanChanges) Empty() bool {
 }
 
 // NewDigitalOceanProvider initializes a new DigitalOcean DNS based Provider.
-func NewDigitalOceanProvider(ctx context.Context, domainFilter endpoint.DomainFilter, dryRun bool, apiPageSize int) (*DigitalOceanProvider, error) {
+func NewDigitalOceanProvider(ctx context.Context, domainFilter *endpoint.DomainFilter, dryRun bool, apiPageSize int) (*DigitalOceanProvider, error) {
 	token, ok := os.LookupEnv("DO_TOKEN")
 	if !ok {
 		return nil, fmt.Errorf("no token found")
@@ -84,7 +84,7 @@ func NewDigitalOceanProvider(ctx context.Context, domainFilter endpoint.DomainFi
 	oauthClient := oauth2.NewClient(ctx, oauth2.StaticTokenSource(&oauth2.Token{
 		AccessToken: token,
 	}))
-	client, err := godo.New(oauthClient, godo.SetUserAgent("ExternalDNS/"+externaldns.Version))
+	client, err := godo.New(oauthClient, godo.SetUserAgent(externaldns.UserAgent()))
 	if err != nil {
 		return nil, err
 	}
@@ -158,13 +158,15 @@ func (p *DigitalOceanProvider) Records(ctx context.Context) ([]*endpoint.Endpoin
 	endpoints := []*endpoint.Endpoint{}
 	for _, zone := range zones {
 		records, err := p.fetchRecords(ctx, zone.Name)
+
 		if err != nil {
 			return nil, err
 		}
 
 		for _, r := range records {
-			if provider.SupportedRecordType(r.Type) {
+			if p.SupportedRecordType(r.Type) {
 				name := r.Name + "." + zone.Name
+				data := r.Data
 
 				// root name is identified by @ and should be
 				// translated to zone name for the endpoint entry.
@@ -172,7 +174,11 @@ func (p *DigitalOceanProvider) Records(ctx context.Context) ([]*endpoint.Endpoin
 					name = zone.Name
 				}
 
-				ep := endpoint.NewEndpointWithTTL(name, r.Type, endpoint.TTL(r.TTL), r.Data)
+				if r.Type == endpoint.RecordTypeMX {
+					data = fmt.Sprintf("%d %s", r.Priority, r.Data)
+				}
+
+				ep := endpoint.NewEndpointWithTTL(name, r.Type, endpoint.TTL(r.TTL), data)
 
 				endpoints = append(endpoints, ep)
 			}
@@ -283,16 +289,32 @@ func makeDomainEditRequest(domain, name, recordType, data string, ttl int) *godo
 
 	// For some reason the DO API requires the '.' at the end of "data" in case of CNAME request.
 	// Example: {"type":"CNAME","name":"hello","data":"www.example.com."}
-	if recordType == endpoint.RecordTypeCNAME && !strings.HasSuffix(data, ".") {
+	if (recordType == endpoint.RecordTypeCNAME || recordType == endpoint.RecordTypeMX) && !strings.HasSuffix(data, ".") {
 		data += "."
 	}
 
-	return &godo.DomainRecordEditRequest{
+	request := &godo.DomainRecordEditRequest{
 		Name: adjustedName,
 		Type: recordType,
 		Data: data,
 		TTL:  ttl,
 	}
+
+	if recordType == endpoint.RecordTypeMX {
+		mxRecord, err := endpoint.NewMXRecord(data)
+		if err != nil {
+			log.WithFields(log.Fields{
+				"domain":     domain,
+				"dnsName":    name,
+				"recordType": recordType,
+				"data":       data,
+			}).Warn("Unable to parse MX target")
+			return request
+		}
+		request.Priority = int(*mxRecord.GetPriority())
+		request.Data = provider.EnsureTrailingDot(*mxRecord.GetHost())
+	}
+	return request
 }
 
 // submitChanges applies an instance of `digitalOceanChanges` to the DigitalOcean API.
@@ -303,13 +325,19 @@ func (p *DigitalOceanProvider) submitChanges(ctx context.Context, changes *digit
 	}
 
 	for _, c := range changes.Creates {
-		log.WithFields(log.Fields{
+		logFields := log.Fields{
 			"domain":     c.Domain,
 			"dnsName":    c.Options.Name,
 			"recordType": c.Options.Type,
 			"data":       c.Options.Data,
 			"ttl":        c.Options.TTL,
-		}).Debug("Creating domain record")
+		}
+
+		if c.Options.Type == endpoint.RecordTypeMX {
+			logFields["priority"] = c.Options.Priority
+		}
+
+		log.WithFields(logFields).Debug("Creating domain record")
 
 		if p.DryRun {
 			continue
@@ -322,13 +350,17 @@ func (p *DigitalOceanProvider) submitChanges(ctx context.Context, changes *digit
 	}
 
 	for _, u := range changes.Updates {
-		log.WithFields(log.Fields{
+		logFields := log.Fields{
 			"domain":     u.Domain,
 			"dnsName":    u.Options.Name,
 			"recordType": u.Options.Type,
 			"data":       u.Options.Data,
 			"ttl":        u.Options.TTL,
-		}).Debug("Updating domain record")
+		}
+		if u.Options.Type == endpoint.RecordTypeMX {
+			logFields["priority"] = u.Options.Priority
+		}
+		log.WithFields(logFields).Debug("Updating domain record")
 
 		if p.DryRun {
 			continue
@@ -363,7 +395,7 @@ func getTTLFromEndpoint(ep *endpoint.Endpoint) int {
 	if ep.RecordTTL.IsConfigured() {
 		return int(ep.RecordTTL)
 	}
-	return digitalOceanRecordTTL
+	return defaultTTL
 }
 
 func endpointsByZone(zoneNameIDMapper provider.ZoneIDName, endpoints []*endpoint.Endpoint) map[string][]*endpoint.Endpoint {
@@ -587,6 +619,16 @@ func processDeleteActions(
 	}
 
 	return nil
+}
+
+// SupportedRecordType returns true if the record type is supported by the provider
+func (p *DigitalOceanProvider) SupportedRecordType(recordType string) bool {
+	switch recordType {
+	case "MX":
+		return true
+	default:
+		return provider.SupportedRecordType(recordType)
+	}
 }
 
 // ApplyChanges applies the given set of generic changes to the provider.

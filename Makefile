@@ -25,7 +25,7 @@ COMPRESS ?= no
 
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
 CRD_OPTIONS          ?= "crd:crdVersions={v1},allowDangerousTypes=true"
-CODE_GENERATOR_IMAGE ?= ghcr.io/appscode/gengo:release-1.29
+CODE_GENERATOR_IMAGE ?= ghcr.io/appscode/gengo:release-1.32
 API_GROUPS           ?= external:v1alpha1
 
 # Where to push the docker image.
@@ -533,12 +533,8 @@ clean:
 .PHONY: run
 run:
 	go run -mod=vendor ./cmd/external-dns-operator run \
-		--v=3 \
-		--secure-port=8443 \
-		--kubeconfig=$(KUBECONFIG) \
-		--authorization-kubeconfig=$(KUBECONFIG) \
-		--authentication-kubeconfig=$(KUBECONFIG) \
-		--authentication-skip-lookup
+    		--v=3 \
+    		--kubeconfig=$(KUBECONFIG)
 
 .PHONY: push-to-kind
 push-to-kind: container

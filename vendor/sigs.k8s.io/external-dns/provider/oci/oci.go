@@ -18,24 +18,24 @@ package oci
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
 	"time"
 
+	"github.com/goccy/go-yaml"
 	"github.com/oracle/oci-go-sdk/v65/common"
 	"github.com/oracle/oci-go-sdk/v65/common/auth"
 	"github.com/oracle/oci-go-sdk/v65/dns"
-	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
-	yaml "gopkg.in/yaml.v2"
 
 	"sigs.k8s.io/external-dns/endpoint"
 	"sigs.k8s.io/external-dns/plan"
 	"sigs.k8s.io/external-dns/provider"
 )
 
-const ociRecordTTL = 300
+const defaultTTL = 300
 
 // OCIAuthConfig holds connection parameters for the OCI API.
 type OCIAuthConfig struct {
@@ -63,7 +63,7 @@ type OCIProvider struct {
 	client ociDNSClient
 	cfg    OCIConfig
 
-	domainFilter endpoint.DomainFilter
+	domainFilter *endpoint.DomainFilter
 	zoneIDFilter provider.ZoneIDFilter
 	zoneScope    string
 	zoneCache    *zoneCache
@@ -93,7 +93,7 @@ func LoadOCIConfig(path string) (*OCIConfig, error) {
 }
 
 // NewOCIProvider initializes a new OCI DNS based Provider.
-func NewOCIProvider(cfg OCIConfig, domainFilter endpoint.DomainFilter, zoneIDFilter provider.ZoneIDFilter, zoneScope string, dryRun bool) (*OCIProvider, error) {
+func NewOCIProvider(cfg OCIConfig, domainFilter *endpoint.DomainFilter, zoneIDFilter provider.ZoneIDFilter, zoneScope string, dryRun bool) (*OCIProvider, error) {
 	var client ociDNSClient
 	var err error
 	var configProvider common.ConfigurationProvider
@@ -153,7 +153,7 @@ func (p *OCIProvider) zones(ctx context.Context) (map[string]dns.ZoneSummary, er
 	}
 	zones := make(map[string]dns.ZoneSummary)
 	scopes := []dns.GetZoneScopeEnum{dns.GetZoneScopeEnum(p.zoneScope)}
-	// If zone scope is empty, list all zones types.
+	// If the zone scope is empty, list all zones types.
 	if p.zoneScope == "" {
 		scopes = dns.GetGetZoneScopeEnumValues()
 	}
@@ -168,6 +168,39 @@ func (p *OCIProvider) zones(ctx context.Context) (map[string]dns.ZoneSummary, er
 	}
 	p.zoneCache.Reset(zones)
 	return zones, nil
+}
+
+// Merge Endpoints with the same Name and Type into a single endpoint with multiple Targets.
+func mergeEndpointsMultiTargets(endpoints []*endpoint.Endpoint) []*endpoint.Endpoint {
+	endpointsByNameType := map[string][]*endpoint.Endpoint{}
+
+	for _, ep := range endpoints {
+		key := fmt.Sprintf("%s-%s", ep.DNSName, ep.RecordType)
+		endpointsByNameType[key] = append(endpointsByNameType[key], ep)
+	}
+
+	// If there were no merges, return endpoints.
+	if len(endpointsByNameType) == len(endpoints) {
+		return endpoints
+	}
+
+	// Otherwise, create a new list of endpoints with the consolidated targets.
+	var mergedEndpoints []*endpoint.Endpoint
+	for _, ep := range endpointsByNameType {
+		dnsName := ep[0].DNSName
+		recordType := ep[0].RecordType
+		recordTTL := ep[0].RecordTTL
+
+		targets := make([]string, len(ep))
+		for i, e := range ep {
+			targets[i] = e.Targets[0]
+		}
+
+		e := endpoint.NewEndpointWithTTL(dnsName, recordType, recordTTL, targets...)
+		mergedEndpoints = append(mergedEndpoints, e)
+	}
+
+	return mergedEndpoints
 }
 
 func (p *OCIProvider) addPaginatedZones(ctx context.Context, zones map[string]dns.ZoneSummary, scope dns.GetZoneScopeEnum) error {
@@ -199,10 +232,23 @@ func (p *OCIProvider) addPaginatedZones(ctx context.Context, zones map[string]dn
 }
 
 func (p *OCIProvider) newFilteredRecordOperations(endpoints []*endpoint.Endpoint, opType dns.RecordOperationOperationEnum) []dns.RecordOperation {
-	ops := []dns.RecordOperation{}
-	for _, endpoint := range endpoints {
-		if p.domainFilter.Match(endpoint.DNSName) {
-			ops = append(ops, newRecordOperation(endpoint, opType))
+	var ops []dns.RecordOperation
+	for _, ep := range endpoints {
+		if ep == nil {
+			continue
+		}
+		if p.domainFilter.Match(ep.DNSName) {
+			for _, t := range ep.Targets {
+				singleTargetEp := &endpoint.Endpoint{
+					DNSName:          ep.DNSName,
+					Targets:          []string{t},
+					RecordType:       ep.RecordType,
+					RecordTTL:        ep.RecordTTL,
+					Labels:           ep.Labels,
+					ProviderSpecific: ep.ProviderSpecific,
+				}
+				ops = append(ops, newRecordOperation(singleTargetEp, opType))
+			}
 		}
 	}
 	return ops
@@ -215,7 +261,7 @@ func (p *OCIProvider) Records(ctx context.Context) ([]*endpoint.Endpoint, error)
 		return nil, provider.NewSoftError(fmt.Errorf("getting zones: %w", err))
 	}
 
-	endpoints := []*endpoint.Endpoint{}
+	var endpoints []*endpoint.Endpoint
 	for _, zone := range zones {
 		var page *string
 		for {
@@ -248,6 +294,8 @@ func (p *OCIProvider) Records(ctx context.Context) ([]*endpoint.Endpoint, error)
 		}
 	}
 
+	endpoints = mergeEndpointsMultiTargets(endpoints)
+
 	return endpoints, nil
 }
 
@@ -255,7 +303,7 @@ func (p *OCIProvider) Records(ctx context.Context) ([]*endpoint.Endpoint, error)
 func (p *OCIProvider) ApplyChanges(ctx context.Context, changes *plan.Changes) error {
 	log.Debugf("Processing changes: %+v", changes)
 
-	ops := []dns.RecordOperation{}
+	var ops []dns.RecordOperation
 	ops = append(ops, p.newFilteredRecordOperations(changes.Create, dns.RecordOperationOperationAdd)...)
 
 	ops = append(ops, p.newFilteredRecordOperations(changes.UpdateNew, dns.RecordOperationOperationAdd)...)
@@ -299,6 +347,20 @@ func (p *OCIProvider) ApplyChanges(ctx context.Context, changes *plan.Changes) e
 	return nil
 }
 
+// AdjustEndpoints modifies the endpoints as needed by the specific provider
+func (p *OCIProvider) AdjustEndpoints(endpoints []*endpoint.Endpoint) ([]*endpoint.Endpoint, error) {
+	var adjustedEndpoints []*endpoint.Endpoint
+	for _, e := range endpoints {
+		// OCI DNS does not support the set-identifier attribute, so we remove it to avoid plan failure
+		if e.SetIdentifier != "" {
+			log.Warnf("Adjusting endpont: %v. Ignoring unsupported annotation 'set-identifier': %s", *e, e.SetIdentifier)
+			e.SetIdentifier = ""
+		}
+		adjustedEndpoints = append(adjustedEndpoints, e)
+	}
+	return adjustedEndpoints, nil
+}
+
 // newRecordOperation returns a RecordOperation based on a given endpoint.
 func newRecordOperation(ep *endpoint.Endpoint, opType dns.RecordOperationOperationEnum) dns.RecordOperation {
 	targets := make([]string, len(ep.Targets))
@@ -308,7 +370,7 @@ func newRecordOperation(ep *endpoint.Endpoint, opType dns.RecordOperationOperati
 	}
 	rdata := strings.Join(targets, " ")
 
-	ttl := ociRecordTTL
+	ttl := defaultTTL
 	if ep.RecordTTL.IsConfigured() {
 		ttl = int(ep.RecordTTL)
 	}

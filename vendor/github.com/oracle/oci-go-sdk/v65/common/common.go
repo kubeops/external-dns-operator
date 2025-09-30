@@ -1,4 +1,4 @@
-// Copyright (c) 2016, 2018, 2024, Oracle and/or its affiliates.  All rights reserved.
+// Copyright (c) 2016, 2018, 2025, Oracle and/or its affiliates.  All rights reserved.
 // This software is dual-licensed to you under the Universal Permissive License (UPL) 1.0 as shown at https://oss.oracle.com/licenses/upl or Apache License 2.0 as shown at http://www.apache.org/licenses/LICENSE-2.0. You may choose either license.
 
 package common
@@ -79,7 +79,7 @@ func (region Region) Endpoint(service string) string {
 	if strings.Contains(string(region), ".") {
 		return fmt.Sprintf("%s.%s", service, region)
 	}
-	return fmt.Sprintf("%s.%s.%s", service, region, region.secondLevelDomain())
+	return fmt.Sprintf("%s.%s.%s", service, region, region.SecondLevelDomain())
 }
 
 // EndpointForTemplate returns a endpoint for a service based on template, only unknown region name can fall back to "oc1", but not short code region name.
@@ -105,7 +105,7 @@ func (region Region) EndpointForTemplate(service string, serviceEndpointTemplate
 	endpoint = strings.Replace(endpoint, "{region}", string(region), 1)
 
 	// replace second level domain
-	endpoint = strings.Replace(endpoint, "{secondLevelDomain}", region.secondLevelDomain(), 1)
+	endpoint = strings.Replace(endpoint, "{secondLevelDomain}", region.SecondLevelDomain(), 1)
 
 	return endpoint
 }
@@ -148,7 +148,7 @@ func (region Region) EndpointForTemplateDottedRegion(service string, serviceEndp
 	return "", fmt.Errorf("EndpointForTemplateDottedRegion function requires endpointServiceName or serviceEndpointTemplate, no endpointServiceName or serviceEndpointTemplate provided")
 }
 
-func (region Region) secondLevelDomain() string {
+func (region Region) SecondLevelDomain() string {
 	if realmID, ok := regionRealm[region]; ok {
 		if secondLevelDomain, ok := realm[realmID]; ok {
 			return secondLevelDomain

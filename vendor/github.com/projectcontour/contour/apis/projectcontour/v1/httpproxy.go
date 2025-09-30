@@ -14,8 +14,8 @@
 package v1
 
 import (
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	core_v1 "k8s.io/api/core/v1"
+	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // HTTPProxySpec defines the spec of the CRD.
@@ -235,7 +235,6 @@ type ExtensionServiceReference struct {
 	//
 	// More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
 	//
-	// +required
 	// +kubebuilder:validation:MinLength=1
 	Name string `json:"name,omitempty" protobuf:"bytes,3,opt,name=name"`
 }
@@ -715,8 +714,7 @@ type HTTPRequestRedirectPolicy struct {
 	// StatusCode is the HTTP status code to be used in response.
 	// +optional
 	// +kubebuilder:default=302
-	// +kubebuilder:validation:Enum=301;302
-	StatusCode *int `json:"statusCode,omitempty"`
+	StatusCode *RedirectResponseCode `json:"statusCode,omitempty"`
 
 	// Path allows for redirection to a different path from the
 	// original on the request. The path must start with a
@@ -1147,7 +1145,7 @@ type TimeoutPolicy struct {
 }
 
 // RetryOn is a string type alias with validation to ensure that the value is valid.
-// +kubebuilder:validation:Enum="5xx";gateway-error;reset;connect-failure;retriable-4xx;refused-stream;retriable-status-codes;retriable-headers;cancelled;deadline-exceeded;internal;resource-exhausted;unavailable
+// +kubebuilder:validation:Enum="5xx";gateway-error;reset;reset-before-request;connect-failure;envoy-ratelimited;retriable-4xx;refused-stream;retriable-status-codes;retriable-headers;http3-post-connect-failure;cancelled;deadline-exceeded;internal;resource-exhausted;unavailable
 type RetryOn string
 
 // RetryPolicy defines the attributes associated with retrying policy.
@@ -1172,11 +1170,14 @@ type RetryPolicy struct {
 	// - `5xx`
 	// - `gateway-error`
 	// - `reset`
+	// - `reset-before-request`
 	// - `connect-failure`
+	// - `envoy-ratelimited`
 	// - `retriable-4xx`
 	// - `refused-stream`
 	// - `retriable-status-codes`
 	// - `retriable-headers`
+	// - `http3-post-connect-failure`
 	//
 	// Supported [gRPC conditions](https://www.envoyproxy.io/docs/envoy/latest/configuration/http/http_filters/router_filter#x-envoy-retry-grpc-on):
 	//
@@ -1431,7 +1432,7 @@ type HTTPProxyStatus struct {
 	Description string `json:"description,omitempty"`
 	// +optional
 	// LoadBalancer contains the current status of the load balancer.
-	LoadBalancer corev1.LoadBalancerStatus `json:"loadBalancer,omitempty"`
+	LoadBalancer core_v1.LoadBalancerStatus `json:"loadBalancer,omitempty"`
 	// +optional
 	// Conditions contains information about the current status of the HTTPProxy,
 	// in an upstream-friendly container.
@@ -1464,8 +1465,8 @@ type HTTPProxyStatus struct {
 // +kubebuilder:resource:scope=Namespaced,path=httpproxies,shortName=proxy;proxies,singular=httpproxy
 // +kubebuilder:subresource:status
 type HTTPProxy struct {
-	metav1.TypeMeta   `json:",inline"`
-	metav1.ObjectMeta `json:"metadata"`
+	meta_v1.TypeMeta   `json:",inline"`
+	meta_v1.ObjectMeta `json:"metadata"`
 
 	Spec HTTPProxySpec `json:"spec"`
 	// Status is a container for computed information about the HTTPProxy.
@@ -1478,9 +1479,9 @@ type HTTPProxy struct {
 
 // HTTPProxyList is a list of HTTPProxies.
 type HTTPProxyList struct {
-	metav1.TypeMeta `json:",inline"`
-	metav1.ListMeta `json:"metadata"`
-	Items           []HTTPProxy `json:"items"`
+	meta_v1.TypeMeta `json:",inline"`
+	meta_v1.ListMeta `json:"metadata"`
+	Items            []HTTPProxy `json:"items"`
 }
 
 // SlowStartPolicy will gradually increase amount of traffic to a newly added endpoint.
