@@ -432,7 +432,7 @@ github.com/dnsimple/dnsimple-go/dnsimple
 ## explicit; go 1.13
 github.com/emicklei/go-restful/v3
 github.com/emicklei/go-restful/v3/log
-# github.com/evanphx/json-patch v5.7.0+incompatible
+# github.com/evanphx/json-patch v5.9.11+incompatible
 ## explicit
 github.com/evanphx/json-patch
 # github.com/evanphx/json-patch/v5 v5.9.11
@@ -461,6 +461,9 @@ github.com/fsnotify/fsnotify/internal
 # github.com/fxamacker/cbor/v2 v2.7.0
 ## explicit; go 1.17
 github.com/fxamacker/cbor/v2
+# github.com/ghodss/yaml v1.0.0
+## explicit
+github.com/ghodss/yaml
 # github.com/go-gandi/go-gandi v0.7.0
 ## explicit; go 1.17
 github.com/go-gandi/go-gandi
@@ -560,8 +563,8 @@ github.com/google/go-cmp/cmp/internal/diff
 github.com/google/go-cmp/cmp/internal/flags
 github.com/google/go-cmp/cmp/internal/function
 github.com/google/go-cmp/cmp/internal/value
-# github.com/google/go-containerregistry v0.19.0
-## explicit; go 1.18
+# github.com/google/go-containerregistry v0.20.3
+## explicit; go 1.23.0
 github.com/google/go-containerregistry/pkg/name
 # github.com/google/go-querystring v1.1.0
 ## explicit; go 1.10
@@ -609,6 +612,9 @@ github.com/googleapis/gax-go/v2/callctx
 github.com/googleapis/gax-go/v2/internal
 github.com/googleapis/gax-go/v2/internallog
 github.com/googleapis/gax-go/v2/internallog/internal
+# github.com/gorilla/websocket v1.5.4-0.20250319132907-e064f32e3674
+## explicit; go 1.20
+github.com/gorilla/websocket
 # github.com/grpc-ecosystem/grpc-gateway/v2 v2.26.3
 ## explicit; go 1.23.0
 github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2/options
@@ -858,6 +864,21 @@ github.com/prometheus/common/version
 github.com/prometheus/procfs
 github.com/prometheus/procfs/internal/fs
 github.com/prometheus/procfs/internal/util
+# github.com/rancher/norman v0.5.2
+## explicit; go 1.23.0
+github.com/rancher/norman/clientbase
+github.com/rancher/norman/httperror
+github.com/rancher/norman/types
+github.com/rancher/norman/types/convert
+github.com/rancher/norman/types/definition
+github.com/rancher/norman/types/slice
+github.com/rancher/norman/types/values
+# github.com/rancher/rancher/pkg/client v0.0.0-20250220153925-3abb578f42fe
+## explicit; go 1.23.0
+github.com/rancher/rancher/pkg/client/generated/management/v3
+# github.com/rancher/wrangler/v3 v3.2.0-rc.3
+## explicit; go 1.23.0
+github.com/rancher/wrangler/v3/pkg/name
 # github.com/rivo/uniseg v0.4.7
 ## explicit; go 1.18
 github.com/rivo/uniseg
@@ -952,8 +973,8 @@ github.com/yudai/golcs
 # github.com/zeebo/xxh3 v1.0.2
 ## explicit; go 1.17
 github.com/zeebo/xxh3
-# go.bytebuilders.dev/license-verifier v0.14.0
-## explicit; go 1.21
+# go.bytebuilders.dev/license-verifier v0.14.9
+## explicit; go 1.23.0
 go.bytebuilders.dev/license-verifier/apis/licenses
 go.bytebuilders.dev/license-verifier/info
 # go.etcd.io/etcd/api/v3 v3.6.4
@@ -1063,9 +1084,11 @@ golang.org/x/net/idna
 golang.org/x/net/internal/httpcommon
 golang.org/x/net/internal/iana
 golang.org/x/net/internal/socket
+golang.org/x/net/internal/socks
 golang.org/x/net/internal/timeseries
 golang.org/x/net/ipv4
 golang.org/x/net/ipv6
+golang.org/x/net/proxy
 golang.org/x/net/publicsuffix
 golang.org/x/net/trace
 # golang.org/x/oauth2 v0.30.0
@@ -1147,7 +1170,7 @@ gomodules.xyz/clock
 # gomodules.xyz/flags v0.1.3
 ## explicit; go 1.16
 gomodules.xyz/flags
-# gomodules.xyz/jsonpatch/v2 v2.4.0
+# gomodules.xyz/jsonpatch/v2 v2.5.0
 ## explicit; go 1.20
 gomodules.xyz/jsonpatch/v2
 # gomodules.xyz/logs v0.0.7
@@ -1522,6 +1545,9 @@ k8s.io/apimachinery/pkg/version
 k8s.io/apimachinery/pkg/watch
 k8s.io/apimachinery/third_party/forked/golang/json
 k8s.io/apimachinery/third_party/forked/golang/reflect
+# k8s.io/apiserver v0.33.3
+## explicit; go 1.24.0
+k8s.io/apiserver/pkg/authentication/user
 # k8s.io/client-go v0.33.4
 ## explicit; go 1.24.0
 k8s.io/client-go/applyconfigurations
@@ -1579,6 +1605,7 @@ k8s.io/client-go/applyconfigurations/storage/v1alpha1
 k8s.io/client-go/applyconfigurations/storage/v1beta1
 k8s.io/client-go/applyconfigurations/storagemigration/v1alpha1
 k8s.io/client-go/discovery
+k8s.io/client-go/discovery/cached/memory
 k8s.io/client-go/discovery/fake
 k8s.io/client-go/dynamic
 k8s.io/client-go/dynamic/dynamicinformer
@@ -1823,6 +1850,7 @@ k8s.io/client-go/listers/storage/v1beta1
 k8s.io/client-go/listers/storagemigration/v1alpha1
 k8s.io/client-go/metadata
 k8s.io/client-go/openapi
+k8s.io/client-go/openapi/cached
 k8s.io/client-go/pkg/apis/clientauthentication
 k8s.io/client-go/pkg/apis/clientauthentication/install
 k8s.io/client-go/pkg/apis/clientauthentication/v1
@@ -1896,18 +1924,18 @@ k8s.io/utils/net
 k8s.io/utils/pointer
 k8s.io/utils/ptr
 k8s.io/utils/trace
-# kmodules.xyz/client-go v0.29.13
-## explicit; go 1.22.0
+# kmodules.xyz/client-go v0.32.8
+## explicit; go 1.23.0
 kmodules.xyz/client-go
 kmodules.xyz/client-go/api/v1
 kmodules.xyz/client-go/apiextensions
 kmodules.xyz/client-go/apiextensions/v1
 kmodules.xyz/client-go/client
 kmodules.xyz/client-go/client/apiutil
+kmodules.xyz/client-go/cluster
 kmodules.xyz/client-go/conditions
 kmodules.xyz/client-go/core/v1
 kmodules.xyz/client-go/meta
-kmodules.xyz/client-go/tools/clusterid
 # moul.io/http2curl v1.0.0
 ## explicit
 moul.io/http2curl
