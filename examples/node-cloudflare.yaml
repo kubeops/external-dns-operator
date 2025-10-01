@@ -23,3 +23,8 @@ spec:
     secretRef:
       name: cloudflare-credential
       apiTokenKey: CF_API_TOKEN
+    customHostnames: false
+    customHostnamesCertificateAuthority: none
+    customHostnamesMinTLSVersion: "1.0"
+    regionalServices: false
+    regionKey: ""
