@@ -109,7 +109,7 @@ var defaultConfig = externaldns.Config{
 	CloudflareDNSRecordsPerPage:                   100,
 	CloudflareProxied:                             false,
 	CloudflareRegionalServices:                    false,
-	CloudflareRegionKey:                           "earth",
+	CloudflareRegionKey:                           "",
 
 	CombineFQDNAndAnnotation:     false,
 	Compatibility:                "",
