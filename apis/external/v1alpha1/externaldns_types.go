@@ -92,11 +92,11 @@ type CloudflareProvider struct {
 	// When using the Cloudflare provider, specify if the proxy mode must be enabled (default: disabled)
 	// +optional
 	Proxied                             *bool   `json:"proxied,omitempty"`
-	CustomHostnames                     *bool   `json:"customHostnames"` // new
-	CustomHostnamesCertificateAuthority *string `json:"customHostnamesCertificateAuthority"`
-	CustomHostnamesMinTLSVersion        *string `json:"customHostnamesMinTLSVersion"`
-	RegionalServices                    *bool   `json:"regionalServices"`
-	RegionKey                           *string `json:"regionKey"`
+	CustomHostnames                     *bool   `json:"customHostnames,omitempty"` // new
+	CustomHostnamesCertificateAuthority *string `json:"customHostnamesCertificateAuthority,omitempty"`
+	CustomHostnamesMinTLSVersion        *string `json:"customHostnamesMinTLSVersion,omitempty"`
+	RegionalServices                    *bool   `json:"regionalServices,omitempty"`
+	RegionKey                           *string `json:"regionKey,omitempty"`
 
 	// +optional
 	BaseURL string `json:"baseURL,omitempty"`

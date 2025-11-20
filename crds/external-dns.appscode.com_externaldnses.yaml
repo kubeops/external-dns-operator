@@ -193,12 +193,6 @@ spec:
                     required:
                     - name
                     type: object
-                required:
-                - customHostnames
-                - customHostnamesCertificateAuthority
-                - customHostnamesMinTLSVersion
-                - regionKey
-                - regionalServices
                 type: object
               connectorSourceServer:
                 description: The server to connect for connector source, valid only
