@@ -20123,7 +20123,6 @@ func schema_external_dns_operator_apis_external_v1alpha1_CloudflareProvider(ref 
 						},
 					},
 				},
-				Required: []string{"customHostnames", "customHostnamesCertificateAuthority", "customHostnamesMinTLSVersion", "regionalServices", "regionKey"},
 			},
 		},
 		Dependencies: []string{
