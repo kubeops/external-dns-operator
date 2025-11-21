@@ -88,6 +88,12 @@ const (
 	RegionAPDelhi1 Region = "ap-delhi-1"
 	//RegionAPBatam1 region Batam
 	RegionAPBatam1 Region = "ap-batam-1"
+	//RegionEUMadrid3 region Madrid
+	RegionEUMadrid3 Region = "eu-madrid-3"
+	//RegionAPChennai1 region Chennai
+	RegionAPChennai1 Region = "ap-chennai-1"
+	//RegionUSColumbus1 region Columbus
+	RegionUSColumbus1 Region = "us-columbus-1"
 	//RegionUSLangley1 region Langley
 	RegionUSLangley1 Region = "us-langley-1"
 	//RegionUSLuke1 region Luke
@@ -108,6 +114,8 @@ const (
 	RegionAPIbaraki1 Region = "ap-ibaraki-1"
 	//RegionMEDccMuscat1 region Muscat
 	RegionMEDccMuscat1 Region = "me-dcc-muscat-1"
+	//RegionMEIbri1 region Ibri
+	RegionMEIbri1 Region = "me-ibri-1"
 	//RegionAPDccCanberra1 region Canberra
 	RegionAPDccCanberra1 Region = "ap-dcc-canberra-1"
 	//RegionEUDccMilan1 region Milan
@@ -205,6 +213,9 @@ var shortNameRegion = map[string]Region{
 	"ruh": RegionMERiyadh1,
 	"onm": RegionAPDelhi1,
 	"hsg": RegionAPBatam1,
+	"orf": RegionEUMadrid3,
+	"des": RegionAPChennai1,
+	"vkz": RegionUSColumbus1,
 	"lfi": RegionUSLangley1,
 	"luf": RegionUSLuke1,
 	"ric": RegionUSGovAshburn1,
@@ -215,6 +226,7 @@ var shortNameRegion = map[string]Region{
 	"nja": RegionAPChiyoda1,
 	"ukb": RegionAPIbaraki1,
 	"mct": RegionMEDccMuscat1,
+	"ibr": RegionMEIbri1,
 	"wga": RegionAPDccCanberra1,
 	"bgy": RegionEUDccMilan1,
 	"mxp": RegionEUDccMilan2,
@@ -308,6 +320,9 @@ var regionRealm = map[Region]string{
 	RegionMERiyadh1:       "oc1",
 	RegionAPDelhi1:        "oc1",
 	RegionAPBatam1:        "oc1",
+	RegionEUMadrid3:       "oc1",
+	RegionAPChennai1:      "oc1",
+	RegionUSColumbus1:     "oc1",
 
 	RegionUSLangley1: "oc2",
 	RegionUSLuke1:    "oc2",
@@ -323,6 +338,7 @@ var regionRealm = map[Region]string{
 	RegionAPIbaraki1: "oc8",
 
 	RegionMEDccMuscat1: "oc9",
+	RegionMEIbri1:      "oc9",
 
 	RegionAPDccCanberra1: "oc10",
 

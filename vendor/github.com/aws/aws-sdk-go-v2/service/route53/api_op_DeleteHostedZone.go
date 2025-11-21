@@ -40,12 +40,12 @@ import (
 // update name servers for the domain registration. For more information, perform
 // an internet search on "free DNS service."
 //
-// You can delete a hosted zone only if it contains only the default SOA record
-// and NS resource record sets. If the hosted zone contains other resource record
-// sets, you must delete them before you can delete the hosted zone. If you try to
-// delete a hosted zone that contains other resource record sets, the request
-// fails, and Route 53 returns a HostedZoneNotEmpty error. For information about
-// deleting records from your hosted zone, see [ChangeResourceRecordSets].
+// You can delete a hosted zone only if it contains only the default SOA and NS
+// records and has DNSSEC signing disabled. If the hosted zone contains other
+// records or has DNSSEC enabled, you must delete the records and disable DNSSEC
+// before deletion. Attempting to delete a hosted zone with additional records or
+// DNSSEC enabled returns a HostedZoneNotEmpty error. For information about
+// deleting records, see [ChangeResourceRecordSets].
 //
 // To verify that the hosted zone has been deleted, do one of the following:
 //
@@ -195,40 +195,7 @@ func (c *Client) addOperationDeleteHostedZoneMiddlewares(stack *middleware.Stack
 	if err = addInterceptAttempt(stack, options); err != nil {
 		return err
 	}
-	if err = addInterceptExecution(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptBeforeSerialization(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptAfterSerialization(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptBeforeSigning(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptAfterSigning(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptTransmit(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptBeforeDeserialization(stack, options); err != nil {
-		return err
-	}
-	if err = addInterceptAfterDeserialization(stack, options); err != nil {
-		return err
-	}
-	if err = addSpanInitializeStart(stack); err != nil {
-		return err
-	}
-	if err = addSpanInitializeEnd(stack); err != nil {
-		return err
-	}
-	if err = addSpanBuildRequestStart(stack); err != nil {
-		return err
-	}
-	if err = addSpanBuildRequestEnd(stack); err != nil {
+	if err = addInterceptors(stack, options); err != nil {
 		return err
 	}
 	return nil

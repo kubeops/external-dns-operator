@@ -103,6 +103,7 @@ type DefaultPool struct {
 	ReselectTries     int32              `json:"reselectTries,omitempty"`
 	ServiceDownAction string             `json:"serviceDownAction,omitempty"`
 	Reference         string             `json:"reference,omitempty"`
+	StaticPoolMembers []StaticPoolMember `json:"staticPoolMembers,omitempty"`
 }
 
 // VSPool defines a pool object for Virtual Server in BIG-IP.
@@ -125,6 +126,7 @@ type VSPool struct {
 	Weight               *int32                         `json:"weight,omitempty"`
 	AlternateBackends    []AlternateBackend             `json:"alternateBackends"`
 	MultiClusterServices []MultiClusterServiceReference `json:"multiClusterServices,omitempty"`
+	StaticPoolMembers    []StaticPoolMember             `json:"staticPoolMembers,omitempty"`
 }
 
 // TSPool defines a pool object for Transport Server in BIG-IP.
@@ -150,9 +152,15 @@ type TSPool struct {
 
 // AlternateBackends lists backend svc of A/B
 type AlternateBackend struct {
-	Service          string `json:"service"`
-	ServiceNamespace string `json:"serviceNamespace,omitempty"`
-	Weight           *int32 `json:"weight,omitempty"`
+	Service           string             `json:"service"`
+	ServiceNamespace  string             `json:"serviceNamespace,omitempty"`
+	Weight            *int32             `json:"weight,omitempty"`
+	StaticPoolMembers []StaticPoolMember `json:"staticPoolMembers,omitempty"`
+}
+
+type StaticPoolMember struct {
+	Address string `json:"address"`
+	Port    int32  `json:"port"`
 }
 
 type MultiClusterServiceReference struct {
@@ -267,6 +275,7 @@ type IngressLink struct {
 // IngressLinkSpec is Spec for IngressLink
 type IngressLinkSpec struct {
 	VirtualServerAddress string                         `json:"virtualServerAddress,omitempty"`
+	VirtualServerName    string                         `json:"virtualServerName,omitempty"`
 	Host                 string                         `json:"host,omitempty"`
 	Selector             *metav1.LabelSelector          `json:"selector"`
 	IRules               []string                       `json:"iRules,omitempty"`
@@ -443,10 +452,12 @@ type ProfileSpec struct {
 	TCP                    ProfileTCP        `json:"tcp,omitempty"`
 	UDP                    string            `json:"udp,omitempty"`
 	HTTP                   string            `json:"http,omitempty"`
+	HTTPProfiles           HTTPProfiles      `json:"httpProfiles,omitempty"`
 	HTTP2                  ProfileHTTP2      `json:"http2,omitempty"`
 	RewriteProfile         string            `json:"rewriteProfile,omitempty"`
 	PersistenceProfile     string            `json:"persistenceProfile,omitempty"`
 	LogProfiles            []string          `json:"logProfiles,omitempty"`
+	RequestLogProfile      string            `json:"requestLogProfile,omitempty"`
 	ProfileL4              string            `json:"profileL4,omitempty"`
 	ProfileMultiplex       string            `json:"profileMultiplex,omitempty"`
 	HttpMrfRoutingEnabled  *bool             `json:"httpMrfRoutingEnabled,omitempty"`
@@ -477,8 +488,13 @@ type ProfileTCP struct {
 }
 
 type ProfileHTTP2 struct {
-	Client string `json:"client,omitempty"`
-	Server string `json:"server,omitempty"`
+	Client *string `json:"client,omitempty"`
+	Server *string `json:"server,omitempty"`
+}
+
+type HTTPProfiles struct {
+	Insecure string `json:"insecure,omitempty"`
+	Secure   string `json:"secure,omitempty"`
 }
 
 // +genclient
