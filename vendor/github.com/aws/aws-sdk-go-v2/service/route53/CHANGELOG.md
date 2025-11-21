@@ -1,3 +1,68 @@
+# v1.59.5 (2025-11-12)
+
+* **Bug Fix**: Further reduce allocation overhead when the metrics system isn't in-use.
+* **Bug Fix**: Reduce allocation overhead when the client doesn't have any HTTP interceptors configured.
+* **Bug Fix**: Remove blank trace spans towards the beginning of the request that added no additional information. This conveys a slight reduction in overall allocations.
+
+# v1.59.4 (2025-11-11)
+
+* **Bug Fix**: Return validation error if input region is not a valid host label.
+
+# v1.59.3 (2025-11-04)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+* **Dependency Update**: Upgrade to smithy-go v1.23.2 which should convey some passive reduction of overall allocations, especially when not using the metrics system.
+
+# v1.59.2 (2025-10-30)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.59.1 (2025-10-23)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.59.0 (2025-10-22)
+
+* **Feature**: Amazon Route 53 now supports the ISOB West Region for private DNS for Amazon VPCs and cloudwatch healthchecks.
+
+# v1.58.5 (2025-10-16)
+
+* **Dependency Update**: Bump minimum Go version to 1.23.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.58.4 (2025-09-26)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.58.3 (2025-09-23)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.58.2 (2025-09-10)
+
+* No change notes available for this release.
+
+# v1.58.1 (2025-09-08)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.58.0 (2025-09-03)
+
+* **Feature**: Amazon Route 53 now supports the Asia Pacific (New Zealand) Region (ap-southeast-6) for latency records, geoproximity records, and private DNS for Amazon VPCs in that region.
+
+# v1.57.2 (2025-08-29)
+
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.57.1 (2025-08-27)
+
+* **Dependency Update**: Update to smithy-go v1.23.0.
+* **Dependency Update**: Updated to the latest SDK module versions
+
+# v1.57.0 (2025-08-26)
+
+* **Feature**: Remove incorrect endpoint tests
+
 # v1.56.2 (2025-08-21)
 
 * **Dependency Update**: Updated to the latest SDK module versions
