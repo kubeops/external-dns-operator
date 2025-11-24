@@ -2010,6 +2010,7 @@ sigs.k8s.io/external-dns/apis/v1alpha1
 sigs.k8s.io/external-dns/endpoint
 sigs.k8s.io/external-dns/internal/idna
 sigs.k8s.io/external-dns/pkg/apis/externaldns
+sigs.k8s.io/external-dns/pkg/apis/externaldns/validation
 sigs.k8s.io/external-dns/pkg/events
 sigs.k8s.io/external-dns/pkg/http
 sigs.k8s.io/external-dns/pkg/metrics

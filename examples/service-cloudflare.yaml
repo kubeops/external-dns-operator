@@ -1,7 +1,7 @@
 apiVersion: external-dns.appscode.com/v1alpha1
 kind: ExternalDNS
 metadata:
-  name: aws-edns-svc
+  name: cloudflare-edns-svc
   namespace: demo
 spec:
   source:
@@ -17,9 +17,9 @@ spec:
   domainFilter:
     - example.com
   policy: upsert-only
-  provider: aws
-  aws:
-    zoneType: public
+  provider: cloudflare
+  cloudflare:
+
     secretRef:
-      name: aws-credential
-      credentialKey: credentials
+      name: cloudflare-credential
+      apiTokenKey: CF_API_TOKEN

@@ -1,0 +1,43 @@
+apiVersion: external-dns.appscode.com/v1alpha1
+kind: ExternalDNS
+metadata:
+  annotations:
+    meta.helm.sh/release-name: a41026a5ad40a
+    meta.helm.sh/release-namespace: a41026a5ad40a-gw
+  labels:
+    app.kubernetes.io/instance: a41026a5ad40a
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: service-gateway
+    app.kubernetes.io/version: v2025.10.17
+    helm.sh/chart: service-gateway-v2025.10.17
+    helm.toolkit.fluxcd.io/name: a41026a5ad40a
+    helm.toolkit.fluxcd.io/namespace: a41026a5ad40a-gw
+  name: a41026a5ad40a-gw
+  namespace: demo
+spec:
+  cloudflare:
+    secretRef:
+      name: cloudflare-credential
+      apiTokenKey: CF_API_TOKEN
+  domainFilter:
+    - kubedb.cloud
+  manageDNSRecordTypes:
+    - A
+    - CNAME
+  policy: sync
+  provider: cloudflare
+  registry: txt
+  source:
+    service:
+      labelFilter: app=myapp
+      namespace: demo
+      publishInternal: true
+      serviceTypeFilter:
+        - ClusterIP
+        - NodePort
+        - LoadBalancer
+    type:
+      group: ""
+      kind: Service
+      version: v1
+  txtOwnerID: external-dnsfdfdsffs
