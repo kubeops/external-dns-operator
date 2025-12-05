@@ -45,7 +45,7 @@ const (
 	APIEnvVar = "LINODE_TOKEN"
 	// APISecondsPerPoll how frequently to poll for new Events or Status in WaitFor functions
 	APISecondsPerPoll = 3
-	// Maximum wait time for retries
+	// APIRetryMaxWaitTime is the maximum wait time for retries
 	APIRetryMaxWaitTime       = time.Duration(30) * time.Second
 	APIDefaultCacheExpiration = time.Minute * 15
 )
@@ -171,7 +171,7 @@ func NewClient(hc *http.Client) (client Client) {
 		SetDebug(envDebug).
 		enableLogSanitization()
 
-	return
+	return client
 }
 
 // NewClientFromEnv creates a Client and initializes it with values
@@ -405,7 +405,7 @@ func (c *httpClient) logRequest(req *http.Request, method, url string, bodyBuffe
 
 	var logBuf bytes.Buffer
 
-	err := reqLogTemplate.Execute(&logBuf, map[string]interface{}{
+	err := reqLogTemplate.Execute(&logBuf, map[string]any{
 		"Method":  method,
 		"URL":     url,
 		"Headers": req.Header,
@@ -453,7 +453,7 @@ func (c *httpClient) logResponse(resp *http.Response) (*http.Response, error) {
 
 	var logBuf bytes.Buffer
 
-	err := respLogTemplate.Execute(&logBuf, map[string]interface{}{
+	err := respLogTemplate.Execute(&logBuf, map[string]any{
 		"Status":  resp.Status,
 		"Headers": resp.Header,
 		"Body":    respBody.String(),
@@ -468,7 +468,7 @@ func (c *httpClient) logResponse(resp *http.Response) (*http.Response, error) {
 }
 
 // nolint:unused
-func (c *httpClient) decodeResponseBody(resp *http.Response, response interface{}) error {
+func (c *httpClient) decodeResponseBody(resp *http.Response, response any) error {
 	if err := json.NewDecoder(resp.Body).Decode(response); err != nil {
 		if c.debug && c.logger != nil {
 			c.logger.Errorf("failed to decode response: %v", err)
@@ -888,6 +888,18 @@ func copyString(sPtr *string) *string {
 	}
 
 	t := *sPtr
+
+	return &t
+}
+
+// copyValue returns a pointer to a new value copied from the value
+// at the given pointer.
+func copyValue[T any](ptr *T) *T {
+	if ptr == nil {
+		return nil
+	}
+
+	t := *ptr
 
 	return &t
 }

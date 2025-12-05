@@ -112,8 +112,6 @@ spec:
                     description: 'When using the AWS provider, filter for zones of
                       this type. (support: public, private)'
                     type: string
-                required:
-                - sdCreateTag
                 type: object
               azure:
                 description: Azure provider infomation
@@ -152,9 +150,6 @@ spec:
                       largest representable duration to approximately 290 years.
                     format: int64
                     type: integer
-                required:
-                - maxRetriesCount
-                - zonesCacheDuration
                 type: object
               cloudflare:
                 description: Cloudflare provider information

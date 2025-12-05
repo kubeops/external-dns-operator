@@ -35,6 +35,7 @@ import (
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/external-dns/endpoint"
 	"sigs.k8s.io/external-dns/pkg/apis/externaldns"
+	"sigs.k8s.io/external-dns/pkg/apis/externaldns/validation"
 	"sigs.k8s.io/external-dns/plan"
 	"sigs.k8s.io/external-dns/provider"
 	"sigs.k8s.io/external-dns/provider/akamai"
@@ -65,6 +66,7 @@ import (
 	"sigs.k8s.io/external-dns/provider/webhook"
 	"sigs.k8s.io/external-dns/registry"
 	"sigs.k8s.io/external-dns/source"
+	"sigs.k8s.io/external-dns/source/annotations"
 	"sigs.k8s.io/external-dns/source/wrappers"
 )
 
@@ -77,6 +79,7 @@ var defaultConfig = externaldns.Config{
 	AkamaiServiceConsumerDomain: "",
 	AlibabaCloudConfigFile:      "/etc/kubernetes/alibaba-cloud.json",
 	AnnotationFilter:            "",
+	AnnotationPrefix:            annotations.DefaultAnnotationPrefix,
 	APIServerURL:                "",
 	AWSAPIRetries:               3,
 	AWSAssumeRole:               "",
@@ -89,7 +92,7 @@ var defaultConfig = externaldns.Config{
 	AWSDynamoDBTable:            "external-dns",
 	AWSEvaluateTargetHealth:     true,
 	AWSPreferCNAME:              false,
-	AWSSDCreateTag:              map[string]string{}, // new
+	AWSSDCreateTag:              map[string]string{},
 	AWSSDServiceCleanup:         false,
 	AWSZoneCacheDuration:        0 * time.Second,
 	AWSZoneMatchParent:          false,
@@ -220,6 +223,7 @@ var defaultConfig = externaldns.Config{
 	TXTEncryptAESKey:             "",
 	TXTEncryptEnabled:            false,
 	TXTOwnerID:                   "default",
+	TXTOwnerOld:                  "",
 	TXTPrefix:                    "",
 	TXTSuffix:                    "",
 	TXTWildcardReplacement:       "",
@@ -234,6 +238,26 @@ var defaultConfig = externaldns.Config{
 
 func SetDNSRecords(ctx context.Context, edns *api.ExternalDNS) ([]api.DNSRecord, error) {
 	cfg := convertEDNSObjectToCfg(edns)
+
+	if err := validation.ValidateConfig(cfg); err != nil {
+		log.Fatalf("config validation failed: %v", err)
+	}
+
+	annotations.SetAnnotationPrefix(cfg.AnnotationPrefix)
+	if cfg.AnnotationPrefix != annotations.DefaultAnnotationPrefix {
+		log.Infof("Using custom annotation prefix: %s", cfg.AnnotationPrefix)
+	}
+
+	configureLogger(cfg)
+
+	/*if log.GetLevel() < log.DebugLevel {
+		// Klog V2 is used by k8s.io/apimachinery/pkg/labels and can throw (a lot) of irrelevant logs
+		// See https://github.com/kubernetes-sigs/external-dns/issues/2348
+		defer klog.ClearLogger()
+		klog.SetLogger(logr.Discard())
+	}*/
+
+	log.Info(externaldns.Banner())
 
 	endpointsSource, err := createEndpointsSource(ctx, cfg)
 	if err != nil {
@@ -583,8 +607,6 @@ func convertEDNSObjectToCfg(edns *api.ExternalDNS) *externaldns.Config {
 
 func createEndpointsSource(ctx context.Context, cfg *externaldns.Config) (source.Source, error) {
 	sourceCfg := source.NewSourceConfig(cfg)
-
-	// Lookup all the selected sources by names and pass them the desired configuration.
 	sources, err := source.ByNames(ctx, &source.SingletonClientGenerator{
 		KubeConfig:   cfg.KubeConfig,
 		APIServerURL: cfg.APIServerURL,
@@ -596,22 +618,16 @@ func createEndpointsSource(ctx context.Context, cfg *externaldns.Config) (source
 		}(),
 	}, cfg.Sources, sourceCfg)
 	if err != nil {
-		klog.Error(err.Error())
 		return nil, err
 	}
-
-	combinedSource := wrappers.NewDedupSource(wrappers.NewMultiSource(sources, sourceCfg.DefaultTargets, sourceCfg.ForceDefaultTargets))
-	cfg.AddSourceWrapper("dedup")
-	combinedSource = wrappers.NewNAT64Source(combinedSource, cfg.NAT64Networks)
-	cfg.AddSourceWrapper("nat64")
-	// Filter targets
-	targetFilter := endpoint.NewTargetNetFilterWithExclusions(cfg.TargetNetFilter, cfg.ExcludeTargetNets)
-	if targetFilter.IsEnabled() {
-		combinedSource = wrappers.NewTargetFilterSource(combinedSource, targetFilter)
-		cfg.AddSourceWrapper("target-filter")
-	}
-
-	return combinedSource, nil
+	opts := wrappers.NewConfig(
+		wrappers.WithDefaultTargets(cfg.DefaultTargets),
+		wrappers.WithForceDefaultTargets(cfg.ForceDefaultTargets),
+		wrappers.WithNAT64Networks(cfg.NAT64Networks),
+		wrappers.WithTargetNetFilter(cfg.TargetNetFilter),
+		wrappers.WithExcludeTargetNets(cfg.ExcludeTargetNets),
+		wrappers.WithMinTTL(cfg.MinTTL))
+	return wrappers.WrapSources(sources, opts)
 }
 
 func buildProvider(
@@ -831,11 +847,23 @@ func createRegistry(cfg *externaldns.Config, p provider.Provider) (registry.Regi
 	case "noop":
 		r, err = registry.NewNoopRegistry(p)
 	case "txt":
-		r, err = registry.NewTXTRegistry(p, cfg.TXTPrefix, cfg.TXTSuffix, cfg.TXTOwnerID, cfg.TXTCacheInterval, cfg.TXTWildcardReplacement, cfg.ManagedDNSRecordTypes, cfg.ExcludeDNSRecordTypes, cfg.TXTEncryptEnabled, []byte(cfg.TXTEncryptAESKey))
+		r, err = registry.NewTXTRegistry(p, cfg.TXTPrefix, cfg.TXTSuffix, cfg.TXTOwnerID, cfg.TXTCacheInterval, cfg.TXTWildcardReplacement, cfg.ManagedDNSRecordTypes, cfg.ExcludeDNSRecordTypes, cfg.TXTEncryptEnabled, []byte(cfg.TXTEncryptAESKey), cfg.TXTOwnerOld)
 	case "aws-sd":
 		r, err = registry.NewAWSSDRegistry(p, cfg.TXTOwnerID)
 	default:
 		log.Fatalf("unknown registry: %s", cfg.Registry)
 	}
 	return r, err
+}
+
+// This function configures the logger format and level based on the provided configuration.
+func configureLogger(cfg *externaldns.Config) {
+	if cfg.LogFormat == "json" {
+		log.SetFormatter(&log.JSONFormatter{})
+	}
+	ll, err := log.ParseLevel(cfg.LogLevel)
+	if err != nil {
+		log.Fatalf("failed to parse log level: %v", err)
+	}
+	log.SetLevel(ll)
 }

@@ -61,7 +61,7 @@ func setGoogleCredential(ctx context.Context, kc client.Client, edns *api.Extern
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer file.Close() // nolint:errcheck
 
 	b := secret.Data[edns.Spec.Google.SecretRef.CredentialKey]
 	_, err = file.Write(b)

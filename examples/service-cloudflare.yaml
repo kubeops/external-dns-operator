@@ -1,0 +1,25 @@
+apiVersion: external-dns.appscode.com/v1alpha1
+kind: ExternalDNS
+metadata:
+  name: cloudflare-edns-svc
+  namespace: demo
+spec:
+  source:
+    type:
+      group: ""
+      version: v1
+      kind: Service
+    service:
+      publishInternal: true
+  registry: txt
+  txtPrefix: abcd
+  txtOwnerID: external-dns
+  domainFilter:
+    - example.com
+  policy: upsert-only
+  provider: cloudflare
+  cloudflare:
+
+    secretRef:
+      name: cloudflare-credential
+      apiTokenKey: CF_API_TOKEN

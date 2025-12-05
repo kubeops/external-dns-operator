@@ -13,12 +13,13 @@ spec:
       publishInternal: true
   registry: txt
   txtPrefix: abcd
+  txtOwnerID: external-dns
   domainFilter:
-    - prod-test.link
+    - example.com
   policy: upsert-only
   provider: aws
   aws:
     zoneType: public
     secretRef:
-      name: aws-credentials
+      name: aws-credential
       credentialKey: credentials
