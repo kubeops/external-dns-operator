@@ -62,7 +62,7 @@ func setAWSCredential(ctx context.Context, kc client.Client, edns *api.ExternalD
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer file.Close() // nolint:errcheck
 
 	b := secret.Data[edns.Spec.AWS.SecretRef.CredentialKey]
 	_, err = file.Write(b)

@@ -20,16 +20,19 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"regexp"
+	"strings"
+	"time"
+
+	api "kubeops.dev/external-dns-operator/apis/external/v1alpha1"
+
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
 	"github.com/aws/aws-sdk-go-v2/service/route53"
 	sd "github.com/aws/aws-sdk-go-v2/service/servicediscovery"
-	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
 	"gomodules.xyz/sets"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/klog/v2"
-	api "kubeops.dev/external-dns-operator/apis/external/v1alpha1"
-	"regexp"
 	"sigs.k8s.io/external-dns/endpoint"
 	"sigs.k8s.io/external-dns/pkg/apis/externaldns"
 	"sigs.k8s.io/external-dns/pkg/apis/externaldns/validation"
@@ -65,8 +68,6 @@ import (
 	"sigs.k8s.io/external-dns/source"
 	"sigs.k8s.io/external-dns/source/annotations"
 	"sigs.k8s.io/external-dns/source/wrappers"
-	"strings"
-	"time"
 )
 
 var defaultConfig = externaldns.Config{
@@ -155,7 +156,7 @@ var defaultConfig = externaldns.Config{
 	KubeConfig:                   "",
 	LabelFilter:                  labels.Everything().String(),
 	LogFormat:                    "text",
-	LogLevel:                     logrus.InfoLevel.String(),
+	LogLevel:                     log.InfoLevel.String(),
 	ManagedDNSRecordTypes:        []string{endpoint.RecordTypeA, endpoint.RecordTypeAAAA, endpoint.RecordTypeCNAME},
 	MetricsAddress:               ":7979",
 	MinEventSyncInterval:         5 * time.Second,
