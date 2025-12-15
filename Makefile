@@ -318,8 +318,14 @@ bin/.push-$(DOTFILE_IMAGE)-%: bin/.container-$(DOTFILE_IMAGE)-%
 .PHONY: docker-manifest
 docker-manifest: docker-manifest-PROD docker-manifest-DBG docker-manifest-UBI
 docker-manifest-%:
-	docker manifest create -a $(IMAGE):$(VERSION_$*) $(foreach PLATFORM,$(DOCKER_PLATFORMS),$(IMAGE):$(VERSION_$*)_$(subst /,_,$(PLATFORM)))
-	docker manifest push $(IMAGE):$(VERSION_$*)
+	@docker manifest create -a $(IMAGE):$(VERSION_$*) $(foreach PLATFORM,$(DOCKER_PLATFORMS),$(IMAGE):$(VERSION_$*)_$(subst /,_,$(PLATFORM)))
+	@docker manifest push $(IMAGE):$(VERSION_$*)
+
+.PHONY: docker-certify-redhat
+docker-certify-redhat:
+  @preflight check container $(IMAGE):$(VERSION_UBI) \
+    --submit \
+    --certification-component-id=69366d476921a710124efd7e
 
 .PHONY: test
 test: unit-tests e2e-tests
