@@ -323,9 +323,9 @@ docker-manifest-%:
 
 .PHONY: docker-certify-redhat
 docker-certify-redhat:
-  @preflight check container $(IMAGE):$(VERSION_UBI) \
-    --submit \
-    --certification-component-id=69366d476921a710124efd7e
+	@preflight check container $(IMAGE):$(VERSION_UBI) \
+		--submit \
+		--certification-component-id=69366d476921a710124efd7e
 
 .PHONY: test
 test: unit-tests e2e-tests
