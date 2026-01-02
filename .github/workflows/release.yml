@@ -41,16 +41,6 @@ jobs:
           docker login ghcr.io --username ${USERNAME} --password ${DOCKER_TOKEN}
           make release
 
-      - name: Release
-        uses: softprops/action-gh-release@v1
-        if: startsWith(github.ref, 'refs/tags/')
-        with:
-          files: |
-            bin/external-dns-operator-linux-amd64
-            bin/external-dns-operator-linux-arm64
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Publish to Red Hat Ecosystem Catalog
         env:
           REGISTRY: ghcr.io/appscode
@@ -60,3 +50,13 @@ jobs:
           chmod +x preflight
           sudo mv preflight /usr/local/bin/preflight
           make docker-certify-redhat
+
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            bin/external-dns-operator-linux-amd64
+            bin/external-dns-operator-linux-arm64
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
