@@ -217,7 +217,6 @@ func (r *ExternalDNSReconciler) SetupWithManager(mgr ctrl.Manager) error {
 				}
 			}
 		}
-
 		return reconcileReq
 	})
 
