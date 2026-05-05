@@ -288,6 +288,65 @@ func SetDNSRecords(ctx context.Context, edns *api.ExternalDNS) ([]api.DNSRecord,
 	return dnsRecs, nil
 }
 
+// DeleteDNSRecords removes all DNS records owned by the given ExternalDNS instance by
+// running a sync plan with empty desired endpoints, causing the registry to delete
+// every record it tracks for this owner.
+func DeleteDNSRecords(ctx context.Context, edns *api.ExternalDNS) error {
+	cfg := convertEDNSObjectToCfg(edns)
+	if err := validation.ValidateConfig(cfg); err != nil {
+		log.Fatalf("config validation failed: %v", err)
+	}
+
+	configureLogger(cfg)
+
+	domainFilter := createDomainFilter(cfg)
+
+	pvdr, err := buildProvider(ctx, cfg, domainFilter)
+	if err != nil {
+		return err
+	}
+
+	reg, err := createRegistry(cfg, pvdr)
+	if err != nil {
+		return err
+	}
+
+	records, err := reg.Records(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to list records: %w", err)
+	}
+
+	ctx = context.WithValue(ctx, provider.RecordsContextKey, records)
+
+	desired, err := reg.AdjustEndpoints([]*endpoint.Endpoint{})
+	if err != nil {
+		return fmt.Errorf("failed to adjust endpoints: %w", err)
+	}
+
+	registryFilter := reg.GetDomainFilter()
+
+	pln := &plan.Plan{
+		Policies:       []plan.Policy{plan.Policies[string(api.PolicySync)]},
+		Current:        records,
+		Desired:        desired,
+		DomainFilter:   endpoint.MatchAllDomainFilters{domainFilter, registryFilter},
+		ManagedRecords: cfg.ManagedDNSRecordTypes,
+	}
+
+	pln = pln.Calculate()
+
+	if pln.Changes.HasChanges() {
+		if err = reg.ApplyChanges(ctx, pln.Changes); err != nil {
+			return err
+		}
+		klog.Info("cleanup: DNS records deleted")
+	} else {
+		klog.Info("cleanup: no DNS records to delete")
+	}
+
+	return nil
+}
+
 // RegexDomainFilter overrides DomainFilter
 func createDomainFilter(cfg *externaldns.Config) *endpoint.DomainFilter {
 	if cfg.RegexDomainFilter != nil && cfg.RegexDomainFilter.String() != "" {
