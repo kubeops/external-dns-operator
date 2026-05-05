@@ -193,6 +193,14 @@ func (r *ExternalDNSReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		return ctrl.Result{}, err
 	}
 
+	if len(dnsRecs) == 0 {
+		return ctrl.Result{}, r.updateEdnsStatus(
+			ctx,
+			edns,
+			newCondition(api.CreateAndApplyPlan, "no endpoints found for source", edns.Generation, true),
+			newPhase(api.ExternalDNSPhaseInProgress),
+		)
+	}
 	return ctrl.Result{}, r.updateEdnsStatus(
 		ctx,
 		edns,

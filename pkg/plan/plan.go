@@ -390,6 +390,11 @@ func createAndApplyPlan(ctx context.Context, cfg *externaldns.Config, r registry
 
 	dnsRecs := make([]api.DNSRecord, 0)
 
+	managedRecordsTypes := sets.NewString()
+	for _, dnsType := range cfg.ManagedDNSRecordTypes {
+		managedRecordsTypes.Insert(dnsType)
+	}
+
 	if pln.Changes.HasChanges() {
 		err = r.ApplyChanges(ctx, pln.Changes)
 		if err != nil {
@@ -397,19 +402,23 @@ func createAndApplyPlan(ctx context.Context, cfg *externaldns.Config, r registry
 			return nil, err
 		}
 		klog.Info("plan applied")
+		// Changes were just applied; pln.Desired now reflects the actual DNS state.
+		for _, rec := range pln.Desired {
+			if managedRecordsTypes.Has(rec.RecordType) {
+				dnsRecs = append(dnsRecs, api.DNSRecord{Name: rec.DNSName, Target: rec.Targets.String()})
+			}
+		}
 	} else {
 		klog.Info("all records are already up to date")
-	}
-
-	managedRecordsTypes := sets.NewString()
-
-	for _, dnsType := range cfg.ManagedDNSRecordTypes {
-		managedRecordsTypes.Insert(dnsType)
-	}
-
-	for _, rec := range pln.Desired {
-		if managedRecordsTypes.Has(rec.RecordType) {
-			dnsRecs = append(dnsRecs, api.DNSRecord{Name: rec.DNSName, Target: rec.Targets.String()})
+		// No changes applied; reflect what is actually in DNS for the names we manage.
+		desiredNames := sets.NewString()
+		for _, rec := range pln.Desired {
+			desiredNames.Insert(rec.DNSName)
+		}
+		for _, rec := range pln.Current {
+			if managedRecordsTypes.Has(rec.RecordType) && desiredNames.Has(rec.DNSName) {
+				dnsRecs = append(dnsRecs, api.DNSRecord{Name: rec.DNSName, Target: rec.Targets.String()})
+			}
 		}
 	}
 	return dnsRecs, nil
