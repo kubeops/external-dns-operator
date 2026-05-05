@@ -34,12 +34,15 @@ import (
 	condutil "kmodules.xyz/client-go/conditions"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 var mutex sync.Mutex
+
+const finalizer = "externaldns.kubeops.dev/finalizer"
 
 // ExternalDNSReconciler reconciles a ExternalDNS object
 type ExternalDNSReconciler struct {
@@ -94,6 +97,20 @@ func (r *ExternalDNSReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 	edns = edns.DeepCopy()
+
+	// HANDLE DELETION
+	if !edns.DeletionTimestamp.IsZero() {
+		return r.handleDeletion(ctx, edns)
+	}
+
+	// ENSURE FINALIZER
+	if !controllerutil.ContainsFinalizer(edns, finalizer) {
+		controllerutil.AddFinalizer(edns, finalizer)
+		if err := r.Update(ctx, edns); err != nil {
+			return ctrl.Result{}, err
+		}
+		return ctrl.Result{}, nil
+	}
 
 	if edns.Status.Phase == "" {
 		if patchErr := r.updateEdnsStatus(
@@ -182,6 +199,30 @@ func (r *ExternalDNSReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		newCondition(api.CreateAndApplyPlan, "plan applied", edns.Generation, true),
 		newPhase(api.ExternalDNSPhaseCurrent),
 	)
+}
+
+func (r *ExternalDNSReconciler) handleDeletion(ctx context.Context, edns *api.ExternalDNS) (ctrl.Result, error) {
+	if !controllerutil.ContainsFinalizer(edns, finalizer) {
+		return ctrl.Result{}, nil
+	}
+
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	if edns.Spec.Policy == nil || *edns.Spec.Policy == api.PolicySync {
+		if err := credentials.SetCredential(ctx, r.Client, edns); err != nil {
+			klog.Errorf("failed to set credentials for cleanup of %s/%s: %v", edns.Namespace, edns.Name, err)
+			return ctrl.Result{}, err
+		}
+
+		if err := plan.DeleteDNSRecords(ctx, edns); err != nil {
+			klog.Errorf("failed to delete DNS records for %s/%s: %v", edns.Namespace, edns.Name, err)
+			return ctrl.Result{}, err
+		}
+	}
+
+	controllerutil.RemoveFinalizer(edns, finalizer)
+	return ctrl.Result{}, r.Update(ctx, edns)
 }
 
 // SetupWithManager sets up the controller with the Manager.
