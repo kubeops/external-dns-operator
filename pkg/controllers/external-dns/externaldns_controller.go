@@ -63,8 +63,10 @@ func newPhase(phase api.ExternalDNSPhase) *api.ExternalDNSPhase {
 
 // update the status of the crd, conditionType is the reason of the condition
 func (r *ExternalDNSReconciler) updateEdnsStatus(ctx context.Context, edns *api.ExternalDNS, newCondition *kmapi.Condition, phase *api.ExternalDNSPhase) error {
+	generation := edns.Generation
 	_, patchErr := kmc.PatchStatus(ctx, r.Client, edns, func(obj client.Object) client.Object {
 		in := obj.(*api.ExternalDNS)
+		in.Status.ObservedGeneration = generation
 		if phase != nil {
 			in.Status.Phase = *phase
 		}
@@ -77,8 +79,10 @@ func (r *ExternalDNSReconciler) updateEdnsStatus(ctx context.Context, edns *api.
 }
 
 func (r ExternalDNSReconciler) patchDNSRecords(ctx context.Context, edns *api.ExternalDNS, dnsRecs []api.DNSRecord) error {
+	generation := edns.Generation
 	_, patchErr := kmc.PatchStatus(ctx, r.Client, edns, func(obj client.Object) client.Object {
 		in := obj.(*api.ExternalDNS)
+		in.Status.ObservedGeneration = generation
 		in.Status.DNSRecords = dnsRecs
 		return in
 	})
