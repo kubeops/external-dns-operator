@@ -76,7 +76,7 @@ func (r *ExternalDNSReconciler) updateEdnsStatus(ctx context.Context, edns *api.
 	return patchErr
 }
 
-func (r ExternalDNSReconciler) patchDNSRecords(ctx context.Context, edns *api.ExternalDNS, dnsRecs []api.DNSRecord) error {
+func (r *ExternalDNSReconciler) patchDNSRecords(ctx context.Context, edns *api.ExternalDNS, dnsRecs []api.DNSRecord) error {
 	_, patchErr := kmc.PatchStatus(ctx, r.Client, edns, func(obj client.Object) client.Object {
 		in := obj.(*api.ExternalDNS)
 		in.Status.DNSRecords = dnsRecs
