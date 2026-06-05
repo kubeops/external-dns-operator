@@ -57,7 +57,10 @@ func setGoogleCredential(ctx context.Context, kc client.Client, edns *api.Extern
 	fileName := fmt.Sprintf("%s-%s-credential", edns.Namespace, edns.Name)
 	filePath := fmt.Sprintf("/tmp/%s", fileName)
 
-	file, err := os.Create(filePath)
+	// Remove any pre-existing file so we don't inherit looser permissions
+	// from an earlier reconcile or an older operator version.
+	_ = os.Remove(filePath)
+	file, err := os.OpenFile(filePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o600)
 	if err != nil {
 		return err
 	}
