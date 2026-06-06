@@ -18,6 +18,7 @@ package cmds
 
 import (
 	"os"
+	"time"
 
 	api "kubeops.dev/external-dns-operator/apis/external/v1alpha1"
 	controllers "kubeops.dev/external-dns-operator/pkg/controllers/external-dns"
@@ -55,6 +56,7 @@ func NewCmdRun() *cobra.Command {
 		metricsAddr          string
 		enableLeaderElection bool
 		probeAddr            string
+		reconcileInterval    time.Duration = 5 * time.Minute
 	)
 	cmd := &cobra.Command{
 		Use:               "run",
@@ -93,8 +95,9 @@ func NewCmdRun() *cobra.Command {
 			}
 
 			if err = (&controllers.ExternalDNSReconciler{
-				Client: mgr.GetClient(),
-				Scheme: mgr.GetScheme(),
+				Client:            mgr.GetClient(),
+				Scheme:            mgr.GetScheme(),
+				ReconcileInterval: reconcileInterval,
 			}).SetupWithManager(mgr); err != nil {
 				setupLog.Error(err, "unable to create controller", "controller", "ExternalDNS")
 				os.Exit(1)
@@ -127,6 +130,9 @@ func NewCmdRun() *cobra.Command {
 	cmd.Flags().BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
+	cmd.Flags().DurationVar(&reconcileInterval, "reconcile-interval", reconcileInterval,
+		"Requeue interval used to detect drift between desired and actual DNS state. "+
+			"Set to 0 to disable periodic requeue.")
 
 	return cmd
 }
