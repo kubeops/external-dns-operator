@@ -70,170 +70,71 @@ import (
 	"sigs.k8s.io/external-dns/source/wrappers"
 )
 
-var defaultConfig = externaldns.Config{
-	AkamaiAccessToken:           "",
-	AkamaiClientSecret:          "",
-	AkamaiClientToken:           "",
-	AkamaiEdgercPath:            "",
-	AkamaiEdgercSection:         "",
-	AkamaiServiceConsumerDomain: "",
-	AlibabaCloudConfigFile:      "/etc/kubernetes/alibaba-cloud.json",
-	AnnotationFilter:            "",
-	AnnotationPrefix:            annotations.DefaultAnnotationPrefix,
-	APIServerURL:                "",
-	AWSAPIRetries:               3,
-	AWSAssumeRole:               "",
-	AWSAssumeRoleExternalID:     "",
-	AWSBatchChangeInterval:      time.Second,
-	AWSBatchChangeSize:          1000,
-	AWSBatchChangeSizeBytes:     32000,
-	AWSBatchChangeSizeValues:    1000,
-	AWSDynamoDBRegion:           "",
-	AWSDynamoDBTable:            "external-dns",
-	AWSEvaluateTargetHealth:     true,
-	AWSPreferCNAME:              false,
-	AWSSDCreateTag:              map[string]string{},
-	AWSSDServiceCleanup:         false,
-	AWSZoneCacheDuration:        0 * time.Second,
-	AWSZoneMatchParent:          false,
-	AWSZoneTagFilter:            []string{},
-	AWSZoneType:                 "",
-	AzureConfigFile:             "/etc/kubernetes/azure.json",
-	AzureResourceGroup:          "",
-	AzureSubscriptionID:         "",
-	AzureZonesCacheDuration:     0 * time.Second,
-	AzureMaxRetriesCount:        3,
-	CFAPIEndpoint:               "",
-	CFPassword:                  "",
-	CFUsername:                  "",
-	CloudflareCustomHostnamesCertificateAuthority: "none",
-	CloudflareCustomHostnames:                     false,
-	CloudflareCustomHostnamesMinTLSVersion:        "1.0",
-	CloudflareDNSRecordsPerPage:                   100,
-	CloudflareProxied:                             false,
-	CloudflareRegionalServices:                    false,
-	CloudflareRegionKey:                           "",
-
-	CombineFQDNAndAnnotation:     false,
-	Compatibility:                "",
-	ConnectorSourceServer:        "localhost:8080",
-	CoreDNSPrefix:                "/skydns/",
-	CRDSourceAPIVersion:          "externaldns.k8s.io/v1alpha1",
-	CRDSourceKind:                "DNSEndpoint",
-	DefaultTargets:               []string{},
-	DigitalOceanAPIPageSize:      50,
-	DomainFilter:                 []string{},
-	DryRun:                       false,
-	ExcludeDNSRecordTypes:        []string{},
-	ExcludeDomains:               []string{},
-	ExcludeTargetNets:            []string{},
-	EmitEvents:                   []string{},
-	ExcludeUnschedulable:         true,
-	ExoscaleAPIEnvironment:       "api",
-	ExoscaleAPIKey:               "",
-	ExoscaleAPISecret:            "",
-	ExoscaleAPIZone:              "ch-gva-2",
-	ExposeInternalIPV6:           false,
-	FQDNTemplate:                 "",
-	GatewayLabelFilter:           "",
-	GatewayName:                  "",
-	GatewayNamespace:             "",
-	GlooNamespaces:               []string{"gloo-system"},
-	GoDaddyAPIKey:                "",
-	GoDaddyOTE:                   false,
-	GoDaddySecretKey:             "",
-	GoDaddyTTL:                   600,
-	GoogleBatchChangeInterval:    time.Second,
-	GoogleBatchChangeSize:        1000,
-	GoogleProject:                "",
-	GoogleZoneVisibility:         "",
-	IgnoreHostnameAnnotation:     false,
-	IgnoreIngressRulesSpec:       false,
-	IgnoreIngressTLSSpec:         false,
-	IngressClassNames:            nil,
-	InMemoryZones:                []string{},
-	Interval:                     time.Minute,
-	KubeConfig:                   "",
-	LabelFilter:                  labels.Everything().String(),
-	LogFormat:                    "text",
-	LogLevel:                     log.InfoLevel.String(),
-	ManagedDNSRecordTypes:        []string{endpoint.RecordTypeA, endpoint.RecordTypeAAAA, endpoint.RecordTypeCNAME},
-	MetricsAddress:               ":7979",
-	MinEventSyncInterval:         5 * time.Second,
-	Namespace:                    "",
-	NAT64Networks:                []string{},
-	NS1Endpoint:                  "",
-	NS1IgnoreSSL:                 false,
-	OCIConfigFile:                "/etc/kubernetes/oci.yaml",
-	OCIZoneCacheDuration:         0 * time.Second,
-	OCIZoneScope:                 "GLOBAL",
-	Once:                         false,
-	OVHApiRateLimit:              20,
-	OVHEnableCNAMERelative:       false,
-	OVHEndpoint:                  "ovh-eu",
-	PDNSAPIKey:                   "",
-	PDNSServer:                   "http://localhost:8081",
-	PDNSServerID:                 "localhost",
-	PDNSSkipTLSVerify:            false,
-	PiholeApiVersion:             "5",
-	PiholePassword:               "",
-	PiholeServer:                 "",
-	PiholeTLSInsecureSkipVerify:  false,
-	PluralCluster:                "",
-	PluralProvider:               "",
-	PodSourceDomain:              "",
-	Policy:                       "sync",
-	Provider:                     "",
-	ProviderCacheTime:            0,
-	PublishHostIP:                false,
-	PublishInternal:              false,
-	RegexDomainExclusion:         regexp.MustCompile(""),
-	RegexDomainFilter:            regexp.MustCompile(""),
-	Registry:                     "txt",
-	RequestTimeout:               time.Second * 30,
-	RFC2136BatchChangeSize:       50,
-	RFC2136GSSTSIG:               false,
-	RFC2136Host:                  []string{""},
-	RFC2136Insecure:              false,
-	RFC2136KerberosPassword:      "",
-	RFC2136KerberosRealm:         "",
-	RFC2136KerberosUsername:      "",
-	RFC2136LoadBalancingStrategy: "disabled",
-	RFC2136MinTTL:                0,
-	RFC2136Port:                  0,
-	RFC2136SkipTLSVerify:         false,
-	RFC2136TAXFR:                 true,
-	RFC2136TSIGKeyName:           "",
-	RFC2136TSIGSecret:            "",
-	RFC2136TSIGSecretAlg:         "",
-	RFC2136UseTLS:                false,
-	RFC2136Zone:                  []string{},
-	ServiceTypeFilter:            []string{},
-	SkipperRouteGroupVersion:     "zalando.org/v1",
-	Sources:                      nil,
-	TargetNetFilter:              []string{},
-	TLSCA:                        "",
-	TLSClientCert:                "",
-	TLSClientCertKey:             "",
-	TraefikEnableLegacy:          false,
-	TraefikDisableNew:            false,
-	TransIPAccountName:           "",
-	TransIPPrivateKeyFile:        "",
-	TXTCacheInterval:             0,
-	TXTEncryptAESKey:             "",
-	TXTEncryptEnabled:            false,
-	TXTOwnerID:                   "default",
-	TXTOwnerOld:                  "",
-	TXTPrefix:                    "",
-	TXTSuffix:                    "",
-	TXTWildcardReplacement:       "",
-	UpdateEvents:                 false,
-	WebhookProviderReadTimeout:   5 * time.Second,
-	WebhookProviderURL:           "http://localhost:8888",
-	WebhookProviderWriteTimeout:  10 * time.Second,
-	WebhookServer:                false,
-	ZoneIDFilter:                 []string{},
-	ForceDefaultTargets:          false,
+// newDefaultConfig returns the base externaldns.Config used by the
+// operator. It starts from upstream's externaldns.NewConfig() so any
+// future field upstream adds with a non-zero default flows in
+// automatically. The operator then layers on the kingpin-flag defaults
+// upstream uses on its CLI (which are NOT applied by NewConfig itself);
+// those still have to be tracked by hand here on every upstream bump.
+//
+// Only fields whose desired default differs from the Go zero value need
+// to be listed.
+func newDefaultConfig() externaldns.Config {
+	cfg := *externaldns.NewConfig() // includes AnnotationPrefix + AWSSDCreateTag
+	cfg.AlibabaCloudConfigFile = "/etc/kubernetes/alibaba-cloud.json"
+	cfg.AWSAPIRetries = 3
+	cfg.AWSBatchChangeInterval = time.Second
+	cfg.AWSBatchChangeSize = 1000
+	cfg.AWSBatchChangeSizeBytes = 32000
+	cfg.AWSBatchChangeSizeValues = 1000
+	cfg.AWSDynamoDBTable = "external-dns"
+	cfg.AWSEvaluateTargetHealth = true
+	cfg.AzureConfigFile = "/etc/kubernetes/azure.json"
+	cfg.AzureMaxRetriesCount = 3
+	cfg.CloudflareCustomHostnamesCertificateAuthority = "none"
+	cfg.CloudflareCustomHostnamesMinTLSVersion = "1.0"
+	cfg.CloudflareDNSRecordsPerPage = 100
+	cfg.ConnectorSourceServer = "localhost:8080"
+	cfg.CoreDNSPrefix = "/skydns/"
+	cfg.CRDSourceAPIVersion = "externaldns.k8s.io/v1alpha1"
+	cfg.CRDSourceKind = "DNSEndpoint"
+	cfg.DigitalOceanAPIPageSize = 50
+	cfg.ExcludeUnschedulable = true
+	cfg.ExoscaleAPIEnvironment = "api"
+	cfg.ExoscaleAPIZone = "ch-gva-2"
+	cfg.GlooNamespaces = []string{"gloo-system"}
+	cfg.GoDaddyTTL = 600
+	cfg.GoogleBatchChangeInterval = time.Second
+	cfg.GoogleBatchChangeSize = 1000
+	cfg.Interval = time.Minute
+	cfg.LabelFilter = labels.Everything().String()
+	cfg.LogFormat = "text"
+	cfg.LogLevel = log.InfoLevel.String()
+	cfg.ManagedDNSRecordTypes = []string{endpoint.RecordTypeA, endpoint.RecordTypeAAAA, endpoint.RecordTypeCNAME}
+	cfg.MetricsAddress = ":7979"
+	cfg.MinEventSyncInterval = 5 * time.Second
+	cfg.OCIConfigFile = "/etc/kubernetes/oci.yaml"
+	cfg.OCIZoneScope = "GLOBAL"
+	cfg.OVHApiRateLimit = 20
+	cfg.OVHEndpoint = "ovh-eu"
+	cfg.PDNSServer = "http://localhost:8081"
+	cfg.PDNSServerID = "localhost"
+	cfg.PiholeApiVersion = "5"
+	cfg.Policy = "sync"
+	cfg.RegexDomainExclusion = regexp.MustCompile("") // createDomainFilter dereferences .String()
+	cfg.RegexDomainFilter = regexp.MustCompile("")
+	cfg.Registry = "txt"
+	cfg.RequestTimeout = 30 * time.Second
+	cfg.RFC2136BatchChangeSize = 50
+	cfg.RFC2136Host = []string{""}
+	cfg.RFC2136LoadBalancingStrategy = "disabled"
+	cfg.RFC2136TAXFR = true
+	cfg.SkipperRouteGroupVersion = "zalando.org/v1"
+	cfg.TXTOwnerID = "default"
+	cfg.WebhookProviderReadTimeout = 5 * time.Second
+	cfg.WebhookProviderURL = "http://localhost:8888"
+	cfg.WebhookProviderWriteTimeout = 10 * time.Second
+	return cfg
 }
 
 func SetDNSRecords(ctx context.Context, edns *api.ExternalDNS) ([]api.DNSRecord, error) {
@@ -429,7 +330,7 @@ func createAndApplyPlan(ctx context.Context, cfg *externaldns.Config, r registry
 }
 
 func convertEDNSObjectToCfg(edns *api.ExternalDNS) *externaldns.Config {
-	config := defaultConfig
+	config := newDefaultConfig()
 
 	if edns.Namespace != "" {
 		config.Namespace = edns.Namespace
