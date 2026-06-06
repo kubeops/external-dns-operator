@@ -51,7 +51,10 @@ func setAzureCredential(ctx context.Context, kc client.Client, edns *api.Externa
 	fileName := fmt.Sprintf("%s-%s-credential", edns.Namespace, edns.Name)
 	filepath := fmt.Sprintf("/tmp/%s", fileName)
 
-	file, err := os.Create(filepath)
+	// Remove any pre-existing file so we don't inherit looser permissions
+	// from an earlier reconcile or an older operator version.
+	_ = os.Remove(filepath)
+	file, err := os.OpenFile(filepath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o600)
 	if err != nil {
 		return err
 	}
