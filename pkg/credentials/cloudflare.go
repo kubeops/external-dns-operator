@@ -47,10 +47,7 @@ func validCFSecret(secret *core.Secret, tokenKey, apiKey, apiEmail string) bool 
 }
 
 func setCloudflareCredentials(ctx context.Context, kc client.Client, edns *api.ExternalDNS) error {
-	if err := resetEnvVariables(CFApiToken, CFApiKey, CFApiEmail, CFBaseURL); err != nil {
-		return err
-	}
-
+	// Env reset of all provider variables is done centrally in SetCredential.
 	// ProviderSecretRef is required for cloudflare
 	if edns.Spec.Cloudflare == nil || edns.Spec.Cloudflare.SecretRef == nil {
 		return errors.New("providerSecretRef is not given for cloudflare provider")

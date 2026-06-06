@@ -46,6 +46,21 @@ func resetEnvVariables(list ...string) error {
 	return nil
 }
 
+// providerEnvVars enumerates every environment variable any of the
+// supported credential setters may write. Listing them in one place lets
+// SetCredential clear stale entries left over from a previous provider
+// before configuring the new one, so switching providers (or deleting an
+// old ExternalDNS and creating a new one) cannot leak credentials across
+// reconciles.
+var providerEnvVars = []string{
+	AWSSharedCredentialsFile,
+	GoogleApplicationCredentials,
+	CFBaseURL,
+	CFApiToken,
+	CFApiKey,
+	CFApiEmail,
+}
+
 // credentialFilePath returns the on-disk path used by the file-based
 // provider credential setters (AWS / Azure / Google). It must stay in
 // sync with the path each setter writes to.
@@ -69,6 +84,10 @@ func CleanupCredential(edns *api.ExternalDNS) error {
 }
 
 func SetCredential(ctx context.Context, kc client.Client, edns *api.ExternalDNS) error {
+	if err := resetEnvVariables(providerEnvVars...); err != nil {
+		return err
+	}
+
 	switch edns.Spec.Provider {
 	case api.ProviderAWS:
 		return setAWSCredential(ctx, kc, edns)

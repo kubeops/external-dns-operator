@@ -37,10 +37,7 @@ func validGoogleSecret(secret *core.Secret, key string) bool {
 }
 
 func setGoogleCredential(ctx context.Context, kc client.Client, edns *api.ExternalDNS) error {
-	if err := resetEnvVariables(GoogleApplicationCredentials); err != nil {
-		return err
-	}
-
+	// Env reset of all provider variables is done centrally in SetCredential.
 	// if ProviderSecretRef is nil then user is intended to use Workload Identity
 	if edns.Spec.Google == nil || edns.Spec.Google.SecretRef == nil {
 		return nil
