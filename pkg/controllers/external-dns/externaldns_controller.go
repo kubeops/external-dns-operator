@@ -280,7 +280,7 @@ func (r *ExternalDNSReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Watches(&core.Secret{}, secretToEdns).
 		Build(r)
 	if err != nil {
-		klog.Error("failed to build controller.", err.Error())
+		klog.ErrorS(err, "failed to build controller")
 		return err
 	}
 
