@@ -237,6 +237,31 @@ func (r *ExternalDNSReconciler) handleDeletion(ctx context.Context, edns *api.Ex
 	return ctrl.Result{}, r.Update(ctx, edns)
 }
 
+// providerSecretName returns the name of the referenced provider secret
+// for spec, if any. The boolean is false when the provider doesn't use a
+// secret reference (e.g. IRSA/workload-identity).
+func providerSecretName(spec *api.ExternalDNSSpec) (string, bool) {
+	switch spec.Provider {
+	case api.ProviderAWS:
+		if spec.AWS != nil && spec.AWS.SecretRef != nil {
+			return spec.AWS.SecretRef.Name, true
+		}
+	case api.ProviderAzure:
+		if spec.Azure != nil && spec.Azure.SecretRef != nil {
+			return spec.Azure.SecretRef.Name, true
+		}
+	case api.ProviderGoogle:
+		if spec.Google != nil && spec.Google.SecretRef != nil {
+			return spec.Google.SecretRef.Name, true
+		}
+	case api.ProviderCloudflare:
+		if spec.Cloudflare != nil && spec.Cloudflare.SecretRef != nil {
+			return spec.Cloudflare.SecretRef.Name, true
+		}
+	}
+	return "", false
+}
+
 // SetupWithManager sets up the controller with the Manager.
 func (r *ExternalDNSReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	secretToEdns := handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, object client.Object) []reconcile.Request {
@@ -247,28 +272,13 @@ func (r *ExternalDNSReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			return reconcileReq
 		}
 
-		for _, edns := range ednsList.Items {
-			switch edns.Spec.Provider {
-			case api.ProviderAWS:
-				if edns.Spec.AWS != nil && edns.Spec.AWS.SecretRef != nil && edns.Spec.AWS.SecretRef.Name == object.GetName() {
-					reconcileReq = append(reconcileReq, reconcile.Request{NamespacedName: client.ObjectKey{Name: edns.Name, Namespace: edns.Namespace}})
-				}
-
-			case api.ProviderAzure:
-				if edns.Spec.Azure != nil && edns.Spec.Azure.SecretRef != nil && edns.Spec.Azure.SecretRef.Name == object.GetName() {
-					reconcileReq = append(reconcileReq, reconcile.Request{NamespacedName: client.ObjectKey{Name: edns.Name, Namespace: edns.Namespace}})
-				}
-
-			case api.ProviderGoogle:
-				if edns.Spec.Google != nil && edns.Spec.Google.SecretRef != nil && edns.Spec.Google.SecretRef.Name == object.GetName() {
-					reconcileReq = append(reconcileReq, reconcile.Request{NamespacedName: client.ObjectKey{Name: edns.Name, Namespace: edns.Namespace}})
-				}
-
-			case api.ProviderCloudflare:
-				if edns.Spec.Cloudflare != nil && edns.Spec.Cloudflare.SecretRef != nil && edns.Spec.Cloudflare.SecretRef.Name == object.GetName() {
-					reconcileReq = append(reconcileReq, reconcile.Request{NamespacedName: client.ObjectKey{Name: edns.Name, Namespace: edns.Namespace}})
-				}
+		for i := range ednsList.Items {
+			edns := &ednsList.Items[i]
+			name, ok := providerSecretName(&edns.Spec)
+			if !ok || name != object.GetName() {
+				continue
 			}
+			reconcileReq = append(reconcileReq, reconcile.Request{NamespacedName: client.ObjectKey{Name: edns.Name, Namespace: edns.Namespace}})
 		}
 
 		return reconcileReq
