@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	api "kubeops.dev/external-dns-operator/apis/external/v1alpha1"
@@ -236,6 +237,12 @@ var defaultConfig = externaldns.Config{
 	ForceDefaultTargets:          false,
 }
 
+// loggerOnce guards process-wide logger configuration. The logger is a
+// singleton in logrus; configuring it from inside the per-reconcile path
+// would mean that two ExternalDNS objects with different log settings
+// would race. Configure once based on the first config we see.
+var loggerOnce sync.Once
+
 func SetDNSRecords(ctx context.Context, edns *api.ExternalDNS) ([]api.DNSRecord, error) {
 	cfg := convertEDNSObjectToCfg(edns)
 
@@ -243,21 +250,9 @@ func SetDNSRecords(ctx context.Context, edns *api.ExternalDNS) ([]api.DNSRecord,
 		return nil, fmt.Errorf("config validation failed: %w", err)
 	}
 
-	annotations.SetAnnotationPrefix(cfg.AnnotationPrefix)
-	if cfg.AnnotationPrefix != annotations.DefaultAnnotationPrefix {
-		log.Infof("Using custom annotation prefix: %s", cfg.AnnotationPrefix)
-	}
-
-	if err := configureLogger(cfg); err != nil {
+	if err := configureLoggerOnce(cfg); err != nil {
 		return nil, err
 	}
-
-	/*if log.GetLevel() < log.DebugLevel {
-		// Klog V2 is used by k8s.io/apimachinery/pkg/labels and can throw (a lot) of irrelevant logs
-		// See https://github.com/kubernetes-sigs/external-dns/issues/2348
-		defer klog.ClearLogger()
-		klog.SetLogger(logr.Discard())
-	}*/
 
 	log.Info(externaldns.Banner())
 
@@ -299,7 +294,7 @@ func DeleteDNSRecords(ctx context.Context, edns *api.ExternalDNS) error {
 		return fmt.Errorf("config validation failed: %w", err)
 	}
 
-	if err := configureLogger(cfg); err != nil {
+	if err := configureLoggerOnce(cfg); err != nil {
 		return err
 	}
 
@@ -928,15 +923,21 @@ func createRegistry(cfg *externaldns.Config, p provider.Provider) (registry.Regi
 	return r, err
 }
 
-// This function configures the logger format and level based on the provided configuration.
-func configureLogger(cfg *externaldns.Config) error {
-	if cfg.LogFormat == "json" {
-		log.SetFormatter(&log.JSONFormatter{})
-	}
-	ll, err := log.ParseLevel(cfg.LogLevel)
-	if err != nil {
-		return fmt.Errorf("failed to parse log level %q: %w", cfg.LogLevel, err)
-	}
-	log.SetLevel(ll)
-	return nil
+// configureLoggerOnce configures the process-wide logrus logger based on
+// the first config we see. Re-configuring on every reconcile would race
+// across ExternalDNS objects (logrus is a singleton).
+func configureLoggerOnce(cfg *externaldns.Config) error {
+	var configureErr error
+	loggerOnce.Do(func() {
+		if cfg.LogFormat == "json" {
+			log.SetFormatter(&log.JSONFormatter{})
+		}
+		ll, err := log.ParseLevel(cfg.LogLevel)
+		if err != nil {
+			configureErr = fmt.Errorf("failed to parse log level %q: %w", cfg.LogLevel, err)
+			return
+		}
+		log.SetLevel(ll)
+	})
+	return configureErr
 }
