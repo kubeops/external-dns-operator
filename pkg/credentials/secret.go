@@ -38,8 +38,7 @@ func getSecret(ctx context.Context, kc client.Client, key types.NamespacedName) 
 
 func resetEnvVariables(list ...string) error {
 	for _, item := range list {
-		err := os.Setenv(item, "")
-		if err != nil {
+		if err := os.Unsetenv(item); err != nil {
 			return err
 		}
 	}
