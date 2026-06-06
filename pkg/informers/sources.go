@@ -61,24 +61,12 @@ func getKindNode(cache cache.Cache, r client.Client) (source.SyncingSource, erro
 		return reconcileReq
 	})
 	return source.Kind(cache, &corev1.Node{}, hdlr, predicate.TypedFuncs[*corev1.Node]{UpdateFunc: func(e event.TypedUpdateEvent[*corev1.Node]) bool {
-		if e.ObjectOld.GetObjectKind().GroupVersionKind().Kind != kindNode {
-			return true
-		}
-
-		oldNode := e.ObjectOld.DeepCopy()
-		newNode := e.ObjectNew.DeepCopy()
-
-		if oldNode.Status.Addresses == nil {
-			klog.Error("node addresses not found")
-			return false
-		}
-
-		if newNode.Status.Addresses == nil {
-			klog.Error("node addresses not found")
-			return false
-		}
-
-		return !reflect.DeepEqual(oldNode.Status.Addresses, newNode.Status.Addresses)
+		// Reconcile only when the addresses, labels, or annotations change —
+		// these are the only fields that affect the DNS endpoints external-dns
+		// derives from a Node.
+		return !reflect.DeepEqual(e.ObjectOld.Status.Addresses, e.ObjectNew.Status.Addresses) ||
+			!reflect.DeepEqual(e.ObjectOld.Labels, e.ObjectNew.Labels) ||
+			!reflect.DeepEqual(e.ObjectOld.Annotations, e.ObjectNew.Annotations)
 	}}), nil
 }
 
@@ -100,7 +88,16 @@ func getKindService(cache cache.Cache, r client.Client) (source.SyncingSource, e
 
 		return reconcileReq
 	})
-	return source.Kind(cache, &corev1.Service{}, hdlr, predicate.TypedFuncs[*corev1.Service]{}), nil
+	return source.Kind(cache, &corev1.Service{}, hdlr, predicate.TypedFuncs[*corev1.Service]{UpdateFunc: func(e event.TypedUpdateEvent[*corev1.Service]) bool {
+		// Reconcile only on changes that affect the endpoints external-dns
+		// derives from a Service: spec changes (bumps Generation), annotations
+		// (hostname/ttl/etc.), labels (selector matching), or the LB ingress
+		// status. This skips no-op resync events.
+		return e.ObjectOld.Generation != e.ObjectNew.Generation ||
+			!reflect.DeepEqual(e.ObjectOld.Annotations, e.ObjectNew.Annotations) ||
+			!reflect.DeepEqual(e.ObjectOld.Labels, e.ObjectNew.Labels) ||
+			!reflect.DeepEqual(e.ObjectOld.Status.LoadBalancer, e.ObjectNew.Status.LoadBalancer)
+	}}), nil
 }
 
 func getKindIngress(cache cache.Cache, r client.Client) (source.SyncingSource, error) {
@@ -122,7 +119,15 @@ func getKindIngress(cache cache.Cache, r client.Client) (source.SyncingSource, e
 		return reconcileReq
 	})
 
-	return source.Kind(cache, &networkingv1.Ingress{}, hdlr, predicate.TypedFuncs[*networkingv1.Ingress]{}), nil
+	return source.Kind(cache, &networkingv1.Ingress{}, hdlr, predicate.TypedFuncs[*networkingv1.Ingress]{UpdateFunc: func(e event.TypedUpdateEvent[*networkingv1.Ingress]) bool {
+		// Reconcile only on changes that affect the endpoints external-dns
+		// derives from an Ingress: spec changes (bumps Generation),
+		// annotations (hostname/ttl/etc.), labels, or the LB ingress status.
+		return e.ObjectOld.Generation != e.ObjectNew.Generation ||
+			!reflect.DeepEqual(e.ObjectOld.Annotations, e.ObjectNew.Annotations) ||
+			!reflect.DeepEqual(e.ObjectOld.Labels, e.ObjectNew.Labels) ||
+			!reflect.DeepEqual(e.ObjectOld.Status.LoadBalancer, e.ObjectNew.Status.LoadBalancer)
+	}}), nil
 }
 
 func getKind(r client.Client, gvk schema.GroupVersionKind, cache cache.Cache) (source.SyncingSource, error) {
