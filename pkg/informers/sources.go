@@ -42,23 +42,27 @@ const (
 	kindIngress = "Ingress"
 )
 
-func getKindNode(cache cache.Cache, r client.Client) (source.SyncingSource, error) {
-	hdlr := handler.TypedEnqueueRequestsFromMapFunc(func(ctx context.Context, a *corev1.Node) []reconcile.Request {
-		reconcileReq := make([]reconcile.Request, 0)
-		dnsList := &api.ExternalDNSList{}
-
-		if err := r.List(ctx, dnsList); err != nil {
-			klog.Errorf("failed to list the external dns resources: %s", err.Error())
-			return reconcileReq
-		}
-
-		for _, edns := range dnsList.Items {
-			if edns.Spec.Source.Type.Kind == kindNode {
-				reconcileReq = append(reconcileReq, reconcile.Request{NamespacedName: client.ObjectKey{Name: edns.Name, Namespace: edns.Namespace}})
-			}
-		}
-
+// enqueueForKind returns the set of ExternalDNS reconcile requests that
+// subscribe to the given source kind. Cluster-wide list, filtered by
+// Spec.Source.Type.Kind.
+func enqueueForKind(ctx context.Context, r client.Client, kind string) []reconcile.Request {
+	reconcileReq := make([]reconcile.Request, 0)
+	dnsList := &api.ExternalDNSList{}
+	if err := r.List(ctx, dnsList); err != nil {
+		klog.Errorf("failed to list the external dns resources: %s", err.Error())
 		return reconcileReq
+	}
+	for _, edns := range dnsList.Items {
+		if edns.Spec.Source.Type.Kind == kind {
+			reconcileReq = append(reconcileReq, reconcile.Request{NamespacedName: client.ObjectKey{Name: edns.Name, Namespace: edns.Namespace}})
+		}
+	}
+	return reconcileReq
+}
+
+func getKindNode(cache cache.Cache, r client.Client) (source.SyncingSource, error) {
+	hdlr := handler.TypedEnqueueRequestsFromMapFunc(func(ctx context.Context, _ *corev1.Node) []reconcile.Request {
+		return enqueueForKind(ctx, r, kindNode)
 	})
 	return source.Kind(cache, &corev1.Node{}, hdlr, predicate.TypedFuncs[*corev1.Node]{UpdateFunc: func(e event.TypedUpdateEvent[*corev1.Node]) bool {
 		// Reconcile only when the addresses, labels, or annotations change —
@@ -71,22 +75,8 @@ func getKindNode(cache cache.Cache, r client.Client) (source.SyncingSource, erro
 }
 
 func getKindService(cache cache.Cache, r client.Client) (source.SyncingSource, error) {
-	hdlr := handler.TypedEnqueueRequestsFromMapFunc(func(ctx context.Context, a *corev1.Service) []reconcile.Request {
-		reconcileReq := make([]reconcile.Request, 0)
-		dnsList := &api.ExternalDNSList{}
-
-		if err := r.List(ctx, dnsList); err != nil {
-			klog.Errorf("failed to list the external dns resources: %s", err.Error())
-			return reconcileReq
-		}
-
-		for _, edns := range dnsList.Items {
-			if edns.Spec.Source.Type.Kind == kindService {
-				reconcileReq = append(reconcileReq, reconcile.Request{NamespacedName: client.ObjectKey{Name: edns.Name, Namespace: edns.Namespace}})
-			}
-		}
-
-		return reconcileReq
+	hdlr := handler.TypedEnqueueRequestsFromMapFunc(func(ctx context.Context, _ *corev1.Service) []reconcile.Request {
+		return enqueueForKind(ctx, r, kindService)
 	})
 	return source.Kind(cache, &corev1.Service{}, hdlr, predicate.TypedFuncs[*corev1.Service]{UpdateFunc: func(e event.TypedUpdateEvent[*corev1.Service]) bool {
 		// Reconcile only on changes that affect the endpoints external-dns
@@ -101,24 +91,9 @@ func getKindService(cache cache.Cache, r client.Client) (source.SyncingSource, e
 }
 
 func getKindIngress(cache cache.Cache, r client.Client) (source.SyncingSource, error) {
-	hdlr := handler.TypedEnqueueRequestsFromMapFunc(func(ctx context.Context, a *networkingv1.Ingress) []reconcile.Request {
-		reconcileReq := make([]reconcile.Request, 0)
-		dnsList := &api.ExternalDNSList{}
-
-		if err := r.List(ctx, dnsList); err != nil {
-			klog.Errorf("failed to list the external dns resources: %s", err.Error())
-			return reconcileReq
-		}
-
-		for _, edns := range dnsList.Items {
-			if edns.Spec.Source.Type.Kind == kindIngress {
-				reconcileReq = append(reconcileReq, reconcile.Request{NamespacedName: client.ObjectKey{Name: edns.Name, Namespace: edns.Namespace}})
-			}
-		}
-
-		return reconcileReq
+	hdlr := handler.TypedEnqueueRequestsFromMapFunc(func(ctx context.Context, _ *networkingv1.Ingress) []reconcile.Request {
+		return enqueueForKind(ctx, r, kindIngress)
 	})
-
 	return source.Kind(cache, &networkingv1.Ingress{}, hdlr, predicate.TypedFuncs[*networkingv1.Ingress]{UpdateFunc: func(e event.TypedUpdateEvent[*networkingv1.Ingress]) bool {
 		// Reconcile only on changes that affect the endpoints external-dns
 		// derives from an Ingress: spec changes (bumps Generation),
