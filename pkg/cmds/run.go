@@ -37,17 +37,13 @@ import (
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 )
 
-var (
-	scheme   = runtime.NewScheme()
-	setupLog = ctrl.Log.WithName("setup")
-)
-
-func init() {
+func NewCmdRun() *cobra.Command {
+	scheme := runtime.NewScheme()
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 	utilruntime.Must(api.AddToScheme(scheme))
-}
 
-func NewCmdRun() *cobra.Command {
+	setupLog := ctrl.Log.WithName("setup")
+
 	var (
 		// Reads go through the controller-runtime cache, not the API
 		// server, so the practical limit on outbound QPS is whatever the
