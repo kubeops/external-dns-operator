@@ -59,6 +59,8 @@ var providerEnvVars = []string{
 	CFApiToken,
 	CFApiKey,
 	CFApiEmail,
+}
+
 // credentialFilePath returns the on-disk path used by the file-based
 // provider credential setters (AWS / Azure / Google). It must stay in
 // sync with the path each setter writes to.
