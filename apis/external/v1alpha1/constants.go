@@ -16,7 +16,7 @@ limitations under the License.
 
 package v1alpha1
 
-// kubebuilder:validation:Enum:=sync;upsert-only;create-only
+// +kubebuilder:validation:Enum=sync;upsert-only;create-only
 type Policy string
 
 const (
@@ -39,7 +39,7 @@ const (
 	ExternalDNSPhaseInProgress ExternalDNSPhase = "InProgress"
 )
 
-// kubebuilder:validation:Enum:=aws;cloudflare;azure;google
+// +kubebuilder:validation:Enum=aws;cloudflare;azure;google
 type Provider string
 
 const (
