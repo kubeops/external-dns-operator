@@ -19,6 +19,7 @@ package credentials
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 
 	api "kubeops.dev/external-dns-operator/apis/external/v1alpha1"
@@ -39,6 +40,28 @@ func getSecret(ctx context.Context, kc client.Client, key types.NamespacedName) 
 func resetEnvVariables(list ...string) error {
 	for _, item := range list {
 		if err := os.Unsetenv(item); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// credentialFilePath returns the on-disk path used by the file-based
+// provider credential setters (AWS / Azure / Google). It must stay in
+// sync with the path each setter writes to.
+func credentialFilePath(edns *api.ExternalDNS) string {
+	return fmt.Sprintf("/tmp/%s-%s-credential", edns.Namespace, edns.Name)
+}
+
+// CleanupCredential removes any on-disk credential files written by a
+// previous SetCredential call for this ExternalDNS. Safe to call when
+// the file does not exist. Intended to run during finalizer-driven
+// deletion so we don't leak secret material on /tmp across the lifetime
+// of the operator pod.
+func CleanupCredential(edns *api.ExternalDNS) error {
+	switch edns.Spec.Provider {
+	case api.ProviderAWS, api.ProviderAzure, api.ProviderGoogle:
+		if err := os.Remove(credentialFilePath(edns)); err != nil && !os.IsNotExist(err) {
 			return err
 		}
 	}
