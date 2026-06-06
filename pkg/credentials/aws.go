@@ -37,10 +37,7 @@ func validAWSSecret(secret *core.Secret, key string) bool {
 }
 
 func setAWSCredential(ctx context.Context, kc client.Client, edns *api.ExternalDNS) error {
-	if err := resetEnvVariables(AWSSharedCredentialsFile); err != nil {
-		return err
-	}
-
+	// Env reset of all provider variables is done centrally in SetCredential.
 	// if ProviderSecretRef is nil then user is intended to use IRSA (IAM Role for Service Account)
 	if edns.Spec.AWS == nil || edns.Spec.AWS.SecretRef == nil {
 		return nil
