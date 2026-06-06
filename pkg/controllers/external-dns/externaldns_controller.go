@@ -233,6 +233,13 @@ func (r *ExternalDNSReconciler) handleDeletion(ctx context.Context, edns *api.Ex
 		}
 	}
 
+	// Remove the on-disk credential file before dropping the finalizer so
+	// secret material does not linger in /tmp for the life of the pod.
+	if err := credentials.CleanupCredential(edns); err != nil {
+		klog.Errorf("failed to clean up credential file for %s/%s: %v", edns.Namespace, edns.Name, err)
+		return ctrl.Result{}, err
+	}
+
 	controllerutil.RemoveFinalizer(edns, finalizer)
 	return ctrl.Result{}, r.Update(ctx, edns)
 }
@@ -280,7 +287,7 @@ func (r *ExternalDNSReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Watches(&core.Secret{}, secretToEdns).
 		Build(r)
 	if err != nil {
-		klog.Error("failed to build controller.", err.Error())
+		klog.ErrorS(err, "failed to build controller")
 		return err
 	}
 

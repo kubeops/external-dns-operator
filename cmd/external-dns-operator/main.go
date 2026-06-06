@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"fmt"
 	"os"
 
 	"kubeops.dev/external-dns-operator/pkg/cmds"
@@ -33,6 +34,7 @@ func main() {
 	defer logs.FlushLogs()
 
 	if err := rootCmd.Execute(); err != nil {
+		fmt.Fprintln(os.Stderr, "error:", err)
 		os.Exit(1)
 	}
 }

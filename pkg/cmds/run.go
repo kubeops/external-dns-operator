@@ -49,6 +49,13 @@ func init() {
 
 func NewCmdRun() *cobra.Command {
 	var (
+		// Reads go through the controller-runtime cache, not the API
+		// server, so the practical limit on outbound QPS is whatever the
+		// reconciler does on writes (status patches, finalizer updates).
+		// Setting QPS/Burst this high effectively disables the
+		// client-side rate limiter — what we want, because the only
+		// effect of throttling here is to add latency to those writes on
+		// cold start / leader handoff.
 		QPS   float32 = 1e6
 		Burst int     = 1e6
 
