@@ -263,7 +263,7 @@ func SetDNSRecords(ctx context.Context, edns *api.ExternalDNS) ([]api.DNSRecord,
 
 	endpointsSource, err := createEndpointsSource(ctx, cfg)
 	if err != nil {
-		klog.Error(err.Error())
+		klog.ErrorS(err, "failed to create endpoints source")
 		return nil, err
 	}
 
@@ -271,19 +271,19 @@ func SetDNSRecords(ctx context.Context, edns *api.ExternalDNS) ([]api.DNSRecord,
 
 	pvdr, err := buildProvider(ctx, cfg, domainFilter)
 	if err != nil {
-		klog.Error(err.Error())
+		klog.ErrorS(err, "failed to build provider")
 		return nil, err
 	}
 
 	reg, err := createRegistry(cfg, pvdr)
 	if err != nil {
-		klog.Errorln(err)
+		klog.ErrorS(err, "failed to create registry")
 		return nil, err
 	}
 
 	dnsRecs, err := createAndApplyPlan(ctx, cfg, reg, endpointsSource, domainFilter)
 	if err != nil {
-		klog.Errorln(err)
+		klog.ErrorS(err, "failed to apply plan")
 		return nil, err
 	}
 
@@ -389,8 +389,8 @@ func createAndApplyPlan(ctx context.Context, cfg *externaldns.Config, r registry
 	}
 
 	pln = pln.Calculate()
-	klog.Info("Desired: ", pln.Desired)
-	klog.Info("Current: ", pln.Current)
+	klog.V(2).InfoS("plan computed", "desired", len(pln.Desired), "current", len(pln.Current))
+	klog.V(4).InfoS("plan endpoints", "desired", pln.Desired, "current", pln.Current)
 
 	dnsRecs := make([]api.DNSRecord, 0)
 
@@ -402,7 +402,7 @@ func createAndApplyPlan(ctx context.Context, cfg *externaldns.Config, r registry
 	if pln.Changes.HasChanges() {
 		err = r.ApplyChanges(ctx, pln.Changes)
 		if err != nil {
-			klog.Error(err.Error())
+			klog.ErrorS(err, "failed to apply changes")
 			return nil, err
 		}
 		klog.Info("plan applied")
