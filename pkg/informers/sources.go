@@ -19,6 +19,7 @@ package informers
 import (
 	"context"
 	"fmt"
+	"maps"
 	"reflect"
 
 	api "kubeops.dev/external-dns-operator/apis/external/v1alpha1"
@@ -65,8 +66,8 @@ func getKindNode(cache cache.Cache, r client.Client) (source.SyncingSource, erro
 		// these are the only fields that affect the DNS endpoints external-dns
 		// derives from a Node.
 		return !reflect.DeepEqual(e.ObjectOld.Status.Addresses, e.ObjectNew.Status.Addresses) ||
-			!reflect.DeepEqual(e.ObjectOld.Labels, e.ObjectNew.Labels) ||
-			!reflect.DeepEqual(e.ObjectOld.Annotations, e.ObjectNew.Annotations)
+			!maps.Equal(e.ObjectOld.Labels, e.ObjectNew.Labels) ||
+			!maps.Equal(e.ObjectOld.Annotations, e.ObjectNew.Annotations)
 	}}), nil
 }
 
@@ -94,8 +95,8 @@ func getKindService(cache cache.Cache, r client.Client) (source.SyncingSource, e
 		// (hostname/ttl/etc.), labels (selector matching), or the LB ingress
 		// status. This skips no-op resync events.
 		return e.ObjectOld.Generation != e.ObjectNew.Generation ||
-			!reflect.DeepEqual(e.ObjectOld.Annotations, e.ObjectNew.Annotations) ||
-			!reflect.DeepEqual(e.ObjectOld.Labels, e.ObjectNew.Labels) ||
+			!maps.Equal(e.ObjectOld.Annotations, e.ObjectNew.Annotations) ||
+			!maps.Equal(e.ObjectOld.Labels, e.ObjectNew.Labels) ||
 			!reflect.DeepEqual(e.ObjectOld.Status.LoadBalancer, e.ObjectNew.Status.LoadBalancer)
 	}}), nil
 }
@@ -124,8 +125,8 @@ func getKindIngress(cache cache.Cache, r client.Client) (source.SyncingSource, e
 		// derives from an Ingress: spec changes (bumps Generation),
 		// annotations (hostname/ttl/etc.), labels, or the LB ingress status.
 		return e.ObjectOld.Generation != e.ObjectNew.Generation ||
-			!reflect.DeepEqual(e.ObjectOld.Annotations, e.ObjectNew.Annotations) ||
-			!reflect.DeepEqual(e.ObjectOld.Labels, e.ObjectNew.Labels) ||
+			!maps.Equal(e.ObjectOld.Annotations, e.ObjectNew.Annotations) ||
+			!maps.Equal(e.ObjectOld.Labels, e.ObjectNew.Labels) ||
 			!reflect.DeepEqual(e.ObjectOld.Status.LoadBalancer, e.ObjectNew.Status.LoadBalancer)
 	}}), nil
 }
