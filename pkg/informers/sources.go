@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"slices"
 
 	api "kubeops.dev/external-dns-operator/apis/external/v1alpha1"
 
@@ -41,6 +42,21 @@ const (
 	kindService = "Service"
 	kindIngress = "Ingress"
 )
+
+// SupportedSourceKinds lists every source.Type.Kind value the operator
+// can wire an informer for. Anything else cannot be reconciled.
+var SupportedSourceKinds = []string{kindNode, kindService, kindIngress}
+
+// ValidateSourceKind returns a clear error when the given kind isn't a
+// source the operator implements. Use this at the top of Reconcile so
+// we fail fast with a useful message instead of getting an
+// "unknown kind" error from the informer registration step later.
+func ValidateSourceKind(kind string) error {
+	if slices.Contains(SupportedSourceKinds, kind) {
+		return nil
+	}
+	return fmt.Errorf("unsupported source kind %q (supported: %v)", kind, SupportedSourceKinds)
+}
 
 func getKindNode(cache cache.Cache, r client.Client) (source.SyncingSource, error) {
 	hdlr := handler.TypedEnqueueRequestsFromMapFunc(func(ctx context.Context, a *corev1.Node) []reconcile.Request {
