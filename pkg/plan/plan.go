@@ -240,7 +240,7 @@ func SetDNSRecords(ctx context.Context, edns *api.ExternalDNS) ([]api.DNSRecord,
 	cfg := convertEDNSObjectToCfg(edns)
 
 	if err := validation.ValidateConfig(cfg); err != nil {
-		log.Fatalf("config validation failed: %v", err)
+		return nil, fmt.Errorf("config validation failed: %w", err)
 	}
 
 	annotations.SetAnnotationPrefix(cfg.AnnotationPrefix)
@@ -248,7 +248,9 @@ func SetDNSRecords(ctx context.Context, edns *api.ExternalDNS) ([]api.DNSRecord,
 		log.Infof("Using custom annotation prefix: %s", cfg.AnnotationPrefix)
 	}
 
-	configureLogger(cfg)
+	if err := configureLogger(cfg); err != nil {
+		return nil, err
+	}
 
 	/*if log.GetLevel() < log.DebugLevel {
 		// Klog V2 is used by k8s.io/apimachinery/pkg/labels and can throw (a lot) of irrelevant logs
@@ -294,10 +296,12 @@ func SetDNSRecords(ctx context.Context, edns *api.ExternalDNS) ([]api.DNSRecord,
 func DeleteDNSRecords(ctx context.Context, edns *api.ExternalDNS) error {
 	cfg := convertEDNSObjectToCfg(edns)
 	if err := validation.ValidateConfig(cfg); err != nil {
-		log.Fatalf("config validation failed: %v", err)
+		return fmt.Errorf("config validation failed: %w", err)
 	}
 
-	configureLogger(cfg)
+	if err := configureLogger(cfg); err != nil {
+		return err
+	}
 
 	domainFilter := createDomainFilter(cfg)
 
@@ -919,19 +923,20 @@ func createRegistry(cfg *externaldns.Config, p provider.Provider) (registry.Regi
 	case "aws-sd":
 		r, err = registry.NewAWSSDRegistry(p, cfg.TXTOwnerID)
 	default:
-		log.Fatalf("unknown registry: %s", cfg.Registry)
+		return nil, fmt.Errorf("unknown registry: %s", cfg.Registry)
 	}
 	return r, err
 }
 
 // This function configures the logger format and level based on the provided configuration.
-func configureLogger(cfg *externaldns.Config) {
+func configureLogger(cfg *externaldns.Config) error {
 	if cfg.LogFormat == "json" {
 		log.SetFormatter(&log.JSONFormatter{})
 	}
 	ll, err := log.ParseLevel(cfg.LogLevel)
 	if err != nil {
-		log.Fatalf("failed to parse log level: %v", err)
+		return fmt.Errorf("failed to parse log level %q: %w", cfg.LogLevel, err)
 	}
 	log.SetLevel(ll)
+	return nil
 }
