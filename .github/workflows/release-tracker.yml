@@ -24,7 +24,7 @@ jobs:
           client-id: ${{ secrets.LGTM_APP_CLIENT_ID }}
           private-key: ${{ secrets.LGTM_APP_PRIVATE_KEY }}
           owner: ${{ github.repository_owner }}
-          repositories: CHANGELOG
+          # repositories: CHANGELOG
           permission-pull-requests: write
 
       - name: Update release tracker
