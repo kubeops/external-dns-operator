@@ -22,7 +22,7 @@ import (
 	core "k8s.io/api/core/v1"
 )
 
-func TestValidCFSecret(t *testing.T) {
+func TestCFSecretMode(t *testing.T) {
 	const (
 		tokenKey = "api-token"
 		apiKey   = "api-key"
@@ -32,47 +32,52 @@ func TestValidCFSecret(t *testing.T) {
 	tests := []struct {
 		name string
 		data map[string][]byte
-		want bool
+		want cfAuthMode
 	}{
 		{
-			name: "token present is sufficient",
+			name: "token present selects token auth",
 			data: map[string][]byte{tokenKey: []byte("tok")},
-			want: true,
+			want: cfAuthToken,
 		},
 		{
-			name: "key+email present is sufficient",
+			name: "key+email present selects key auth",
 			data: map[string][]byte{apiKey: []byte("k"), apiEmail: []byte("e@example.com")},
-			want: true,
+			want: cfAuthKeyAndEmail,
 		},
 		{
-			name: "key only is not sufficient",
+			name: "token wins over key+email",
+			data: map[string][]byte{tokenKey: []byte("tok"), apiKey: []byte("k"), apiEmail: []byte("e@example.com")},
+			want: cfAuthToken,
+		},
+		{
+			name: "key only is invalid",
 			data: map[string][]byte{apiKey: []byte("k")},
-			want: false,
+			want: cfAuthInvalid,
 		},
 		{
-			name: "email only is not sufficient",
+			name: "email only is invalid",
 			data: map[string][]byte{apiEmail: []byte("e@example.com")},
-			want: false,
+			want: cfAuthInvalid,
 		},
 		{
 			name: "empty secret is invalid",
 			data: map[string][]byte{},
-			want: false,
+			want: cfAuthInvalid,
 		},
 		{
-			// The current implementation treats a present-but-empty token
-			// key as sufficient; lock that in so the behavior is explicit.
-			name: "empty-but-present token still passes",
+			// A present-but-empty token no longer counts as token auth;
+			// mode selection requires a non-empty value.
+			name: "empty-but-present token is invalid",
 			data: map[string][]byte{tokenKey: nil},
-			want: true,
+			want: cfAuthInvalid,
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			got := validCFSecret(&core.Secret{Data: tc.data}, tokenKey, apiKey, apiEmail)
+			got := cfSecretMode(&core.Secret{Data: tc.data}, tokenKey, apiKey, apiEmail)
 			if got != tc.want {
-				t.Fatalf("validCFSecret = %v, want %v (data=%v)", got, tc.want, tc.data)
+				t.Fatalf("cfSecretMode = %v, want %v (data=%v)", got, tc.want, tc.data)
 			}
 		})
 	}
