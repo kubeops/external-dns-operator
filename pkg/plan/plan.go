@@ -599,7 +599,8 @@ func createEndpointsSource(ctx context.Context, cfg *externaldns.Config) (source
 		wrappers.WithNAT64Networks(cfg.NAT64Networks),
 		wrappers.WithTargetNetFilter(cfg.TargetNetFilter),
 		wrappers.WithExcludeTargetNets(cfg.ExcludeTargetNets),
-		wrappers.WithMinTTL(cfg.MinTTL))
+		wrappers.WithMinTTL(cfg.MinTTL),
+	)
 	return wrappers.WrapSources(sources, opts)
 }
 
@@ -629,7 +630,8 @@ func buildProvider(
 				EdgercPath:            cfg.AkamaiEdgercPath,
 				EdgercSection:         cfg.AkamaiEdgercSection,
 				DryRun:                cfg.DryRun,
-			}, nil)
+			}, nil,
+		)
 	case "alibabacloud":
 		p, err = alibabacloud.NewAlibabaCloudProvider(cfg.AlibabaCloudConfigFile, domainFilter, zoneIDFilter, cfg.AlibabaCloudZoneType, cfg.DryRun)
 	case "aws":
@@ -688,7 +690,8 @@ func buildProvider(
 			cloudflare.DNSRecordsConfig{
 				PerPage: cfg.CloudflareDNSRecordsPerPage,
 				Comment: cfg.CloudflareDNSRecordsComment,
-			})
+			},
+		)
 	case "google":
 		p, err = google.NewGoogleProvider(ctx, cfg.GoogleProject, domainFilter, zoneIDFilter, cfg.GoogleBatchChangeSize, cfg.GoogleBatchChangeInterval, cfg.GoogleZoneVisibility, cfg.DryRun)
 	case "digitalocean":
