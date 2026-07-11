@@ -341,7 +341,7 @@ func convertEDNSObjectToCfg(edns *api.ExternalDNS) *externaldns.Config {
 	}
 
 	// SOURCE
-	var sources []string
+	sources := make([]string, 0, 1)
 	sources = append(sources, strings.ToLower(edns.Spec.Source.Type.Kind))
 	// sources[] must contain strings that are lower cased
 	config.Sources = sources
