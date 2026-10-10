@@ -214,12 +214,15 @@ func (r *ExternalDNSReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 }
 
 func (r *ExternalDNSReconciler) handleDeletion(ctx context.Context, edns *api.ExternalDNS) (ctrl.Result, error) {
+	// Acquire the lock before reading finalizer state so we never observe
+	// "finalizer present" and then race with another goroutine that has
+	// already removed it and started a second cleanup pass.
+	mutex.Lock()
+	defer mutex.Unlock()
+
 	if !controllerutil.ContainsFinalizer(edns, finalizer) {
 		return ctrl.Result{}, nil
 	}
-
-	mutex.Lock()
-	defer mutex.Unlock()
 
 	if edns.Spec.Policy == nil || *edns.Spec.Policy == api.PolicySync {
 		if err := credentials.SetCredential(ctx, r.Client, edns); err != nil {
