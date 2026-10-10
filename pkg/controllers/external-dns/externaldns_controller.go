@@ -61,32 +61,49 @@ func newPhase(phase api.ExternalDNSPhase) *api.ExternalDNSPhase {
 	return &phase
 }
 
-// update the status of the crd, conditionType is the reason of the condition
-func (r *ExternalDNSReconciler) updateEdnsStatus(ctx context.Context, edns *api.ExternalDNS, newCondition *kmapi.Condition, phase *api.ExternalDNSPhase) error {
-	generation := edns.Generation
-	_, patchErr := kmc.PatchStatus(ctx, r.Client, edns, func(obj client.Object) client.Object {
-		in := obj.(*api.ExternalDNS)
-		in.Status.ObservedGeneration = generation
-		if phase != nil {
-			in.Status.Phase = *phase
-		}
-		if newCondition != nil {
-			in.Status.Conditions = condutil.SetCondition(in.Status.Conditions, *newCondition)
-		}
-		return in
-	})
-	return patchErr
+// statusUpdate accumulates all fields the reconciler may want to change
+// on Status. The reconciler builds one of these per Reconcile pass and
+// flushes it with a single PatchStatus call instead of issuing 4-5
+// independent patches.
+type statusUpdate struct {
+	conditions []kmapi.Condition
+	phase      *api.ExternalDNSPhase
+	dnsRecords *[]api.DNSRecord
 }
 
-func (r *ExternalDNSReconciler) patchDNSRecords(ctx context.Context, edns *api.ExternalDNS, dnsRecs []api.DNSRecord) error {
+func (s *statusUpdate) setCondition(c *kmapi.Condition) *statusUpdate {
+	if c != nil {
+		s.conditions = append(s.conditions, *c)
+	}
+	return s
+}
+
+func (s *statusUpdate) setPhase(p *api.ExternalDNSPhase) *statusUpdate {
+	s.phase = p
+	return s
+}
+
+func (s *statusUpdate) setDNSRecords(recs []api.DNSRecord) *statusUpdate {
+	s.dnsRecords = &recs
+	return s
+}
+
+func (r *ExternalDNSReconciler) patchStatus(ctx context.Context, edns *api.ExternalDNS, update *statusUpdate) error {
 	generation := edns.Generation
 	_, patchErr := kmc.PatchStatus(ctx, r.Client, edns, func(obj client.Object) client.Object {
 		in := obj.(*api.ExternalDNS)
 		in.Status.ObservedGeneration = generation
-		in.Status.DNSRecords = dnsRecs
+		if update.phase != nil {
+			in.Status.Phase = *update.phase
+		}
+		for i := range update.conditions {
+			in.Status.Conditions = condutil.SetCondition(in.Status.Conditions, update.conditions[i])
+		}
+		if update.dnsRecords != nil {
+			in.Status.DNSRecords = *update.dnsRecords
+		}
 		return in
 	})
-
 	return patchErr
 }
 
@@ -116,101 +133,61 @@ func (r *ExternalDNSReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		return ctrl.Result{}, nil
 	}
 
+	update := &statusUpdate{}
 	if edns.Status.Phase == "" {
-		if patchErr := r.updateEdnsStatus(
-			ctx,
-			edns,
-			nil,
-			newPhase(api.ExternalDNSPhaseInProgress),
-		); patchErr != nil {
-			return ctrl.Result{}, patchErr
-		}
+		update.setPhase(newPhase(api.ExternalDNSPhaseInProgress))
 	}
 
 	// REGISTER WATCHER
 	if err := informers.RegisterWatcher(ctx, edns, r.watcher, r.Client); err != nil {
-		if patchErr := r.updateEdnsStatus(
-			ctx,
-			edns,
-			newCondition(api.CreateAndRegisterWatcher, err.Error(), edns.Generation, false),
-			newPhase(api.ExternalDNSPhaseFailed),
-		); patchErr != nil {
+		update.
+			setCondition(newCondition(api.CreateAndRegisterWatcher, err.Error(), edns.Generation, false)).
+			setPhase(newPhase(api.ExternalDNSPhaseFailed))
+		if patchErr := r.patchStatus(ctx, edns, update); patchErr != nil {
 			err = errors.Wrap(err, patchErr.Error())
 		}
 		return ctrl.Result{}, err
 	}
-
-	if patchErr := r.updateEdnsStatus(
-		ctx,
-		edns,
-		newCondition(api.CreateAndRegisterWatcher, "Watcher registered", edns.Generation, true),
-		nil,
-	); patchErr != nil {
-		return ctrl.Result{}, patchErr
-	}
+	update.setCondition(newCondition(api.CreateAndRegisterWatcher, "Watcher registered", edns.Generation, true))
 
 	mutex.Lock()
 	defer mutex.Unlock()
 
 	// SECRET AND CREDENTIALS
-	// create and set provider secret credentials and environment variables
-	err := credentials.SetCredential(ctx, r.Client, edns)
-	if err != nil {
-		if patchErr := r.updateEdnsStatus(
-			ctx,
-			edns,
-			newCondition(api.GetProviderSecret, err.Error(), edns.Generation, false),
-			newPhase(api.ExternalDNSPhaseFailed),
-		); patchErr != nil {
+	if err := credentials.SetCredential(ctx, r.Client, edns); err != nil {
+		update.
+			setCondition(newCondition(api.GetProviderSecret, err.Error(), edns.Generation, false)).
+			setPhase(newPhase(api.ExternalDNSPhaseFailed))
+		if patchErr := r.patchStatus(ctx, edns, update); patchErr != nil {
 			err = errors.Wrap(err, patchErr.Error())
 		}
 		return ctrl.Result{}, err
 	}
-
-	if patchErr := r.updateEdnsStatus(
-		ctx,
-		edns,
-		newCondition(api.GetProviderSecret, "Provider credential configured", edns.Generation, true),
-		nil,
-	); patchErr != nil {
-		return ctrl.Result{}, patchErr
-	}
+	update.setCondition(newCondition(api.GetProviderSecret, "Provider credential configured", edns.Generation, true))
 
 	// APPLY DNS RECORD
-	// SetDNSRecords creates the dns record according to user information
-	// successMsg is used to identify whether the 'plan applied' or 'already up to date'
 	dnsRecs, err := plan.SetDNSRecords(ctx, edns)
 	if err != nil {
-		if patchErr := r.updateEdnsStatus(
-			ctx,
-			edns,
-			newCondition(api.CreateAndApplyPlan, err.Error(), edns.Generation, false),
-			newPhase(api.ExternalDNSPhaseFailed),
-		); patchErr != nil {
+		update.
+			setCondition(newCondition(api.CreateAndApplyPlan, err.Error(), edns.Generation, false)).
+			setPhase(newPhase(api.ExternalDNSPhaseFailed))
+		if patchErr := r.patchStatus(ctx, edns, update); patchErr != nil {
 			err = errors.Wrap(err, patchErr.Error())
 		}
 		return ctrl.Result{}, err
 	}
 
-	err = r.patchDNSRecords(ctx, edns, dnsRecs)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-
+	update.setDNSRecords(dnsRecs)
 	if len(dnsRecs) == 0 {
-		return ctrl.Result{}, r.updateEdnsStatus(
-			ctx,
-			edns,
-			newCondition(api.CreateAndApplyPlan, "no endpoints found for source", edns.Generation, true),
-			newPhase(api.ExternalDNSPhaseInProgress),
-		)
+		update.
+			setCondition(newCondition(api.CreateAndApplyPlan, "no endpoints found for source", edns.Generation, true)).
+			setPhase(newPhase(api.ExternalDNSPhaseInProgress))
+	} else {
+		update.
+			setCondition(newCondition(api.CreateAndApplyPlan, "plan applied", edns.Generation, true)).
+			setPhase(newPhase(api.ExternalDNSPhaseCurrent))
 	}
-	return ctrl.Result{}, r.updateEdnsStatus(
-		ctx,
-		edns,
-		newCondition(api.CreateAndApplyPlan, "plan applied", edns.Generation, true),
-		newPhase(api.ExternalDNSPhaseCurrent),
-	)
+	return ctrl.Result{}, r.patchStatus(ctx, edns, update)
 }
 
 func (r *ExternalDNSReconciler) handleDeletion(ctx context.Context, edns *api.ExternalDNS) (ctrl.Result, error) {
