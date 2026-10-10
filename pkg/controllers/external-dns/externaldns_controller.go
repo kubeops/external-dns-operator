@@ -127,6 +127,21 @@ func (r *ExternalDNSReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		}
 	}
 
+	// Fail fast on an unsupported source kind so the user gets a clear
+	// message in Status, instead of an opaque "unknown kind" later in
+	// the informer setup or a silent passthrough to upstream.
+	if err := informers.ValidateSourceKind(edns.Spec.Source.Type.Kind); err != nil {
+		if patchErr := r.updateEdnsStatus(
+			ctx,
+			edns,
+			newCondition(api.CreateAndRegisterWatcher, err.Error(), edns.Generation, false),
+			newPhase(api.ExternalDNSPhaseFailed),
+		); patchErr != nil {
+			err = errors.Wrap(err, patchErr.Error())
+		}
+		return ctrl.Result{}, err
+	}
+
 	// REGISTER WATCHER
 	if err := informers.RegisterWatcher(ctx, edns, r.watcher, r.Client); err != nil {
 		if patchErr := r.updateEdnsStatus(
