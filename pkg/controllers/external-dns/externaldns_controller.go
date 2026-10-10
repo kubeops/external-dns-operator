@@ -40,16 +40,23 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-var mutex sync.Mutex
-
 const finalizer = "externaldns.kubeops.dev/finalizer"
 
-// ExternalDNSReconciler reconciles a ExternalDNS object
+// ExternalDNSReconciler reconciles a ExternalDNS object.
+//
+// reconcileMu serializes the body of Reconcile (and handleDeletion)
+// across all ExternalDNS objects. The serialization is required because
+// the credential layer mutates process-wide state — environment
+// variables and well-known on-disk paths — that two concurrent
+// reconciles for different providers would race on. Removing the lock
+// requires plumbing per-resource credentials through buildProvider
+// instead of relying on env/disk; see TODO.
 type ExternalDNSReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
 
-	watcher *informers.ObjectTracker
+	reconcileMu sync.Mutex
+	watcher     *informers.ObjectTracker
 }
 
 func newCondition(reason string, message string, generation int64, conditionStatus bool) *kmapi.Condition {
@@ -149,8 +156,8 @@ func (r *ExternalDNSReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		return ctrl.Result{}, patchErr
 	}
 
-	mutex.Lock()
-	defer mutex.Unlock()
+	r.reconcileMu.Lock()
+	defer r.reconcileMu.Unlock()
 
 	// SECRET AND CREDENTIALS
 	// create and set provider secret credentials and environment variables
@@ -218,8 +225,8 @@ func (r *ExternalDNSReconciler) handleDeletion(ctx context.Context, edns *api.Ex
 		return ctrl.Result{}, nil
 	}
 
-	mutex.Lock()
-	defer mutex.Unlock()
+	r.reconcileMu.Lock()
+	defer r.reconcileMu.Unlock()
 
 	if edns.Spec.Policy == nil || *edns.Spec.Policy == api.PolicySync {
 		if err := credentials.SetCredential(ctx, r.Client, edns); err != nil {
