@@ -23,8 +23,6 @@ import (
 	api "kubeops.dev/external-dns-operator/apis/external/v1alpha1"
 
 	"github.com/pkg/errors"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -39,20 +37,15 @@ type ObjectTracker struct {
 	controller.Controller
 }
 
-func (o *ObjectTracker) Watch(obj runtime.Object, r client.Client) error {
+func (o *ObjectTracker) Watch(gvk schema.GroupVersionKind, r client.Client) error {
 	if o.Controller == nil {
 		return nil
 	}
 
-	gvk := obj.GetObjectKind().GroupVersionKind()
 	key := gvk.GroupKind().String()
-
 	if _, loaded := o.m.LoadOrStore(key, struct{}{}); loaded {
 		return nil
 	}
-
-	u := &unstructured.Unstructured{}
-	u.SetGroupVersionKind(gvk)
 
 	kind, err := getKind(r, gvk, o.Manager.GetCache())
 	if err != nil {
@@ -66,12 +59,6 @@ func (o *ObjectTracker) Watch(obj runtime.Object, r client.Client) error {
 	return nil
 }
 
-func getRuntimeObject(gvk schema.GroupVersionKind) runtime.Object {
-	unObj := &unstructured.Unstructured{}
-	unObj.SetGroupVersionKind(gvk)
-	return unObj
-}
-
 func RegisterWatcher(ctx context.Context, crd *api.ExternalDNS, watcher *ObjectTracker, r client.Client) error {
-	return watcher.Watch(getRuntimeObject(crd.Spec.Source.Type.GroupVersionKind()), r)
+	return watcher.Watch(crd.Spec.Source.Type.GroupVersionKind(), r)
 }
