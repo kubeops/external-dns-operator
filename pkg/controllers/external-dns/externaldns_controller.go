@@ -19,6 +19,7 @@ package externaldns
 import (
 	"context"
 	"sync"
+	"time"
 
 	api "kubeops.dev/external-dns-operator/apis/external/v1alpha1"
 	"kubeops.dev/external-dns-operator/pkg/credentials"
@@ -48,6 +49,12 @@ const finalizer = "externaldns.kubeops.dev/finalizer"
 type ExternalDNSReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
+
+	// ReconcileInterval, if > 0, causes the reconciler to requeue every
+	// ExternalDNS after a successful reconcile. Without it, DNS drift
+	// against the upstream provider (manual edits, TTL expiry on cached
+	// answers) is invisible until a Source/Secret/CR event fires.
+	ReconcileInterval time.Duration
 
 	watcher *informers.ObjectTracker
 }
@@ -198,14 +205,14 @@ func (r *ExternalDNSReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	}
 
 	if len(dnsRecs) == 0 {
-		return ctrl.Result{}, r.updateEdnsStatus(
+		return ctrl.Result{RequeueAfter: r.ReconcileInterval}, r.updateEdnsStatus(
 			ctx,
 			edns,
 			newCondition(api.CreateAndApplyPlan, "no endpoints found for source", edns.Generation, true),
 			newPhase(api.ExternalDNSPhaseInProgress),
 		)
 	}
-	return ctrl.Result{}, r.updateEdnsStatus(
+	return ctrl.Result{RequeueAfter: r.ReconcileInterval}, r.updateEdnsStatus(
 		ctx,
 		edns,
 		newCondition(api.CreateAndApplyPlan, "plan applied", edns.Generation, true),
